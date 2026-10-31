@@ -57,18 +57,19 @@ public record SubmitPacket(String title, String body) {
             c.setPacketHandled(true);
             return;
         }
-        if (title.isBlank() && body.isBlank()) {
-            Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.empty_submission"),
-                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-            c.setPacketHandled(true);
-            return;
-        }
         // 编辑中的稿子不再留在人工队列里（否则审核员会审到半成品）
         if (existing.state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.SUBMITTED) {
             SubmissionQueue.drop(existing.id());
         }
 
-        Submission sub = existing.withContent(title, body).submit();
+        Submission candidate = existing.withContent(title, body);
+        if (candidate.isEmpty()) {
+            Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.empty_submission"),
+                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+            c.setPacketHandled(true);
+            return;
+        }
+        Submission sub = candidate.submit();
         DraftStore.save(player, sub);
 
         // 走审核流水线：本地规则 → 人工 → AI → 兜底。可能异步完成（AI 路径）。

@@ -4,7 +4,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
@@ -44,12 +43,6 @@ public final class DraftSavedData extends SavedData {
         }
         drafts.put(submission.authorUuid(), submission);
         setDirty();
-    }
-
-    public void remove(UUID author) {
-        if (drafts.remove(author) != null) {
-            setDirty();
-        }
     }
 
     // ---------------- 序列化 ----------------
@@ -96,15 +89,5 @@ public final class DraftSavedData extends SavedData {
         }
         tag.put("drafts", list);
         return tag;
-    }
-
-    /** 给命令/调试用：当前有多少份草稿 */
-    public int size() {
-        return drafts.size();
-    }
-
-    /** 兼容旧调用点：从玩家拿服务端 */
-    static MinecraftServer serverOf(ServerPlayer player) {
-        return player == null ? null : player.getServer();
     }
 }

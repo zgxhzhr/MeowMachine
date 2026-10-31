@@ -24,22 +24,17 @@ public final class DraftStore {
         if (player == null) {
             return Submission.draft(new java.util.UUID(0L, 0L), "unknown");
         }
-        Submission stored = stored(player.getServer(), player.getUUID());
+        DraftSavedData data = DraftSavedData.get(player.getServer());
+        Submission stored = data == null ? null : data.get(player.getUUID());
         return stored != null ? stored : Submission.draft(player.getUUID(), player.getName().getString());
-    }
-
-    /** 按 uuid 读（离线补发结果时没有实体，用这个） */
-    public static Submission stored(MinecraftServer server, java.util.UUID author) {
-        DraftSavedData data = DraftSavedData.get(server);
-        return data == null ? null : data.get(author);
     }
 
     /** 写草稿 */
     public static void save(ServerPlayer player, Submission sub) {
-        save(serverOf(player), sub);
+        save(player == null ? null : player.getServer(), sub);
     }
 
-    /** 写草稿（无实体版） */
+    /** 写草稿（无实体版；离线补发结果时用） */
     public static void save(MinecraftServer server, Submission sub) {
         DraftSavedData data = DraftSavedData.get(server);
         if (data == null || sub == null) {
@@ -47,20 +42,5 @@ public final class DraftStore {
             return;
         }
         data.put(sub);
-    }
-
-    /** 清空草稿（作者想重写时） */
-    public static void clear(ServerPlayer player) {
-        if (player == null) {
-            return;
-        }
-        DraftSavedData data = DraftSavedData.get(player.getServer());
-        if (data != null) {
-            data.remove(player.getUUID());
-        }
-    }
-
-    private static MinecraftServer serverOf(ServerPlayer player) {
-        return player == null ? null : player.getServer();
     }
 }
