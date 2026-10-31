@@ -52,6 +52,9 @@ public class SubmissionScreen extends Screen {
     /** 正文滚动行数（内容超出可视区时） */
     private int bodyScroll = 0;
 
+    /** IMBlocker 的状态可能在焦点变化后被它重新计算，这里定期重申一次（约每秒） */
+    private int imeReassert = 0;
+
     /** 正文光标位置（bodyText 的字符下标，0..length） */
     private int caret = 0;
 
@@ -212,6 +215,12 @@ public class SubmissionScreen extends Screen {
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(g);
         int cx = this.width / 2;
+
+        // 正文是自绘控件，IMBlocker 不认识它，失去 EditBox 焦点后可能把输入法关掉；
+        // 只要正文还在焦点上就定期重申「我需要输入法」
+        if (bodyFocused && editable && (++imeReassert % 20 == 0)) {
+            ImeCompat.wantIme(true);
+        }
 
         // 标题与状态：放在输入区上方，不压住输入框
         int titleY = Math.max(6, this.bodyTop - TITLE_H - 26);
