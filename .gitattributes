@@ -1,0 +1,8 @@
+# 统一换行：仓库内一律 LF，Windows 批处理用 CRLF
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制：图片（梗图 512x512 PNG 占 jar 大部分体积）
+*.png binary
+*.jar binary

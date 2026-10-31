@@ -1,0 +1,80 @@
+plugins {
+    id 'net.neoforged.moddev.legacyforge' version '2.0.77'
+}
+
+version = '0.1.0'
+group = 'io.github.zgxhzhr.meowmachine'
+base { archivesName = 'meow_machine' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+// 自检代码只用于开发期验证，不进最终产物
+tasks.named('jar', Jar).configure {
+    exclude 'io/github/zgxhzhr/meowmachine/dev/**'
+}
+
+legacyForge {
+    version = "${minecraft_version}-${forge_version}"
+
+    parchment {
+        minecraftVersion = parchment_minecraft
+        mappingsVersion = parchment_version
+    }
+
+    runs {
+        client { client() }
+        server { server() }
+        data {
+            data()
+            programArguments.addAll '--mod', 'meow_machine', '--all',
+                    '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+    }
+
+    mods {
+        "meow_machine" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+sourceSets.main.resources.srcDir 'src/generated/resources'
+
+repositories {
+    maven { name = 'AliyunPublic'; url = 'https://maven.aliyun.com/repository/public' }
+    mavenCentral()
+}
+
+dependencies {
+    // 无第三方依赖：AI 调用用 JDK 自带 java.net.http.HttpClient
+}
+
+// Windows 下 javac 默认按 GBK 读源码，中文字面量与注释会报「不可映射字符」。
+// 统一 UTF-8，并让 processResources 也按 UTF-8（mods.toml / lang 里的中文）。
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+}
+tasks.withType(ProcessResources).configureEach {
+    filteringCharset = 'UTF-8'
+}
+
+// mods.toml 里用了 ${mod_id} / ${version} 这类占位符，必须在这里展开成实际值。
+// 少了这段，占位符会原样进 jar，Forge 启动时报 "corrupt or misconfigured toml"。
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property 'version', project.version
+    inputs.property 'mod_id', mod_id
+    inputs.property 'minecraft_version_range', minecraft_version_range
+    inputs.property 'forge_loader_version_range', forge_loader_version_range
+    filesMatching('META-INF/mods.toml') {
+        expand(
+                version                    : project.version,
+                mod_id                     : mod_id,
+                minecraft_version_range    : minecraft_version_range,
+                forge_loader_version_range : forge_loader_version_range
+        )
+    }
+}
