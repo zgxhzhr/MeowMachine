@@ -76,6 +76,16 @@ public final class LocalRules {
     private static final int MIN_BODY_CHARS = 10;
 
     /**
+     * 第 26 条（排版）里的「标题结构」：正文用了百科标题标记时，
+     * 必须从 {@code [h1=]} 开始、且不许跨级。
+     *
+     * <p>这是站点审核实测会拦的一类问题，而且**AI 判不了**（它只判语义），
+     * 所以放在本地规则里：方括号标记本身不该被误判成乱码，但结构错了要能识别出来。
+     */
+    private static final Pattern TITLE_TAG = Pattern.compile(
+            "\\[h([1-6])=([^\\]]*)\\]");
+
+    /**
      * 跑一遍本地规则。
      *
      * @param title 标题（可为空）
@@ -158,7 +168,39 @@ public final class LocalRules {
             out.add(new ReviewFinding(18, b.strip(), "正文太短，像在凑字数"));
         }
 
+        // 第 26 条 标题结构（只在真的用了标题标记时才判，纯文本投稿不涉及）
+        checkTitleStructure(all, out);
+
         return out;
+    }
+
+    /**
+     * 检查百科标题结构：第一个标题必须是 {@code [h1=]}，层级不许跨级（如 h1 直接跳到 h3）。
+     *
+     * <p>方括号标记是站点语法，本身不算问题；错的是结构。
+     */
+    private static void checkTitleStructure(String text, List<ReviewFinding> out) {
+        Matcher m = TITLE_TAG.matcher(text);
+        int prevLevel = -1;
+        int firstLevel = -1;
+        String firstTag = null;
+        while (m.find()) {
+            int level = Integer.parseInt(m.group(1));
+            if (firstLevel < 0) {
+                firstLevel = level;
+                firstTag = m.group();
+            }
+            if (prevLevel > 0 && level > prevLevel + 1) {
+                out.add(new ReviewFinding(26, m.group(),
+                        "标题跨级：第 " + prevLevel + " 级后面直接出现第 " + level + " 级"));
+                return;
+            }
+            prevLevel = level;
+        }
+        if (firstLevel > 0 && firstLevel != 1) {
+            out.add(new ReviewFinding(26, firstTag,
+                    "正文第一个标题不是 [h1=]，标题结构不完整"));
+        }
     }
 
     private static String removedWhitespace(String s) {

@@ -61,9 +61,20 @@ public final class AiReviewer {
               重复凑数、与标题无关。注意：这类就算「语法没问题」也必须报。
             """;
 
+    /** 百科正文语法说明：不告诉模型的话，它会把必需标签当成乱码或模板化痕迹 */
+    private static final String SYNTAX_NOTE = """
+            百科语法常识（重要，先读这段）：
+            - 正文里的方括号标记是站点必需的语法，不是乱码，也不是模板化套话：
+              [h1=标题] 到 [h6=标题] 是标题；[ban:title_menu]、[mark:...]、[hide:...] 是页面指令；
+              [icon:health=20,点] 是图标；HTML 标签（<p>、<table>、<td rowspan="3">）是正文格式。
+            - 出现这些标记的投稿，**不要**按第 18 条判「无意义字符」，也不要按第 7 条判「模板化」。
+            - 但标记本身写错（例如标题从 [h2=] 开始、跨级、把标记和正文挤在同一段里）
+              不属于你的判定范围，交给本地规则与人工。
+            """;
+
     private static final String SYSTEM_PROMPT = """
             你是 Minecraft 百科站点的内容审核员。检查用户投稿是否违反下列规则。
-            """ + RULES + """
+            """ + RULES + SYNTAX_NOTE + """
             只输出一个 JSON 对象，不要任何解释文字，不要 markdown 代码块：
             {"violations":[{"rule":<规则号>,"quote":"<原文片段>","reason":"<一句话原因>"}]}
             没有违规时输出：{"violations":[]}

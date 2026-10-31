@@ -54,7 +54,23 @@ public final class SelfTest {
         testSubmissionFlow();
         testVerdictMapping();
         testNewSubmissionIds();
+        testTitleStructure();
         testRuleTables();
+    }
+
+    /**
+     * 百科标题结构 + 方括号标记不会误报。
+     *
+     * <p>这是实测反馈里最容易被误解的一块：方括号是站点语法，
+     * 不该被当成乱码；但「标题从 h2 开始 / 跨级」是真的结构问题，要能识别。
+     */
+    private static void testTitleStructure() {
+        String body = "\n正文内容写在这里，足够十来个字。";
+        check("标题从 [h2=] 开始命中第 26 条", hasRule("", "[h2=概述]" + body, 26));
+        check("从 [h1=] 开始不命中第 26 条", !hasRule("", "[h1=页面]\n[h2=分节]" + body, 26));
+        check("[h1=] 直接跳到 [h3=] 命中第 26 条", hasRule("", "[h1=页面]\n[h3=小节]" + body, 26));
+        check("正文以方括号标记结尾不误判第 12 条", !hasRule("", "正文内容写在这里。[h2=机器]", 12));
+        check("[ban:title_menu] 不触发任何本地规则", LocalRules.check("", "[ban:title_menu]" + body).isEmpty());
     }
 
     // ---------------- 规则 ----------------
