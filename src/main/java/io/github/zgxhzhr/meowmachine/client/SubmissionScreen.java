@@ -1,6 +1,7 @@
 package io.github.zgxhzhr.meowmachine.client;
 
 import io.github.zgxhzhr.meowmachine.network.Network;
+import io.github.zgxhzhr.meowmachine.network.NewSubmissionPacket;
 import io.github.zgxhzhr.meowmachine.network.OpenEditorPacket;
 import io.github.zgxhzhr.meowmachine.network.SaveDraftPacket;
 import io.github.zgxhzhr.meowmachine.network.SubmitPacket;
@@ -20,15 +21,13 @@ import java.util.List;
  * <p>为什么正文不用 EditBox：MC 1.20.1 的 {@code EditBox} 是单行控件，
  * 文字垂直居中、且会过滤掉换行符。正文需要换行，只能自己维护缓冲区并逐行绘制。
  *
- * <p>本次修的两个坑：
+ * <p>本版新增：
  * <ul>
- *   <li><b>关界面不再丢稿</b>：以前只有「提交审核」会写草稿，写一半按 ESC 全没。
- *       现在关闭时发一次 {@link SaveDraftPacket} 暂存。</li>
- *   <li><b>按钮不再出屏</b>：以前正文区固定 150px，1080p 全屏（GUI scale 4，逻辑高 270）时
- *       提交按钮底边到 283px，被裁在屏幕外。现在正文高度按可用空间收缩，按钮贴底。</li>
+ *   <li><b>正文光标</b>：左右移动 / Home / End / Delete / 上下跨行 / 鼠标点击定位，
+ *       光标闪一下，输入不再只能在末尾追加（0.1.0 的老限制）。</li>
+ *   <li><b>「新建投稿」按钮</b>：不再被一份草稿锁死一辈子。</li>
+ *   <li><b>关界面暂存草稿</b>（0.2.0 加入）与<b>按钮贴底</b>（矮窗口不出屏）。</li>
  * </ul>
- *
- * <p>正文光标仍然固定在末尾（第一版限制，未在本次改动范围内）。
  */
 public class SubmissionScreen extends Screen {
 
@@ -38,11 +37,13 @@ public class SubmissionScreen extends Screen {
     private static final int INNER_PAD = 4;
     private static final int MIN_BODY_H = 60;
     private static final int MAX_BODY_H = 150;
+    /** 光标闪烁周期（毫秒，半个周期亮/灭） */
+    private static final long CARET_BLINK_MS = 500L;
 
     private final OpenEditorPacket draft;
     private EditBox titleBox;
 
-    /** 正文缓冲区（按 \n 分行） */
+    /** 正文缓冲区（原文，含换行） */
     private final StringBuilder bodyText;
 
     /** 正文区是否获得焦点（点标题框会切回去） */
@@ -50,6 +51,9 @@ public class SubmissionScreen extends Screen {
 
     /** 正文滚动行数（内容超出可视区时） */
     private int bodyScroll = 0;
+
+    /** 正文光标位置（bodyText 的字符下标，0..length） */
+    private int caret = 0;
 
     /** 本次是否点了「提交审核」——提交后关闭时不该再发草稿暂存 */
     private boolean submitted = false;
@@ -66,6 +70,7 @@ public class SubmissionScreen extends Screen {
         this.draft = draft;
         this.bodyText = new StringBuilder(draft.body() == null ? "" : draft.body());
         this.editable = !"approved".equalsIgnoreCase(draft.status());
+        this.caret = this.bodyText.length();
     }
 
     @Override
@@ -91,12 +96,19 @@ public class SubmissionScreen extends Screen {
         int available = btnY - 8 - bodyTop;
         this.bodyH = Math.max(MIN_BODY_H, Math.min(MAX_BODY_H, available));
 
+        // 三颗按钮并排：新建 / 提交 / 关闭
+        int bw = 96;
+        int gap = 6;
+        int x0 = cx - (bw * 3 + gap * 2) / 2;
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.new_submission"), b -> startNew())
+                .bounds(x0, btnY, bw, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.submit"), b -> submit())
-                .bounds(cx - 102, btnY, 100, 20).build());
+                .bounds(x0 + bw + gap, btnY, bw, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.cancel"), b -> this.onClose())
-                .bounds(cx + 2, btnY, 100, 20).build());
+                .bounds(x0 + (bw + gap) * 2, btnY, bw, 20).build());
     }
 
     private void submit() {
@@ -106,6 +118,11 @@ public class SubmissionScreen extends Screen {
         Network.CHANNEL.sendToServer(new SubmitPacket(titleBox.getValue(), bodyText.toString()));
         this.submitted = true;
         this.onClose();
+    }
+
+    /** 丢当前草稿开新稿：服务端会回一个空的 OpenEditorPacket，客户端借此换界面 */
+    private void startNew() {
+        Network.CHANNEL.sendToServer(new NewSubmissionPacket());
     }
 
     /**
@@ -121,6 +138,70 @@ public class SubmissionScreen extends Screen {
                     new SaveDraftPacket(titleBox.getValue(), bodyText.toString()));
         }
         super.onClose();
+    }
+
+    // ---------------- 文本布局 ----------------
+
+    /** 一行显示文本 + 它在 bodyText 里的起始下标 */
+    private record Line(String text, int start) {
+    }
+
+    /** 把缓冲区按换行 + 宽度折成显示行，并记下每行对应的原文下标 */
+    private List<Line> layout() {
+        List<Line> out = new ArrayList<>();
+        int maxWidth = PANEL_W - INNER_PAD * 2;
+        int lineStart = 0;
+        StringBuilder cur = new StringBuilder();
+
+        for (int i = 0; i < bodyText.length(); i++) {
+            char ch = bodyText.charAt(i);
+            if (ch == '\n') {
+                out.add(new Line(cur.toString(), lineStart));
+                cur.setLength(0);
+                lineStart = i + 1;
+                continue;
+            }
+            if (cur.length() > 0 && this.font.width(cur.toString() + ch) > maxWidth) {
+                out.add(new Line(cur.toString(), lineStart));
+                lineStart = i;
+                cur.setLength(0);
+            }
+            cur.append(ch);
+        }
+        out.add(new Line(cur.toString(), lineStart));
+        return out;
+    }
+
+    /** 光标在第几个显示行 */
+    private int caretLine(List<Line> lines) {
+        for (int i = lines.size() - 1; i >= 0; i--) {
+            if (lines.get(i).start() <= caret) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /** 光标在行内的列号（限制在行文本长度内） */
+    private int caretColumn(Line line) {
+        return Math.max(0, Math.min(caret - line.start(), line.text().length()));
+    }
+
+    private int visibleLines() {
+        return Math.max(1, (bodyH - INNER_PAD * 2) / LINE_H);
+    }
+
+    /** 保证光标所在行在可视区内 */
+    private void scrollToCaret() {
+        List<Line> lines = layout();
+        int lineIndex = caretLine(lines);
+        int visible = visibleLines();
+        bodyScroll = Math.max(0, Math.min(bodyScroll, Math.max(0, lines.size() - visible)));
+        if (lineIndex < bodyScroll) {
+            bodyScroll = lineIndex;
+        } else if (lineIndex >= bodyScroll + visible) {
+            bodyScroll = lineIndex - visible + 1;
+        }
     }
 
     // ---------------- 渲染 ----------------
@@ -145,59 +226,47 @@ public class SubmissionScreen extends Screen {
         g.fill(panelLeft, bodyTop, panelLeft + PANEL_W, bodyTop + bodyH, 0xFF000000);
 
         // 正文文本：逐行画，超出可视区时按 bodyScroll 截断
-        List<String> lines = wrappedLines();
-        int visible = (bodyH - INNER_PAD * 2) / LINE_H;
+        List<Line> lines = layout();
+        int visible = visibleLines();
         int start = Math.min(bodyScroll, Math.max(0, lines.size() - visible));
         for (int i = 0; i < visible && start + i < lines.size(); i++) {
-            g.drawString(this.font, Component.literal(lines.get(start + i)),
+            g.drawString(this.font, Component.literal(lines.get(start + i).text()),
                     panelLeft + INNER_PAD, bodyTop + INNER_PAD + i * LINE_H,
                     bodyFocused ? 0xFFFFFF : 0xCCCCCC, false);
         }
 
         // 空正文时给个提示；不可编辑时给个说明
-        if (lines.isEmpty() || (lines.size() == 1 && lines.get(0).isEmpty())) {
+        if (lines.size() == 1 && lines.get(0).text().isEmpty()) {
             g.drawString(this.font, Component.translatable(
                             editable ? "gui.meow_machine.body_hint" : "gui.meow_machine.body_readonly"),
                     panelLeft + INNER_PAD, bodyTop + INNER_PAD, 0x707070, false);
         }
-    }
 
-    /** 把缓冲区按换行 + 宽度折成显示行 */
-    private List<String> wrappedLines() {
-        String[] raw = bodyText.toString().split("\n", -1);
-        List<String> out = new ArrayList<>();
-        int maxWidth = PANEL_W - INNER_PAD * 2;
-        for (String line : raw) {
-            if (this.font.width(line) <= maxWidth) {
-                out.add(line);
-                continue;
+        // 光标：只画在可视区内，并且闪一下
+        if (bodyFocused && editable && (System.currentTimeMillis() / CARET_BLINK_MS) % 2 == 0) {
+            int lineIndex = caretLine(lines);
+            if (lineIndex >= start && lineIndex < start + visible) {
+                Line line = lines.get(lineIndex);
+                int col = caretColumn(line);
+                int caretX = panelLeft + INNER_PAD + this.font.width(line.text().substring(0, col));
+                int caretY = bodyTop + INNER_PAD + (lineIndex - start) * LINE_H;
+                g.fill(caretX, caretY - 1, caretX + 1, caretY + this.font.lineHeight, 0xFFFFFFFF);
             }
-            // 按字符宽度折行
-            StringBuilder cur = new StringBuilder();
-            for (int i = 0; i < line.length(); i++) {
-                char ch = line.charAt(i);
-                if (this.font.width(cur.toString() + ch) > maxWidth) {
-                    out.add(cur.toString());
-                    cur.setLength(0);
-                }
-                cur.append(ch);
-            }
-            out.add(cur.toString());
         }
-        return out;
     }
 
     // ---------------- 输入 ----------------
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        // 点正文区：获得焦点；点标题框：交回 EditBox
+        // 点正文区：获得焦点并把光标移到点击位置
         boolean inBody = mx >= panelLeft && mx <= panelLeft + PANEL_W
                 && my >= bodyTop && my <= bodyTop + bodyH;
         if (inBody && editable) {
             bodyFocused = true;
             titleBox.setFocused(false);
             this.setFocused(null);
+            moveCaretToClick(mx, my);
             return true;
         }
         if (mx >= panelLeft && mx <= panelLeft + PANEL_W
@@ -207,6 +276,25 @@ public class SubmissionScreen extends Screen {
         return super.mouseClicked(mx, my, button);
     }
 
+    /** 鼠标点击 → 光标位置 */
+    private void moveCaretToClick(double mx, double my) {
+        List<Line> lines = layout();
+        int visible = visibleLines();
+        int start = Math.min(bodyScroll, Math.max(0, lines.size() - visible));
+        int row = (int) ((my - bodyTop - INNER_PAD) / LINE_H);
+        int lineIndex = Math.max(0, Math.min(lines.size() - 1, start + row));
+        Line line = lines.get(lineIndex);
+
+        int relX = (int) (mx - (panelLeft + INNER_PAD));
+        int col = 0;
+        while (col < line.text().length()
+                && this.font.width(line.text().substring(0, col + 1)) <= Math.max(0, relX)) {
+            col++;
+        }
+        caret = line.start() + col;
+        scrollToCaret();
+    }
+
     @Override
     public boolean charTyped(char c, int modifiers) {
         if (!editable) {
@@ -214,8 +302,9 @@ public class SubmissionScreen extends Screen {
         }
         if (bodyFocused && titleBox != null && !titleBox.isFocused()) {
             if (bodyText.length() < Network.MAX_BODY_LEN && !Character.isISOControl(c)) {
-                bodyText.append(c);
-                scrollToBottom();
+                bodyText.insert(caret, c);
+                caret++;
+                scrollToCaret();
             }
             return true;
         }
@@ -227,24 +316,61 @@ public class SubmissionScreen extends Screen {
         if (bodyFocused && titleBox != null && !titleBox.isFocused() && editable) {
             switch (keyCode) {
                 case GLFW.GLFW_KEY_BACKSPACE -> {
-                    if (bodyText.length() > 0) {
-                        bodyText.deleteCharAt(bodyText.length() - 1);
+                    if (caret > 0) {
+                        bodyText.deleteCharAt(caret - 1);
+                        caret--;
+                        scrollToCaret();
+                    }
+                    return true;
+                }
+                case GLFW.GLFW_KEY_DELETE -> {
+                    if (caret < bodyText.length()) {
+                        bodyText.deleteCharAt(caret);
+                        scrollToCaret();
                     }
                     return true;
                 }
                 case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
                     if (bodyText.length() < Network.MAX_BODY_LEN) {
-                        bodyText.append('\n');
-                        scrollToBottom();
+                        bodyText.insert(caret, '\n');
+                        caret++;
+                        scrollToCaret();
                     }
                     return true;
                 }
+                case GLFW.GLFW_KEY_LEFT -> {
+                    if (caret > 0) {
+                        caret--;
+                        scrollToCaret();
+                    }
+                    return true;
+                }
+                case GLFW.GLFW_KEY_RIGHT -> {
+                    if (caret < bodyText.length()) {
+                        caret++;
+                        scrollToCaret();
+                    }
+                    return true;
+                }
+                case GLFW.GLFW_KEY_HOME -> {
+                    List<Line> homeLines = layout();
+                    caret = homeLines.get(caretLine(homeLines)).start();
+                    scrollToCaret();
+                    return true;
+                }
+                case GLFW.GLFW_KEY_END -> {
+                    List<Line> lines = layout();
+                    Line line = lines.get(caretLine(lines));
+                    caret = line.start() + line.text().length();
+                    scrollToCaret();
+                    return true;
+                }
                 case GLFW.GLFW_KEY_UP -> {
-                    bodyScroll = Math.max(0, bodyScroll - 1);
+                    moveCaretVertically(-1);
                     return true;
                 }
                 case GLFW.GLFW_KEY_DOWN -> {
-                    bodyScroll = bodyScroll + 1;
+                    moveCaretVertically(1);
                     return true;
                 }
                 case GLFW.GLFW_KEY_ESCAPE -> {
@@ -258,10 +384,15 @@ public class SubmissionScreen extends Screen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    private void scrollToBottom() {
-        int visible = (bodyH - INNER_PAD * 2) / LINE_H;
-        int total = wrappedLines().size();
-        bodyScroll = Math.max(0, total - visible);
+    /** 上下跨显示行移动光标，尽量保持列号 */
+    private void moveCaretVertically(int delta) {
+        List<Line> lines = layout();
+        int lineIndex = caretLine(lines);
+        int col = caretColumn(lines.get(lineIndex));
+        int target = Math.max(0, Math.min(lines.size() - 1, lineIndex + delta));
+        Line targetLine = lines.get(target);
+        caret = targetLine.start() + Math.min(col, targetLine.text().length());
+        scrollToCaret();
     }
 
     @Override

@@ -18,7 +18,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class Network {
 
-    private static final String PROTOCOL = "2";
+    /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3 加入新建投稿包） */
+    private static final String PROTOCOL = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -54,6 +55,13 @@ public final class Network {
                 .encoder(SaveDraftPacket::encode)
                 .decoder(SaveDraftPacket::decode)
                 .consumerMainThread(SaveDraftPacket::handle)
+                .add();
+
+        // 客户端 → 服务端：丢当前草稿、开一份全新投稿
+        CHANNEL.messageBuilder(NewSubmissionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(NewSubmissionPacket::encode)
+                .decoder(NewSubmissionPacket::decode)
+                .consumerMainThread(NewSubmissionPacket::handle)
                 .add();
 
         // 服务端 → 客户端：审核结果 + 用哪张梗图 + 实际纹理路径

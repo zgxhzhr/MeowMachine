@@ -53,6 +53,7 @@ public final class SelfTest {
         testCleanText();
         testSubmissionFlow();
         testVerdictMapping();
+        testNewSubmissionIds();
         testRuleTables();
     }
 
@@ -161,6 +162,17 @@ public final class SelfTest {
         check("PENDING 不是终局结论", !Verdict.PENDING.isDecidable());
         check("PASS/REVISE/RETURN 都是终局结论",
                 Verdict.PASS.isDecidable() && Verdict.REVISE.isDecidable() && Verdict.RETURN.isDecidable());
+    }
+
+    /** 「新建投稿」必须是一份真正独立的稿子，否则玩家永远只投得了一篇 */
+    private static void testNewSubmissionIds() {
+        UUID author = UUID.randomUUID();
+        Submission first = Submission.draft(author, "tester");
+        Submission second = Submission.draft(author, "tester");
+        check("两次新投稿 id 不同", !first.id().equals(second.id()));
+        check("新投稿都从第 0 版开始", first.revision() == 0 && second.revision() == 0);
+        check("新投稿都是 DRAFT", first.state() == SubmissionState.DRAFT
+                && second.state() == SubmissionState.DRAFT);
     }
 
     /** AI_ONLY_RULES 必须和 AI prompt 覆盖的条款一致；本地规则不许重复判 */

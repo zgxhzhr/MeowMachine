@@ -29,6 +29,21 @@ public final class DraftStore {
         return stored != null ? stored : Submission.draft(player.getUUID(), player.getName().getString());
     }
 
+    /**
+     * 丢掉当前草稿、开一份全新投稿（新 id，版本 0）。
+     *
+     * <p>没有这个入口时，一个玩家永远只有「那一份」稿子：投稿→被裁决→再打开卷轴还是它，
+     * 已通过的稿子甚至连编辑都不允许，等于「一辈子只能投一篇」。
+     * 旧稿如果还在人工队列里，不受影响（审核员照旧审它，只是作者的草稿换成新的）。
+     */
+    public static Submission startNew(ServerPlayer player) {
+        Submission fresh = Submission.draft(player.getUUID(), player.getName().getString());
+        save(player, fresh);
+        MeowMachine.LOG.info("[喵呜机] 玩家开了新投稿 player={} id={}",
+                player.getName().getString(), fresh.id());
+        return fresh;
+    }
+
     /** 写草稿 */
     public static void save(ServerPlayer player, Submission sub) {
         save(player == null ? null : player.getServer(), sub);

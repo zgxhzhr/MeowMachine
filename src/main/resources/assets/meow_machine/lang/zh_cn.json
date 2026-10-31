@@ -9,6 +9,7 @@
   "gui.meow_machine.body_hint": "写点什么…",
   "gui.meow_machine.body_readonly": "这篇已经通过，不能再改了",
   "gui.meow_machine.submit": "提交审核",
+  "gui.meow_machine.new_submission": "新建投稿",
   "gui.meow_machine.cancel": "关闭",
   "gui.meow_machine.status": "状态：%s",
 

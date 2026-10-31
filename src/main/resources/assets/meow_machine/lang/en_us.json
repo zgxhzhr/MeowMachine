@@ -9,6 +9,7 @@
   "gui.meow_machine.body_hint": "Write something…",
   "gui.meow_machine.body_readonly": "This submission was approved and can no longer be edited",
   "gui.meow_machine.submit": "Submit for review",
+  "gui.meow_machine.new_submission": "New submission",
   "gui.meow_machine.cancel": "Close",
   "gui.meow_machine.status": "Status: %s",
 
