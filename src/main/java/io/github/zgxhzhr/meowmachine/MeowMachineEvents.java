@@ -41,16 +41,18 @@ public final class MeowMachineEvents {
         MeowCommands.register(event.getDispatcher());
     }
 
-    /** 服务端启动：绑定队列存档并恢复上次未审完的稿子 */
+    /** 服务端启动：绑定队列与信箱存档，恢复上次未审完的稿子、没送出去的结论 */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         SubmissionQueue.attach(event.getServer());
+        ResultInbox.attach(event.getServer());
     }
 
     /** 服务端停止：解绑，避免关服过程中继续往存档写 */
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         SubmissionQueue.detach();
+        ResultInbox.detach();
     }
 
     /**

@@ -4,7 +4,7 @@ Minecraft **1.20.1 Forge** 模组：内容审核模拟器。玩家用「投稿�
 （本地规则 / 人工 / AI 三路）给出结论，结论通过**梗图弹窗**反馈。梗图全部数据包驱动，加表情不用改代码。
 
 - modid：`meow_machine`
-- 版本：`0.7.1`
+- 版本：`0.8.0`（**开发测试阶段**：只走 0.x.y，修 bug 加末位；`1.0.0` 保留给正式发布时再升）
 - 状态：可构建、可运行，`gradlew runServer` 冒烟测试通过
 
 ---
@@ -218,7 +218,9 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 │   ├── ReviewActions     裁决公共实现（命令与界面共用）
 │   ├── SubmissionQueue   人工队列（写穿 QueueSavedData）
 │   ├── ReviewerRoster    名册 + OP 判定 + selfReview（落盘 config/）
-│   ├── ResultInbox       离线作者的待补发结论
+│   ├── ResultInbox       离线作者的待补发结论（写穿 InboxSavedData）
+│   ├── QueueSavedData    队列的世界存档（<世界>/data/meow_machine_queue.dat）
+│   ├── InboxSavedData    离线结论的世界存档（<世界>/data/meow_machine_inbox.dat）
 │   ├── DraftStore / DraftSavedData   草稿（世界存档）
 │   └── Submission / SubmissionState / Verdict / ReviewFinding / ReviewResult
 ├── sticker/              梗图定义与注册表（数据包加载）
@@ -236,11 +238,10 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 
 ## 已知限制 / 未做
 
-1. **离线结论信箱仍是内存态**（只有「裁决瞬间作者不在线 + 服务器立刻重启」才会丢）
-2. **AI 未做真实 endpoint 验证**（代码完整、失败路径已加固；DeepSeek 默认配置已就绪）
-3. **名册界面只能任命「在线玩家」**（GUI 没有实体选择器，按名字解析；离线任命仍走命令）
-4. `helpless` / `kurushi` / `laowu` / `meowmeow` 四张梗图未挂载（启动会 warn）
-5. 物品纹理是程序生成的占位图
+1. **AI 未做真实 endpoint 验证**（代码完整、失败路径已加固；DeepSeek 默认配置已就绪）
+2. **名册界面只能任命「在线玩家」**（GUI 没有实体选择器，按名字解析；离线任命仍走命令）
+3. `helpless` / `kurushi` / `laowu` / `meowmeow` 四张梗图未挂载（启动会 warn）
+4. 物品纹理是程序生成的占位图
 
 ---
 
