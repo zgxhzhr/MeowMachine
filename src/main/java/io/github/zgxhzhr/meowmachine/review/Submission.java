@@ -37,10 +37,20 @@ public record Submission(UUID id, UUID authorUuid, String authorName,
                 SubmissionState.SUBMITTED, revision);
     }
 
-    /** 应用审核结论 */
+    /**
+     * 应用审核结论。
+     *
+     * <p>{@link Verdict#PENDING} 表示「已入人工队列、还没裁决」，**不是**结论：
+     * 状态保持 SUBMITTED，作者也不该因为这条路径被标成「被打回」。
+     * 早先的实现把非 PASS 一律映射成 RETURNED，于是「在审」被记成「已打回」。
+     */
     public Submission apply(ReviewResult result) {
-        SubmissionState next = result.verdict() == Verdict.PASS
-                ? SubmissionState.APPROVED : SubmissionState.RETURNED;
+        Verdict v = result == null ? null : result.verdict();
+        SubmissionState next = switch (v == null ? Verdict.PENDING : v) {
+            case PASS -> SubmissionState.APPROVED;
+            case PENDING -> SubmissionState.SUBMITTED;
+            case REVISE, RETURN -> SubmissionState.RETURNED;
+        };
         return new Submission(id, authorUuid, authorName, title, body, next, revision);
     }
 

@@ -12,10 +12,12 @@ import java.util.UUID;
 /**
  * 人工审核队列。
  *
- * <p>**第一版是纯内存**：服务端重启会清空。持久化（世界存档 SavedData）排在下一批——
- * 先让「审核员能看到待审、能裁决」这条链路跑通，再解决存盘。
+ * <p>**仍是纯内存**：服务端重启会清空。持久化（世界存档）还没做——
+ * 这是接手时留下的最大一项未完成，已写在交接文档的「未完成」里。
  *
  * <p>用 {@link LinkedHashMap} 保持提交顺序（先来先审）。
+ * 所有调用点都在服务端主线程（网络包的 consumerMainThread / 命令 / 事件），
+ * 所以不需要额外加锁。
  */
 public final class SubmissionQueue {
 
@@ -47,21 +49,17 @@ public final class SubmissionQueue {
         return PENDING.size();
     }
 
-    public static Optional<Entry> peek(UUID id) {
-        return Optional.ofNullable(PENDING.get(id));
-    }
-
     /** 取出并从队列移除（裁决后调用） */
     public static Optional<Entry> claim(UUID id) {
         return Optional.ofNullable(PENDING.remove(id));
     }
 
-    /** 仅移除（例如作者撤回） */
+    /** 仅移除（例如作者撤回、或作者又开始改稿） */
     public static boolean drop(UUID id) {
         return PENDING.remove(id) != null;
     }
 
-    /** 按作者查（作者想看自己有哪些在审） */
+    /** 按作者查（作者想看自己有哪些在审；单人自审时也只该看到自己的） */
     public static List<Entry> byAuthor(UUID author) {
         List<Entry> out = new ArrayList<>();
         for (Entry e : PENDING.values()) {

@@ -20,8 +20,8 @@ import java.nio.file.Path;
  * @param endpoint       例如 {@code https://api.openai.com/v1}
  * @param apiKey         Bearer token
  * @param model          模型名
- * @param timeoutSeconds 单次请求超时；超时按「AI 不可用」处理，只跑本地规则
- * @param takeover       是否「AI 接管所有审核」（跳过人工优先）
+ * @param timeoutSeconds 单次请求超时；超时按「AI 不可用」处理
+ * @param takeover       是否「AI 接管所有审核」（跳过人工优先；0.1.0 里没人读它）
  */
 public record LlmConfig(boolean enabled, String endpoint, String apiKey, String model,
                         int timeoutSeconds, boolean takeover) {
@@ -29,9 +29,30 @@ public record LlmConfig(boolean enabled, String endpoint, String apiKey, String 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "meow_machine_ai.json";
 
+    /**
+     * 内存缓存：配置是低频变更的静态数据，没必要每份投稿都在服务端主线程读一次磁盘。
+     * {@link #save(Path, LlmConfig)} 会顺手失效缓存。
+     */
+    private static volatile LlmConfig cached = null;
+
     /** 默认配置：关闭 AI，这样没配过的服务器行为确定 */
     public static LlmConfig defaults() {
         return new LlmConfig(false, "", "", "", 20, false);
+    }
+
+    /** 取当前配置（走了内存缓存）。服务端主线程可安全调用。 */
+    public static LlmConfig cached(Path configDir) {
+        LlmConfig c = cached;
+        if (c == null) {
+            c = loadOrCreate(configDir);
+            cached = c;
+        }
+        return c;
+    }
+
+    /** 让缓存失效（保存后、或想强制重读磁盘时） */
+    public static void invalidate() {
+        cached = null;
     }
 
     /**
@@ -66,13 +87,15 @@ public record LlmConfig(boolean enabled, String endpoint, String apiKey, String 
         }
     }
 
-    /** 写回配置文件（界面上切换开关时用） */
+    /** 写回配置文件（界面上切换开关时用），并让内存缓存失效 */
     public static void save(Path configDir, LlmConfig cfg) {
         try {
             Files.createDirectories(configDir);
             Files.writeString(configDir.resolve(FILE_NAME), GSON.toJson(cfg), StandardCharsets.UTF_8);
         } catch (IOException e) {
             MeowMachine.LOG.warn("[喵呜机] 写 AI 配置失败: {}", e.toString());
+        } finally {
+            invalidate();
         }
     }
 

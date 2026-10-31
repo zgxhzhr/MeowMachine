@@ -12,10 +12,13 @@ import net.minecraftforge.network.simple.SimpleChannel;
  * <p>这里**不用 MenuType**：投稿界面是纯客户端 Screen，内容通过几个小包来回传。
  * 好处是不必维护容器同步（EditBox 的内容本来就只该由作者自己看到），
  * 坏处是文本必须自己做长度校验——见 {@link #MAX_BODY_LEN}。
+ *
+ * <p>协议号随包结构变化递增：0.1.0 → "1"，本次加入草稿暂存与提示包后为 "2"。
+ * 版本不一致的客户端会被 Forge 直接挡在连接阶段，不会跑到解码才炸。
  */
 public final class Network {
 
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -46,7 +49,14 @@ public final class Network {
                 .consumerMainThread(SubmitPacket::handle)
                 .add();
 
-        // 服务端 → 客户端：审核结果 + 用哪张梗图
+        // 客户端 → 服务端：关界面时暂存草稿（不提交）
+        CHANNEL.messageBuilder(SaveDraftPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SaveDraftPacket::encode)
+                .decoder(SaveDraftPacket::decode)
+                .consumerMainThread(SaveDraftPacket::handle)
+                .add();
+
+        // 服务端 → 客户端：审核结果 + 用哪张梗图 + 实际纹理路径
         CHANNEL.messageBuilder(ReviewResultPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(ReviewResultPacket::encode)
                 .decoder(ReviewResultPacket::decode)
@@ -75,6 +85,11 @@ public final class Network {
                 .encoder(AdminActionPacket::encode).decoder(AdminActionPacket::decode)
                 .consumerMainThread(AdminActionPacket::handle).add();
 
-        MeowMachine.LOG.info("[喵呜机] 网络通道注册完成（{} 个包）", id);
+        // 服务端 → 客户端：一句聊天栏提示（操作失败、状态不对等）
+        CHANNEL.messageBuilder(NoticePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(NoticePacket::encode).decoder(NoticePacket::decode)
+                .consumerMainThread(NoticePacket::handle).add();
+
+        MeowMachine.LOG.info("[喵呜机] 网络通道注册完成（{} 个包，协议 {}）", id, PROTOCOL);
     }
 }

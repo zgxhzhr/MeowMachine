@@ -2,6 +2,7 @@ package io.github.zgxhzhr.meowmachine.client;
 
 import io.github.zgxhzhr.meowmachine.network.Network;
 import io.github.zgxhzhr.meowmachine.network.OpenEditorPacket;
+import io.github.zgxhzhr.meowmachine.network.SaveDraftPacket;
 import io.github.zgxhzhr.meowmachine.network.SubmitPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -19,16 +20,24 @@ import java.util.List;
  * <p>为什么正文不用 EditBox：MC 1.20.1 的 {@code EditBox} 是单行控件，
  * 文字垂直居中、且会过滤掉换行符。正文需要换行，只能自己维护缓冲区并逐行绘制。
  *
- * <p>第一版的多行输入刻意做得简单：光标固定在末尾，支持输入、退格、回车和向上滚动，
- * 暂不支持鼠标定位与左右移动光标。够写一段稿子，后续再补。
+ * <p>本次修的两个坑：
+ * <ul>
+ *   <li><b>关界面不再丢稿</b>：以前只有「提交审核」会写草稿，写一半按 ESC 全没。
+ *       现在关闭时发一次 {@link SaveDraftPacket} 暂存。</li>
+ *   <li><b>按钮不再出屏</b>：以前正文区固定 150px，1080p 全屏（GUI scale 4，逻辑高 270）时
+ *       提交按钮底边到 283px，被裁在屏幕外。现在正文高度按可用空间收缩，按钮贴底。</li>
+ * </ul>
+ *
+ * <p>正文光标仍然固定在末尾（第一版限制，未在本次改动范围内）。
  */
 public class SubmissionScreen extends Screen {
 
     private static final int PANEL_W = 300;
     private static final int TITLE_H = 18;
-    private static final int BODY_H = 150;
     private static final int LINE_H = 10;
     private static final int INNER_PAD = 4;
+    private static final int MIN_BODY_H = 60;
+    private static final int MAX_BODY_H = 150;
 
     private final OpenEditorPacket draft;
     private EditBox titleBox;
@@ -42,20 +51,29 @@ public class SubmissionScreen extends Screen {
     /** 正文滚动行数（内容超出可视区时） */
     private int bodyScroll = 0;
 
+    /** 本次是否点了「提交审核」——提交后关闭时不该再发草稿暂存 */
+    private boolean submitted = false;
+
+    /** 当前草稿是否还能编辑（已通过的稿子只能看） */
+    private final boolean editable;
+
     private int panelLeft;
     private int bodyTop;
+    private int bodyH;
 
     public SubmissionScreen(OpenEditorPacket draft) {
         super(Component.translatable("gui.meow_machine.submission"));
         this.draft = draft;
         this.bodyText = new StringBuilder(draft.body() == null ? "" : draft.body());
+        this.editable = !"approved".equalsIgnoreCase(draft.status());
     }
 
     @Override
     protected void init() {
         int cx = this.width / 2;
-        // 整体下移，给标题/状态文字留出空间（之前压在输入框上）
-        int top = this.height / 4 + 12;
+        // 顶部区域：标题/状态两行文字，再往下才是输入区
+        int top = Math.max(44, Math.min(this.height / 4, 72));
+
         this.panelLeft = cx - PANEL_W / 2;
 
         this.titleBox = new EditBox(this.font, panelLeft, top, PANEL_W, TITLE_H,
@@ -63,11 +81,16 @@ public class SubmissionScreen extends Screen {
         this.titleBox.setMaxLength(Network.MAX_TITLE_LEN);
         this.titleBox.setValue(draft.title());
         this.titleBox.setHint(Component.translatable("gui.meow_machine.title_hint"));
+        this.titleBox.setEditable(editable);
         this.addRenderableWidget(this.titleBox);
 
         this.bodyTop = top + TITLE_H + 8;
 
-        int btnY = bodyTop + BODY_H + 8;
+        // 按钮贴底（留 30px），正文吃剩下的高度——这样任何 GUI scale 下按钮都在屏内
+        int btnY = this.height - 30;
+        int available = btnY - 8 - bodyTop;
+        this.bodyH = Math.max(MIN_BODY_H, Math.min(MAX_BODY_H, available));
+
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.submit"), b -> submit())
                 .bounds(cx - 102, btnY, 100, 20).build());
@@ -77,8 +100,27 @@ public class SubmissionScreen extends Screen {
     }
 
     private void submit() {
+        if (!editable) {
+            return;
+        }
         Network.CHANNEL.sendToServer(new SubmitPacket(titleBox.getValue(), bodyText.toString()));
+        this.submitted = true;
         this.onClose();
+    }
+
+    /**
+     * 关闭时暂存草稿。
+     *
+     * <p>「提交」路径关闭时不发（服务端已经存过 SUBMITTED 版本）；
+     * 其它情况（ESC / 点关闭 / 点标题栏的叉）都把当前内容存成草稿。
+     */
+    @Override
+    public void onClose() {
+        if (!submitted && editable) {
+            Network.CHANNEL.sendToServer(
+                    new SaveDraftPacket(titleBox.getValue(), bodyText.toString()));
+        }
+        super.onClose();
     }
 
     // ---------------- 渲染 ----------------
@@ -88,22 +130,23 @@ public class SubmissionScreen extends Screen {
         this.renderBackground(g);
         int cx = this.width / 2;
 
-        // 标题与状态：放到输入区**上方**，不再压住输入框
-        g.drawCenteredString(this.font, this.title, cx, panelLeft == 0 ? 20 : this.height / 4 - 22, 0xFFFFFF);
+        // 标题与状态：放在输入区上方，不压住输入框
+        int titleY = Math.max(6, this.bodyTop - TITLE_H - 26);
+        g.drawCenteredString(this.font, this.title, cx, titleY, 0xFFFFFF);
         g.drawCenteredString(this.font,
                 Component.translatable("gui.meow_machine.status", draft.status()),
-                cx, this.height / 4 - 10, 0xAAAAAA);
+                cx, titleY + 12, 0xAAAAAA);
 
         super.render(g, mouseX, mouseY, partialTick);
 
         // 正文区边框（获得焦点时描亮边）
         int border = bodyFocused ? 0xFFFFFFFF : 0xFF808080;
-        g.fill(panelLeft - 1, bodyTop - 1, panelLeft + PANEL_W + 1, bodyTop + BODY_H + 1, border);
-        g.fill(panelLeft, bodyTop, panelLeft + PANEL_W, bodyTop + BODY_H, 0xFF000000);
+        g.fill(panelLeft - 1, bodyTop - 1, panelLeft + PANEL_W + 1, bodyTop + bodyH + 1, border);
+        g.fill(panelLeft, bodyTop, panelLeft + PANEL_W, bodyTop + bodyH, 0xFF000000);
 
         // 正文文本：逐行画，超出可视区时按 bodyScroll 截断
         List<String> lines = wrappedLines();
-        int visible = (BODY_H - INNER_PAD * 2) / LINE_H;
+        int visible = (bodyH - INNER_PAD * 2) / LINE_H;
         int start = Math.min(bodyScroll, Math.max(0, lines.size() - visible));
         for (int i = 0; i < visible && start + i < lines.size(); i++) {
             g.drawString(this.font, Component.literal(lines.get(start + i)),
@@ -111,9 +154,10 @@ public class SubmissionScreen extends Screen {
                     bodyFocused ? 0xFFFFFF : 0xCCCCCC, false);
         }
 
-        // 空正文时给个提示
+        // 空正文时给个提示；不可编辑时给个说明
         if (lines.isEmpty() || (lines.size() == 1 && lines.get(0).isEmpty())) {
-            g.drawString(this.font, Component.translatable("gui.meow_machine.body_hint"),
+            g.drawString(this.font, Component.translatable(
+                            editable ? "gui.meow_machine.body_hint" : "gui.meow_machine.body_readonly"),
                     panelLeft + INNER_PAD, bodyTop + INNER_PAD, 0x707070, false);
         }
     }
@@ -149,8 +193,8 @@ public class SubmissionScreen extends Screen {
     public boolean mouseClicked(double mx, double my, int button) {
         // 点正文区：获得焦点；点标题框：交回 EditBox
         boolean inBody = mx >= panelLeft && mx <= panelLeft + PANEL_W
-                && my >= bodyTop && my <= bodyTop + BODY_H;
-        if (inBody) {
+                && my >= bodyTop && my <= bodyTop + bodyH;
+        if (inBody && editable) {
             bodyFocused = true;
             titleBox.setFocused(false);
             this.setFocused(null);
@@ -165,6 +209,9 @@ public class SubmissionScreen extends Screen {
 
     @Override
     public boolean charTyped(char c, int modifiers) {
+        if (!editable) {
+            return false;
+        }
         if (bodyFocused && titleBox != null && !titleBox.isFocused()) {
             if (bodyText.length() < Network.MAX_BODY_LEN && !Character.isISOControl(c)) {
                 bodyText.append(c);
@@ -177,7 +224,7 @@ public class SubmissionScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (bodyFocused && titleBox != null && !titleBox.isFocused()) {
+        if (bodyFocused && titleBox != null && !titleBox.isFocused() && editable) {
             switch (keyCode) {
                 case GLFW.GLFW_KEY_BACKSPACE -> {
                     if (bodyText.length() > 0) {
@@ -212,7 +259,7 @@ public class SubmissionScreen extends Screen {
     }
 
     private void scrollToBottom() {
-        int visible = (BODY_H - INNER_PAD * 2) / LINE_H;
+        int visible = (bodyH - INNER_PAD * 2) / LINE_H;
         int total = wrappedLines().size();
         bodyScroll = Math.max(0, total - visible);
     }

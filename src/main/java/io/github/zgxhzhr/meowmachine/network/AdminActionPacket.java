@@ -3,9 +3,11 @@ package io.github.zgxhzhr.meowmachine.network;
 import io.github.zgxhzhr.meowmachine.MeowMachine;
 import io.github.zgxhzhr.meowmachine.ai.LlmConfig;
 import io.github.zgxhzhr.meowmachine.review.ReviewerRoster;
+import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -64,37 +66,32 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
         }
 
         var configDir = FMLPaths.CONFIGDIR.get();
-        LlmConfig cfg = LlmConfig.loadOrCreate(configDir);
-
         switch (msg.action) {
-            case TOGGLE_AI -> LlmConfig.save(configDir,
-                    cfg.withSwitches(!cfg.enabled(), cfg.takeover()));
-            case TOGGLE_TAKEOVER -> LlmConfig.save(configDir,
-                    cfg.withSwitches(cfg.enabled(), !cfg.takeover()));
+            case TOGGLE_AI -> {
+                LlmConfig cfg = LlmConfig.cached(configDir);
+                LlmConfig.save(configDir, cfg.withSwitches(!cfg.enabled(), cfg.takeover()));
+            }
+            case TOGGLE_TAKEOVER -> {
+                LlmConfig cfg = LlmConfig.cached(configDir);
+                LlmConfig.save(configDir, cfg.withSwitches(cfg.enabled(), !cfg.takeover()));
+            }
             case TOGGLE_SELF_REVIEW -> ReviewerRoster.setSelfReview(
                     !ReviewerRoster.isSelfReviewEnabled());
             case SAVE_AI_CONFIG -> {
-                LlmConfig updated = cfg.withAiConfig(msg.endpoint, msg.apiKey, msg.model);
+                LlmConfig updated = LlmConfig.cached(configDir)
+                        .withAiConfig(msg.endpoint, msg.apiKey, msg.model);
                 LlmConfig.save(configDir, updated);
                 MeowMachine.LOG.info("[喵呜机] AI 配置已保存 endpoint={} model={} key={}",
                         updated.endpoint(), updated.model(),
                         updated.apiKey().isEmpty() ? "(空)" : "(已设置)");
             }
-            case OPEN_REVIEW -> {
-                var list = io.github.zgxhzhr.meowmachine.review.SubmissionQueue.snapshot().stream()
-                        .map(e -> new ReviewListPacket.Entry(
-                                e.submission().id().toString(),
-                                e.submission().id().toString().substring(0, 8),
-                                e.submission().authorName(),
-                                e.submission().title()))
-                        .toList();
-                Network.CHANNEL.sendTo(new ReviewListPacket(list), player.connection.connection,
-                        net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
-            }
+            case OPEN_REVIEW -> Network.CHANNEL.sendTo(
+                    ReviewListPacket.of(SubmissionQueue.snapshot()), player.connection.connection,
+                    NetworkDirection.PLAY_TO_CLIENT);
         }
 
         Network.CHANNEL.sendTo(AdminStatePacket.collect(), player.connection.connection,
-                net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
+                NetworkDirection.PLAY_TO_CLIENT);
         c.setPacketHandled(true);
     }
 }

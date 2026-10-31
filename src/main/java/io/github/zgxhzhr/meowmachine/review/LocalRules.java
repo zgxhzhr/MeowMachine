@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
  * 本地规则：**不需要 AI，纯代码就能判的条款**。
  *
  * <p>规则编号与措辞沿用 MC百科的公共编辑规范（1~35 条），这样审核意见可以直接引条号。
- * 这里只实现「机器能判」的那部分：语义类（主观词、机翻、内容不实）交给 AI 或人工，
+ * 这里只实现「机器能判」的那部分：语义类（主观词、机翻、AIGC 痕迹）交给 AI，
  * 见 {@link #AI_ONLY_RULES}。
  *
  * <p>设计原则：**宁可漏报也不误报**。误报会让作者困惑，比漏报更伤体验；
@@ -20,17 +20,27 @@ public final class LocalRules {
     private LocalRules() {
     }
 
-    /** 只能靠语义判断、本类不处理的条款编号（供 AI/人工参考） */
-    public static final int[] AI_ONLY_RULES = {1, 2, 7, 8, 10, 15, 17, 18, 28, 30, 33};
+    /**
+     * 只能靠语义判断、由 AI（{@code AiReviewer} 的 prompt）负责的条款编号。
+     *
+     * <p>**必须与 prompt 里列的条款一致**：0.1.0 这里写了 11 条，prompt 只覆盖 3 条，
+     * 结果 8 条规则既没有本地实现也没人判；第 18 条还在两边重复判。
+     * 现在本地判的（18 灌水）踢出去，只剩 prompt 真正覆盖的三条。
+     */
+    public static final int[] AI_ONLY_RULES = {1, 6, 7};
 
-    // 第 3 条：emoji / 颜文字（只认明确的 emoji 区段与常见颜文字，避免误伤中文标点）
+    // 第 3 条：emoji（只认明确的 emoji 区段，避免误伤中文标点）
     private static final Pattern EMOJI = Pattern.compile(
             "[\\x{1F300}-\\x{1FAFF}\\x{2600}-\\x{27BF}\\x{FE0F}]");
-    // 颜文字：（或( 包裹，中间含常见颜文字符号。
-    // 字符集刻意列全：只写 T/o/ω 会漏掉 (╯°□°) 这类用制表符画的；
-    // 但**不含中文句号/逗号**，免得把「（正常的。）」误判成颜文字。
-    private static final Pattern KAOMOJI = Pattern.compile(
-            "[\\(（][^\\)）]{0,8}[TToOω^╯╰╭ノヽﾉ°□▽∀Σ△▲▼・｡•][^\\)）]{0,8}[\\)）]");
+    // 第 3 条：颜文字。分成两条正则是有原因的：
+    //  - 符号类（ω^╯╰ノ°□▽Σ△…）不会出现在正常中文里，可以放心匹配；
+    //  - ASCII 类只认 T_T / T.T / ToT 这种明确写法。
+    // 早先两条混在一起，把「（Open）」「（API）」这种英文括号内容全判成了颜文字——
+    // 与「宁可漏报」的原则相反。
+    private static final Pattern KAOMOJI_SYMBOL = Pattern.compile(
+            "[\\(（][^\\)）]{0,10}[ω^╯╰╭ノヽﾉ°□▽∀Σ△▲▼・｡•ﾟ][^\\)）]{0,10}[\\)）]");
+    private static final Pattern KAOMOJI_ASCII = Pattern.compile(
+            "(?i)[\\(（]\\s*[tT]\\s*[._\\-]\\s*[tT]\\s*[\\)）]|[\\(（]\\s*[tT]\\s*[oO]\\s*[tT]\\s*[\\)）]");
 
     // 第 12 条：句末缺标点（整段末尾不是标点）
     private static final Pattern ENDS_WITH_PUNCT = Pattern.compile(
@@ -64,7 +74,6 @@ public final class LocalRules {
 
     // 第 18 条：灌水（正文太短；标题不算）
     private static final int MIN_BODY_CHARS = 10;
-    private static final int MAX_REPEAT_TITLE = 3;
 
     /**
      * 跑一遍本地规则。
@@ -89,9 +98,14 @@ public final class LocalRules {
         if (m.find()) {
             out.add(new ReviewFinding(3, m.group(), "含 emoji，正式条目里不该出现"));
         }
-        m = KAOMOJI.matcher(all);
+        m = KAOMOJI_SYMBOL.matcher(all);
         if (m.find()) {
             out.add(new ReviewFinding(3, m.group(), "含颜文字，读者读起来会分神"));
+        } else {
+            m = KAOMOJI_ASCII.matcher(all);
+            if (m.find()) {
+                out.add(new ReviewFinding(3, m.group(), "含颜文字，读者读起来会分神"));
+            }
         }
 
         // 第 12 条 句末标点

@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import io.github.zgxhzhr.meowmachine.MeowMachine;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +25,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>被任命的 {@link ReviewerRole#ASSISTANT} 只能标记，不能终审</li>
  *   <li>单人且开了 {@code selfReview} 时，作者本人可以终审自己的稿</li>
  * </ol>
+ *
+ * <p><b>加载时机</b>：{@code MeowMachine} 在 {@code FMLCommonSetupEvent} 里调用 {@link #load(Path)}。
+ * 0.1.0 忘了调，导致 {@code file} 恒为 null → {@code save()} 直接空转、
+ * 名册与 selfReview 开关从不落盘（重启全丢）。现在 {@link #file()} 还做了兜底：
+ * 即使忘了加载，第一次写盘也会自己补上路径，不会再静默失败。
  */
 public final class ReviewerRoster {
 
@@ -39,6 +45,16 @@ public final class ReviewerRoster {
     private static volatile Path file = null;
 
     private ReviewerRoster() {
+    }
+
+    /** 目标文件路径；没加载过就用 config 目录兜底，避免 save() 静默变成空操作 */
+    private static Path file() {
+        Path f = file;
+        if (f == null) {
+            f = FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
+            file = f;
+        }
+        return f;
     }
 
     public static void load(Path configDir) {
@@ -74,18 +90,16 @@ public final class ReviewerRoster {
     }
 
     private static synchronized void save() {
-        if (file == null) {
-            return;
-        }
+        Path f = file();
         try {
             JsonObject root = new JsonObject();
             root.addProperty("selfReview", selfReview);
             JsonObject reviewers = new JsonObject();
             ROSTER.forEach((k, v) -> reviewers.addProperty(k.toString(), v.name().toLowerCase()));
             root.add("reviewers", reviewers);
-            Files.createDirectories(file.getParent());
-            Files.writeString(file, GSON.toJson(root), StandardCharsets.UTF_8);
-        } catch (IOException e) {
+            Files.createDirectories(f.getParent());
+            Files.writeString(f, GSON.toJson(root), StandardCharsets.UTF_8);
+        } catch (IOException | RuntimeException e) {
             MeowMachine.LOG.warn("[喵呜机] 写审核员名册失败: {}", e.toString());
         }
     }
@@ -112,8 +126,14 @@ public final class ReviewerRoster {
         return selfReview;
     }
 
-    public static ReviewerRole roleOf(UUID player) {
-        return ROSTER.get(player);
+    /** 名册快照（后台/命令列表用） */
+    public static Map<UUID, ReviewerRole> snapshot() {
+        return Map.copyOf(ROSTER);
+    }
+
+    /** 是否在名册里（不看角色，助理也算） */
+    public static boolean isRosterMember(UUID player) {
+        return player != null && ROSTER.containsKey(player);
     }
 
     // ---------------- 判定 ----------------
@@ -143,16 +163,22 @@ public final class ReviewerRoster {
         return selfReview && author != null && author.equals(player.getUUID());
     }
 
-    /** 能否标记发现（助理及以上） */
+    /**
+     * 能否标记发现 / 查看待审队列（助理及以上）。
+     *
+     * <p>注意这里**包含单人自审作者**：selfReview 让作者能拍板自己的稿，
+     * 那他就必须能看到自己那份待审（否则能裁决却拿不到 id，人工路径死锁）。
+     * 队列本身在命令层还会再收窄成「只看自己的」。
+     */
     public static boolean canAnnotate(ServerPlayer player) {
         if (player == null) {
             return false;
         }
-        return isOp(player) || ROSTER.containsKey(player.getUUID());
+        return isOp(player) || isRosterMember(player.getUUID()) || selfReview;
     }
 
     /** 当前是否**存在**任何能终审的人（决定「人工优先」是否成立） */
     public static boolean hasAnyFinalizer() {
-        return !ROSTER.isEmpty() && ROSTER.values().stream().anyMatch(ReviewerRole::canFinalize);
+        return ROSTER.values().stream().anyMatch(ReviewerRole::canFinalize);
     }
 }

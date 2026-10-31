@@ -2,6 +2,7 @@ package io.github.zgxhzhr.meowmachine.network;
 
 import io.github.zgxhzhr.meowmachine.ai.LlmConfig;
 import io.github.zgxhzhr.meowmachine.client.AdminScreenOpener;
+import io.github.zgxhzhr.meowmachine.review.ResultInbox;
 import io.github.zgxhzhr.meowmachine.review.ReviewerRoster;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,24 +18,28 @@ import java.util.function.Supplier;
  *
  * <p>带上 endpoint / apiKey / model 是为了**在游戏内配置**（照 TLM 的做法）：
  * 只有 OP 能打开这个界面，所以回传 key 是可接受的。
+ * （前提是这台服务器没有不可信的 OP；上公共服时应改成只显示掩码。）
  *
  * @param aiEnabled  AI 审核是否启用
  * @param aiTakeover AI 是否接管全部审核
  * @param selfReview 单人自审是否开启
  * @param pending    待审稿件数
+ * @param inbox      待补发的离线结论数
+ * @param reviewers  名册人数
  * @param hasKey     三项是否都填了（没填时开着也没用）
  * @param endpoint   AI 域名
  * @param apiKey     API 密钥
  * @param model      模型名
  */
 public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean selfReview,
-                               int pending, boolean hasKey,
+                               int pending, int inbox, int reviewers, boolean hasKey,
                                String endpoint, String apiKey, String model) {
 
     public static AdminStatePacket collect() {
-        LlmConfig cfg = LlmConfig.loadOrCreate(FMLPaths.CONFIGDIR.get());
+        LlmConfig cfg = LlmConfig.cached(FMLPaths.CONFIGDIR.get());
         return new AdminStatePacket(cfg.enabled(), cfg.takeover(),
-                ReviewerRoster.isSelfReviewEnabled(), SubmissionQueue.size(), cfg.usable(),
+                ReviewerRoster.isSelfReviewEnabled(), SubmissionQueue.size(),
+                ResultInbox.size(), ReviewerRoster.snapshot().size(), cfg.usable(),
                 cfg.endpoint(), cfg.apiKey(), cfg.model());
     }
 
@@ -43,6 +48,8 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean se
         buf.writeBoolean(msg.aiTakeover);
         buf.writeBoolean(msg.selfReview);
         buf.writeVarInt(msg.pending);
+        buf.writeVarInt(msg.inbox);
+        buf.writeVarInt(msg.reviewers);
         buf.writeBoolean(msg.hasKey);
         buf.writeUtf(msg.endpoint, 256);
         buf.writeUtf(msg.apiKey, 256);
@@ -51,7 +58,7 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean se
 
     public static AdminStatePacket decode(FriendlyByteBuf buf) {
         return new AdminStatePacket(buf.readBoolean(), buf.readBoolean(), buf.readBoolean(),
-                buf.readVarInt(), buf.readBoolean(),
+                buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
                 buf.readUtf(256), buf.readUtf(256), buf.readUtf(128));
     }
 

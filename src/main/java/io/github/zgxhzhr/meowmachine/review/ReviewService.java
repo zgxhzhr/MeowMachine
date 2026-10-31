@@ -7,27 +7,34 @@ import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 
 /**
  * 审核流程编排。**顺序按需求定的**：
  *
  * <pre>
  * 投稿
- *  ├─ 本地规则命中？  → 是：自动打回（附具体规则），梗图按规则挑
+ *  ├─ ① 本地规则命中？  → 是：自动打回（附具体规则），梗图按规则挑
  *  └─ 否
- *      ├─ 有能终审的人？（在线 OP / 名册审核员 / 单人自审）
- *      │    → 是：进人工队列，等审核员裁决
+ *      ├─ ② 有人能终审？（在线 OP / 名册里有人 / 单人自审开启）
+ *      │      且没有开「AI 接管」
+ *      │    → 是：入队等人工裁决，返回 PENDING（不是 REVISE！）
  *      └─ 否
- *          ├─ AI 可用？  → 是：AI 审（拿 AI 的发现决定打回/通过）
- *          └─ 否：**兜底打回**，梗图用 fallback（「要不直接打回算了」）
+ *          ├─ ③ AI 可用？
+ *          │    ├─ AI 拿到可信结论、无违规 → 通过
+ *          │    ├─ AI 拿到可信结论、有违规 → 打回（附 AI 发现）
+ *          │    └─ AI 不可用（网络/超时/解析失败）→ ④ 兜底打回
+ *          └─ ④ 兜底打回，梗图用 fallback（「要不直接打回算了」）
  * </pre>
  *
- * <p>这条链路刻意**不让 AI 阻塞**：AI 是异步的，失败就当作「没查出问题」，
- * 于是继续沿「无人工 + AI 无发现」的分支走兜底打回——结果确定、不会卡住。
+ * <p>两条必须守住的线：
+ * <ul>
+ *   <li><b>AI 绝不阻塞</b>：AI 是异步的，超时/失败都会在有限时间内落到 ④，流程不会卡住。</li>
+ *   <li><b>AI 失败 ≠ 通过</b>：0.1.0 曾把「AI 挂了」当成「没查出问题」直接放行，
+ *       等于一次网络抖动让所有投稿自动过审。现在失败一律走兜底打回，
+ *       并回报一个能看懂的说明（不是怪作者）。</li>
+ * </ul>
  */
 public final class ReviewService {
 
@@ -55,30 +62,37 @@ public final class ReviewService {
                     ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
-        // ② 有能终审的人 → 入队等人工裁决（/meow review list 能查到）
-        if (hasHumanFinalizer(server)) {
+        // ② 有能终审的人、且没开「AI 接管」→ 入队等人工裁决
+        //    takeover 是管理后台那个「AI 接管」开关：开了就跳过人工优先。
+        //    0.1.0 里这个开关从头到尾没人读，纯摆设。
+        boolean aiTakesOver = cfg.usable() && cfg.takeover();
+        if (!aiTakesOver && hasHumanFinalizer(server)) {
             SubmissionQueue.enqueue(sub, System.currentTimeMillis());
             return CompletableFuture.completedFuture(
-                    ReviewResult.of(Verdict.REVISE, List.of(), "pending-human",
+                    ReviewResult.of(Verdict.PENDING, List.of(), "pending-human",
                             StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse("")));
         }
 
-        // ③ 没有人工 → AI（可选）
+        // ③ 没人审（或 AI 接管）→ AI
         if (cfg.usable()) {
-            return AiReviewer.review(cfg, sub.title(), sub.body()).thenApply(aiFindings -> {
-                if (aiFindings.isEmpty()) {
-                    // AI 判没问题 → **通过**（用「通过」系列，同状态多张时随机）
+            return AiReviewer.review(cfg, sub.title(), sub.body()).thenApply(ai -> {
+                if (!ai.available()) {
+                    // AI 没给出可信结论 → 走兜底，**绝不能当通过**
+                    return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
+                }
+                if (ai.findings().isEmpty()) {
+                    // AI 判没问题 → 通过（用「通过」系列，同状态多张时随机）
                     String sticker = StickerRegistry.forState("approved")
                             .map(s -> s.id().toString()).orElse("");
                     return ReviewResult.pass("ai", sticker);
                 }
-                String sticker = pickSticker(Verdict.RETURN, aiFindings);
-                return ReviewResult.of(Verdict.RETURN, aiFindings, "ai", sticker);
+                String sticker = pickSticker(Verdict.RETURN, ai.findings());
+                return ReviewResult.of(Verdict.RETURN, ai.findings(), "ai", sticker);
             });
         }
 
         // ④ 既没人也没 AI → 兜底打回
-        return CompletableFuture.completedFuture(fallbackReturn());
+        return CompletableFuture.completedFuture(fallbackReturn("没人审，也没查出具体问题"));
     }
 
     /**
@@ -105,6 +119,7 @@ public final class ReviewService {
         String state = switch (verdict) {
             case PASS -> "approved";
             case REVISE -> "revising";
+            case PENDING -> "submitted";
             case RETURN -> "returned";
         };
         var byState = StickerRegistry.forState(state);
@@ -115,20 +130,22 @@ public final class ReviewService {
         return StickerRegistry.fallback().map(s -> s.id().toString()).orElse("");
     }
 
-    /** 兜底打回：说不出依据，用 fallback 梗图 */
-    private static ReviewResult fallbackReturn() {
+    /**
+     * 兜底打回：说不出依据（或 AI 不可用），用 fallback 梗图。
+     *
+     * @param why 给作者看的一句话（区分「没人审」和「AI 挂了」）
+     */
+    private static ReviewResult fallbackReturn(String why) {
         String sticker = StickerRegistry.fallback().map(s -> s.id().toString()).orElse("");
-        return ReviewResult.of(Verdict.RETURN,
-                List.of(ReviewFinding.unexplained("没人审，也没查出具体问题")),
-                "fallback", sticker);
+        return ReviewResult.of(Verdict.RETURN, List.of(ReviewFinding.unexplained(why)), "fallback", sticker);
     }
 
     /**
      * 当前是否有人能终审。
      *
-     * <p>注意不能只看名册：**任何一个在线 OP 都天然能终审**，所以这里扫在线玩家。
-     * 单人世界开了 {@code selfReview} 时，作者自己也算（由调用方在
-     * {@code ReviewerRoster#canFinalize} 里判定，这里只保证「有人在」）。
+     * <p>注意不能只看名册：**任何一个在线 OP 都天然能终审**，所以这里扫在线玩家；
+     * 名册成员不必在线也算「有人能终审」（人工优先的语义：名册存在即代表这批人负责审核）。
+     * 单人自审开启时作者自己也算（真正能不能拍板由 {@code ReviewerRoster#canFinalize} 判）。
      */
     private static boolean hasHumanFinalizer(MinecraftServer server) {
         if (server == null) {

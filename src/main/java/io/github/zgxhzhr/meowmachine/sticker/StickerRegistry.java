@@ -29,14 +29,18 @@ import java.util.Optional;
  * }
  * }</pre>
  *
- * <p>同一个 json 可以只给 {@code "rule"}，这样「第 22 条命中」时会优先展示它。
+ * <p><b>只在服务端加载</b>：注册点是 Forge 的服务端数据重载事件
+ * （{@code AddReloadListenerEvent}）。客户端不查询本表——渲染用的是服务端随结果包
+ * 发过来的纹理路径（{@link #texturePath(String)}），所以专用服务器 + 原版客户端也能正常显示。
  */
 public final class StickerRegistry extends SimpleJsonResourceReloadListener {
 
     private static final Gson GSON = new Gson();
 
-    /** 当前生效的梗图（客户端与服务端各一份，内容一致） */
+    /** 当前生效的梗图 */
     private static volatile List<Sticker> ALL = List.of();
+    /** id → 梗图 */
+    private static volatile Map<ResourceLocation, Sticker> BY_ID = Map.of();
     /** 状态 → 该状态下的所有梗图（同状态可能有多张，取用时随机） */
     private static volatile Map<String, List<Sticker>> BY_STATE = Map.of();
     private static volatile Map<Integer, Sticker> BY_RULE = Map.of();
@@ -74,10 +78,13 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
         // 按 priority 降序，查询时取第一个命中的即可
         loaded.sort(Comparator.comparingInt(Sticker::priority).reversed());
 
+        Map<ResourceLocation, Sticker> byId = new HashMap<>();
         Map<String, List<Sticker>> byState = new HashMap<>();
         Map<Integer, Sticker> byRule = new HashMap<>();
         Sticker fallback = null;
+        List<String> untriggerable = new ArrayList<>();
         for (Sticker s : loaded) {
+            byId.put(s.id(), s);
             if (s.fallback()) {
                 if (fallback == null) {
                     fallback = s;
@@ -90,15 +97,25 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
             if (s.rule() != null) {
                 byRule.putIfAbsent(s.rule(), s);
             }
+            if (s.state() == null && s.rule() == null) {
+                untriggerable.add(s.id().toString());
+            }
         }
 
         ALL = List.copyOf(loaded);
+        BY_ID = Map.copyOf(byId);
         BY_STATE = Map.copyOf(byState);
         BY_RULE = Map.copyOf(byRule);
         FALLBACK = fallback;
 
         MeowMachine.LOG.info("[喵呜机] 梗图加载完成：{} 张（状态 {} / 规则 {} / 兜底 {}）",
                 loaded.size(), byState.size(), byRule.size(), fallback != null);
+        if (!untriggerable.isEmpty()) {
+            // 这类图加载了但任何查询都取不到，是最容易悄悄失效的一类配置错误，
+            // 所以启动时就明确报出来（而不是等人问「为什么这张图从没出现」）。
+            MeowMachine.LOG.warn("[喵呜机] 以下梗图没有 state/rule/fallback，永远不会被选中: {}",
+                    String.join(", ", untriggerable));
+        }
     }
 
     // ---------------- 查询 ----------------
@@ -130,27 +147,21 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
         return Optional.ofNullable(FALLBACK);
     }
 
-    /** 当前全部梗图（调试/预览用） */
-    public static List<Sticker> all() {
-        return ALL;
-    }
-
     /**
-     * 按一组规则号挑最合适的一张：**按传入顺序**找第一个有专属梗图的规则，
-     * 都没有则退回兜底图。
+     * 算出一张梗图的实际纹理路径，空串表示「没有图」。
+     *
+     * <p>结果包只带 id 时客户端只能按 id 猜路径，数据包里自定义的 {@code texture} 就废了；
+     * 这里在服务端算好路径一起发过去（{@code ReviewResultPacket.texture}）。
      */
-    public static Optional<Sticker> pickForRules(List<Integer> ruleIds) {
-        if (ruleIds != null) {
-            for (Integer r : ruleIds) {
-                if (r == null) {
-                    continue;
-                }
-                Optional<Sticker> s = forRule(r);
-                if (s.isPresent()) {
-                    return s;
-                }
-            }
+    public static String texturePath(String stickerId) {
+        if (stickerId == null || stickerId.isBlank()) {
+            return "";
         }
-        return fallback();
+        ResourceLocation id = ResourceLocation.tryParse(stickerId);
+        if (id == null) {
+            return "";
+        }
+        Sticker s = BY_ID.get(id);
+        return (s != null ? s.resolvedTexture() : Sticker.textureFor(id)).toString();
     }
 }

@@ -2,26 +2,25 @@ package io.github.zgxhzhr.meowmachine.command;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.zgxhzhr.meowmachine.registry.ModItems;
-import io.github.zgxhzhr.meowmachine.review.ReviewFinding;
-import io.github.zgxhzhr.meowmachine.review.ReviewResult;
-import io.github.zgxhzhr.meowmachine.review.ReviewerRole;
 import io.github.zgxhzhr.meowmachine.network.Network;
 import io.github.zgxhzhr.meowmachine.network.ReviewListPacket;
+import io.github.zgxhzhr.meowmachine.registry.ModItems;
 import io.github.zgxhzhr.meowmachine.review.ReviewActions;
+import io.github.zgxhzhr.meowmachine.review.ReviewerRole;
 import io.github.zgxhzhr.meowmachine.review.ReviewerRoster;
 import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import io.github.zgxhzhr.meowmachine.review.Verdict;
-import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkDirection;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -30,10 +29,12 @@ import java.util.UUID;
  * <pre>
  * /meow reviewers grant &lt;player&gt; &lt;reviewer|assistant&gt;   OP
  * /meow reviewers revoke &lt;player&gt;                        OP
- * /meow reviewers list                                    OP
+ * /meow reviewers list                                    OP（真的列出名册）
  * /meow selfreview &lt;on|off&gt;                               OP
- * /meow review list                                       审核员
+ * /meow review list                                       审核员（单人自审时只看自己的）
  * /meow review decide &lt;id前缀&gt; &lt;pass|revise|return&gt;       审核员
+ * /meow review open                                       审核员（打开审核界面）
+ * /meow review give                                       审核员（发卷轴）
  * </pre>
  */
 public final class MeowCommands {
@@ -85,7 +86,9 @@ public final class MeowCommands {
                                                 .executes(MeowCommands::decide))))
                         .then(Commands.literal("open")
                                 .executes(MeowCommands::openReviewer))
+                        // give 曾经没有任何权限校验，任何玩家都能无限刷卷轴
                         .then(Commands.literal("give")
+                                .requires(s -> ReviewerRoster.canAnnotate(s.getPlayer()))
                                 .executes(MeowCommands::giveScroll)))
         );
     }
@@ -121,12 +124,33 @@ public final class MeowCommands {
         }
     }
 
+    /**
+     * 列名册 + 三个状态数字。
+     *
+     * <p>0.1.0 这条命令叫 list 却只打 selfReview 和队列长度，一条名册都不列——
+     * 而当时名册根本没被加载过，正好也没人发现。现在真列。
+     */
     private static int listReviewers(CommandContext<CommandSourceStack> ctx) {
+        Map<UUID, ReviewerRole> roster = ReviewerRoster.snapshot();
         ctx.getSource().sendSuccess(() -> Component.translatable(
                 "command.meow_machine.selfreview_state",
                 ReviewerRoster.isSelfReviewEnabled() ? "on" : "off"), false);
         ctx.getSource().sendSuccess(() -> Component.translatable(
                 "command.meow_machine.queue_size", SubmissionQueue.size()), false);
+        if (roster.isEmpty()) {
+            ctx.getSource().sendSuccess(() -> Component.translatable(
+                    "command.meow_machine.roster_empty"), false);
+            return 1;
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                "command.meow_machine.roster_size", roster.size()), false);
+        List<Map.Entry<UUID, ReviewerRole>> entries = new ArrayList<>(roster.entrySet());
+        for (Map.Entry<UUID, ReviewerRole> e : entries) {
+            String uuid = e.getKey().toString().substring(0, 8);
+            ReviewerRole role = e.getValue();
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "  " + uuid + "  " + role.name()), false);
+        }
         return 1;
     }
 
@@ -140,13 +164,29 @@ public final class MeowCommands {
 
     // ---------------- 审核 ----------------
 
+    /**
+     * 审核员能看到的待审列表。
+     *
+     * <p>只有「完整审核员」（OP / 名册成员）能看全部；
+     * 仅靠单人自审放行的作者只能看到**自己**那份——否则他能裁决却拿不到 id，人工路径直接死锁。
+     */
+    private static List<SubmissionQueue.Entry> visibleQueue(ServerPlayer self) {
+        if (self == null) {
+            return List.of();
+        }
+        if (ReviewerRoster.isOp(self) || ReviewerRoster.isRosterMember(self.getUUID())) {
+            return SubmissionQueue.snapshot();
+        }
+        return SubmissionQueue.byAuthor(self.getUUID());
+    }
+
     private static int reviewList(CommandContext<CommandSourceStack> ctx) {
         ServerPlayer self = ctx.getSource().getPlayer();
         if (!ReviewerRoster.canAnnotate(self)) {
             ctx.getSource().sendFailure(Component.translatable("command.meow_machine.no_permission"));
             return 0;
         }
-        List<SubmissionQueue.Entry> all = SubmissionQueue.snapshot();
+        List<SubmissionQueue.Entry> all = visibleQueue(self);
         if (all.isEmpty()) {
             ctx.getSource().sendSuccess(() -> Component.translatable(
                     "command.meow_machine.queue_empty"), false);
@@ -175,6 +215,11 @@ public final class MeowCommands {
             ctx.getSource().sendFailure(Component.translatable("command.meow_machine.bad_verdict"));
             return 0;
         }
+        if (!verdict.isDecidable()) {
+            // PENDING 是系统内部状态，不是审核员能拍板的东西
+            ctx.getSource().sendFailure(Component.translatable("command.meow_machine.bad_verdict"));
+            return 0;
+        }
 
         ReviewActions.Outcome outcome = ReviewActions.decide(self, idPrefix, verdict);
         if (outcome != ReviewActions.Outcome.OK) {
@@ -193,15 +238,11 @@ public final class MeowCommands {
             ctx.getSource().sendFailure(Component.translatable("command.meow_machine.no_permission"));
             return 0;
         }
-        List<ReviewListPacket.Entry> list = SubmissionQueue.snapshot().stream()
-                .map(e -> new ReviewListPacket.Entry(
-                        e.submission().id().toString(),
-                        shortId(e.submission().id()),
-                        e.submission().authorName(),
-                        e.submission().title()))
+        List<ReviewListPacket.Entry> list = visibleQueue(self).stream()
+                .map(e -> ReviewListPacket.Entry.of(e.submission()))
                 .toList();
         Network.CHANNEL.sendTo(new ReviewListPacket(list), self.connection.connection,
-                net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
+                NetworkDirection.PLAY_TO_CLIENT);
         return 1;
     }
 
