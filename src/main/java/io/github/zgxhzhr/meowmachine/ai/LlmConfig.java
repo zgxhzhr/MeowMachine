@@ -29,15 +29,20 @@ public record LlmConfig(boolean enabled, String endpoint, String apiKey, String 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "meow_machine_ai.json";
 
+    /** 默认服务商：DeepSeek（OpenAI 兼容，直接是 /v1/chat/completions） */
+    public static final String DEFAULT_ENDPOINT = "https://api.deepseek.com/v1";
+    /** 默认模型：deepseek-chat（对话模型；推理模型是 deepseek-reasoner） */
+    public static final String DEFAULT_MODEL = "deepseek-chat";
+
     /**
      * 内存缓存：配置是低频变更的静态数据，没必要每份投稿都在服务端主线程读一次磁盘。
      * {@link #save(Path, LlmConfig)} 会顺手失效缓存。
      */
     private static volatile LlmConfig cached = null;
 
-    /** 默认配置：关闭 AI，这样没配过的服务器行为确定 */
+    /** 默认配置：AI 默认关（不填 key 就不调用），地址与模型预置 DeepSeek */
     public static LlmConfig defaults() {
-        return new LlmConfig(false, "", "", "", 20, false);
+        return new LlmConfig(false, DEFAULT_ENDPOINT, "", DEFAULT_MODEL, 20, false);
     }
 
     /** 取当前配置（走了内存缓存）。服务端主线程可安全调用。 */
@@ -74,11 +79,21 @@ public record LlmConfig(boolean enabled, String endpoint, String apiKey, String 
             if (o == null) {
                 return defaults();
             }
+            String endpoint = o.has("endpoint") ? o.get("endpoint").getAsString().trim() : "";
+            String model = o.has("model") ? o.get("model").getAsString().trim() : "";
+            // 旧配置（0.1.0 生成的空 endpoint/model）自动补成 DeepSeek 默认值：
+            // 空值对我们没有意义，留空只会让「勾了 AI 却不生效」更难排查。
+            if (endpoint.isBlank()) {
+                endpoint = DEFAULT_ENDPOINT;
+            }
+            if (model.isBlank()) {
+                model = DEFAULT_MODEL;
+            }
             return new LlmConfig(
                     o.has("enabled") && o.get("enabled").getAsBoolean(),
-                    o.has("endpoint") ? o.get("endpoint").getAsString() : "",
+                    endpoint,
                     o.has("apiKey") ? o.get("apiKey").getAsString() : "",
-                    o.has("model") ? o.get("model").getAsString() : "",
+                    model,
                     o.has("timeoutSeconds") ? o.get("timeoutSeconds").getAsInt() : 20,
                     o.has("takeover") && o.get("takeover").getAsBoolean());
         } catch (IOException | RuntimeException e) {

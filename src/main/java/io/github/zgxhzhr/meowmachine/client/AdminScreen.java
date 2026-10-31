@@ -98,7 +98,7 @@ public class AdminScreen extends Screen {
                 Component.translatable("gui.meow_machine.admin.endpoint"));
         this.endpointBox.setMaxLength(256);
         this.endpointBox.setValue(state.endpoint());
-        this.endpointBox.setHint(Component.literal("https://api.openai.com/v1"));
+        this.endpointBox.setHint(Component.literal(io.github.zgxhzhr.meowmachine.ai.LlmConfig.DEFAULT_ENDPOINT));
         addRenderableWidget(endpointBox);
         y += 22;
 
@@ -114,7 +114,7 @@ public class AdminScreen extends Screen {
                 Component.translatable("gui.meow_machine.admin.model"));
         this.modelBox.setMaxLength(128);
         this.modelBox.setValue(state.model());
-        this.modelBox.setHint(Component.literal("gpt-4o-mini"));
+        this.modelBox.setHint(Component.literal(io.github.zgxhzhr.meowmachine.ai.LlmConfig.DEFAULT_MODEL));
         addRenderableWidget(modelBox);
         y += 26;
 

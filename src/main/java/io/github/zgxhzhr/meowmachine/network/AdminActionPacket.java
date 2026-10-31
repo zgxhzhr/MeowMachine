@@ -85,9 +85,15 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
                         updated.endpoint(), updated.model(),
                         updated.apiKey().isEmpty() ? "(空)" : "(已设置)");
             }
-            case OPEN_REVIEW -> Network.CHANNEL.sendTo(
-                    ReviewListPacket.of(SubmissionQueue.snapshot()), player.connection.connection,
-                    NetworkDirection.PLAY_TO_CLIENT);
+            case OPEN_REVIEW -> {
+                Network.CHANNEL.sendTo(
+                        ReviewListPacket.of(SubmissionQueue.snapshot()), player.connection.connection,
+                        NetworkDirection.PLAY_TO_CLIENT);
+                // 打开待审界面时**不能再回推后台状态包**：那会让客户端把刚打开的审核界面
+                // 又 setScreen 回后台（0.2.0 引入的回归，表现就是「待审队列点了没反应」）。
+                c.setPacketHandled(true);
+                return;
+            }
         }
 
         Network.CHANNEL.sendTo(AdminStatePacket.collect(), player.connection.connection,

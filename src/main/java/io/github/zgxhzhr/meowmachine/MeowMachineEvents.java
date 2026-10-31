@@ -3,11 +3,14 @@ package io.github.zgxhzhr.meowmachine;
 import io.github.zgxhzhr.meowmachine.command.MeowCommands;
 import io.github.zgxhzhr.meowmachine.review.ResultInbox;
 import io.github.zgxhzhr.meowmachine.review.ReviewActions;
+import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -17,6 +20,8 @@ import net.minecraftforge.fml.common.Mod;
  * <ul>
  *   <li>资源重载 → 加载梗图注册表（**仅服务端**：客户端渲染用服务端发来的纹理路径）</li>
  *   <li>命令注册 → {@code /meow} 命令树</li>
+ *   <li>服务端启动 → 把待审队列从世界存档读回来（重启不丢待审）</li>
+ *   <li>服务端停止 → 解绑存档后端</li>
  *   <li>玩家登录 → 补发他离线期间被裁决的结果（{@link ResultInbox}）</li>
  * </ul>
  */
@@ -34,6 +39,18 @@ public final class MeowMachineEvents {
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         MeowCommands.register(event.getDispatcher());
+    }
+
+    /** 服务端启动：绑定队列存档并恢复上次未审完的稿子 */
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        SubmissionQueue.attach(event.getServer());
+    }
+
+    /** 服务端停止：解绑，避免关服过程中继续往存档写 */
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        SubmissionQueue.detach();
     }
 
     /**
