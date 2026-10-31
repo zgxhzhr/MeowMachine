@@ -75,6 +75,8 @@ public class SubmissionScreen extends Screen {
 
     @Override
     protected void init() {
+        // 有 IMBlocker 时把输入法打开：自定义界面不在它的白名单里，否则中文打不进来
+        ImeCompat.onTextScreenOpened();
         int cx = this.width / 2;
         // 顶部区域：标题/状态两行文字，再往下才是输入区
         int top = Math.max(44, Math.min(this.height / 4, 72));
@@ -266,6 +268,9 @@ public class SubmissionScreen extends Screen {
             bodyFocused = true;
             titleBox.setFocused(false);
             this.setFocused(null);
+            // 自绘正文对 IMBlocker 是「未知控件」，焦点一离开 EditBox 它就把输入法关了，
+            // 所以每次点进正文都再要一次
+            ImeCompat.wantIme(true);
             moveCaretToClick(mx, my);
             return true;
         }
@@ -398,5 +403,12 @@ public class SubmissionScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void removed() {
+        // 关界面或被新界面替换：把 IMBlocker 的输入法状态还回去
+        ImeCompat.onTextScreenClosed();
+        super.removed();
     }
 }

@@ -181,10 +181,9 @@ public final class SelfTest {
         for (int r : LocalRules.AI_ONLY_RULES) {
             aiOnly.add(r);
         }
-        check("AI_ONLY_RULES 只含 prompt 覆盖的 1/6/7（实际 " + aiOnly + "）",
-                aiOnly.equals(List.of(1, 6, 7)));
-        check("第 18 条归本地规则，不在 AI 专属表里", !aiOnly.contains(18));
-        check("第 18 条确实由本地规则产出", hasRule("", "短", 18));
+        check("AI_ONLY_RULES 与 prompt 覆盖的条款一致（实际 " + aiOnly + "）",
+                aiOnly.equals(List.of(1, 6, 7, 18)));
+        check("第 18 条也在本地有可量化检查（正文太短）", hasRule("", "短", 18));
     }
 
     // ---------------- 断言器 ----------------

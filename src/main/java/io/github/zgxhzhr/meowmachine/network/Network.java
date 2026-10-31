@@ -18,8 +18,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class Network {
 
-    /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4 加入名册管理包） */
-    private static final String PROTOCOL = "4";
+    /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5 加入裁决原因/密钥脱敏） */
+    private static final String PROTOCOL = "5";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),

@@ -12,20 +12,23 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 /**
- * 客户端 → 服务端：界面上点了「通过 / 协改 / 打回」。
+ * 客户端 → 服务端：裁决（通过 / 协改 / 打回）+ **原因**。
  *
- * <p>无论成败都给玩家一句回音：以前点了没反应（助理没有终审权时服务端只写日志），
- * 玩家只会以为按钮坏了。
+ * <p>原因两部分：规则号（{@code ruleId}，-1 表示说不出具体条款）+ 一句话说明（可空）。
+ * 有了规则号，梗图会优先用该规则的专属图（第 18 条 →「又是灌水」），
+ * 作者也能在弹窗里看到「命中：第 N 条」和审核员写的话。
  */
-public record DecidePacket(String fullId, String verdict) {
+public record DecidePacket(String fullId, String verdict, int ruleId, String note) {
 
     public static void encode(DecidePacket msg, FriendlyByteBuf buf) {
         buf.writeUtf(msg.fullId, 40);
         buf.writeUtf(msg.verdict, 16);
+        buf.writeVarInt(msg.ruleId);
+        buf.writeUtf(msg.note == null ? "" : msg.note, 200);
     }
 
     public static DecidePacket decode(FriendlyByteBuf buf) {
-        return new DecidePacket(buf.readUtf(40), buf.readUtf(16));
+        return new DecidePacket(buf.readUtf(40), buf.readUtf(16), buf.readVarInt(), buf.readUtf(200));
     }
 
     public static void handle(DecidePacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -43,10 +46,10 @@ public record DecidePacket(String fullId, String verdict) {
             c.setPacketHandled(true);
             return;
         }
-        ReviewActions.Outcome outcome = ReviewActions.decide(player, msg.fullId, v);
-        MeowMachine.LOG.info("[喵呜机] 界面裁决 player={} id={} verdict={} outcome={}",
+        ReviewActions.Outcome outcome = ReviewActions.decide(player, msg.fullId, v, msg.ruleId, msg.note);
+        MeowMachine.LOG.info("[喵呜机] 界面裁决 player={} id={} verdict={} rule={} outcome={}",
                 player.getName().getString(), msg.fullId.substring(0, Math.min(8, msg.fullId.length())),
-                v, outcome);
+                v, msg.ruleId, outcome);
         if (outcome == ReviewActions.Outcome.OK) {
             player.displayClientMessage(Component.translatable(
                     "command.meow_machine.decided_ok",

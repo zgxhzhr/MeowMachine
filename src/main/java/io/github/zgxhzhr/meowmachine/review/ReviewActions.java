@@ -39,13 +39,24 @@ public final class ReviewActions {
     }
 
     /**
-     * 对一份待审稿件给出结论。
+     * 对一份待审稿件给出结论（命令用，不带原因）。
      *
      * @param reviewer 裁决人（null 表示服务器控制台）
      * @param idPrefix 稿件 id 前缀（至少 4 个字符，便于在界面上显示短 id）
      * @param verdict  结论（只能是终局结论，不能是 PENDING）
      */
     public static Outcome decide(ServerPlayer reviewer, String idPrefix, Verdict verdict) {
+        return decide(reviewer, idPrefix, verdict, -1, "");
+    }
+
+    /**
+     * 对一份待审稿件给出结论（界面用，可带原因）。
+     *
+     * @param ruleId 规则号；-1 表示「说不出具体条款」（梗图走状态图/兜底图）
+     * @param note   一句话说明，可空
+     */
+    public static Outcome decide(ServerPlayer reviewer, String idPrefix, Verdict verdict,
+                                 int ruleId, String note) {
         if (verdict == null || !verdict.isDecidable()) {
             return Outcome.BAD_VERDICT;
         }
@@ -67,17 +78,35 @@ public final class ReviewActions {
 
         SubmissionQueue.claim(sub.id());
 
-        String sticker = switch (verdict) {
+        // 原因：审核员可以选规则号（决定用哪张梗图）+ 补一句话
+        List<ReviewFinding> findings = List.of();
+        if (ruleId >= 0) {
+            String reason = (note == null || note.isBlank())
+                    ? "不符合公共编辑规范第 " + ruleId + " 条"
+                    : note.trim();
+            findings = List.of(new ReviewFinding(ruleId, null, reason));
+        } else if (note != null && !note.isBlank()) {
+            findings = List.of(ReviewFinding.unexplained(note.trim()));
+        }
+
+        String sticker = ruleId >= 0
+                ? StickerRegistry.forRule(ruleId).map(s -> s.id().toString()).orElse(stateSticker(verdict))
+                : stateSticker(verdict);
+        ReviewResult result = ReviewResult.of(verdict, findings,
+                reviewer == null ? "console" : reviewer.getName().getString(), sticker);
+
+        deliver(serverOf(reviewer), sub, result);
+        return Outcome.OK;
+    }
+
+    /** 按结论挑状态梗图（规则图没有命中时的退路） */
+    private static String stateSticker(Verdict verdict) {
+        return switch (verdict) {
             case PASS -> StickerRegistry.forState("approved").map(s -> s.id().toString()).orElse("");
             case REVISE -> StickerRegistry.forState("revising").map(s -> s.id().toString()).orElse("");
             case RETURN -> StickerRegistry.forState("returned").map(s -> s.id().toString()).orElse("");
             case PENDING -> StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse("");
         };
-        ReviewResult result = ReviewResult.of(verdict, List.of(),
-                reviewer == null ? "console" : reviewer.getName().getString(), sticker);
-
-        deliver(serverOf(reviewer), sub, result);
-        return Outcome.OK;
     }
 
     /** 把结论送到作者手里：在线就立刻发，离线就进信箱等登录补发 */

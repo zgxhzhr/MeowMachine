@@ -3,6 +3,7 @@ package io.github.zgxhzhr.meowmachine.command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.zgxhzhr.meowmachine.network.Network;
+import io.github.zgxhzhr.meowmachine.review.DraftStore;
 import io.github.zgxhzhr.meowmachine.network.ReviewListPacket;
 import io.github.zgxhzhr.meowmachine.registry.ModItems;
 import io.github.zgxhzhr.meowmachine.review.ReviewActions;
@@ -68,6 +69,9 @@ public final class MeowCommands {
                                     return b.buildFuture();
                                 })
                                 .executes(MeowCommands::selfReview)))
+                // ---------- 任何玩家：查自己的投稿状态 ----------
+                .then(Commands.literal("my")
+                        .executes(MeowCommands::mySubmissions))
                 // ---------- 审核员：待审列表与裁决 ----------
                 .then(Commands.literal("review")
                         .then(Commands.literal("list")
@@ -157,6 +161,40 @@ public final class MeowCommands {
         ReviewerRoster.setSelfReview(on);
         ctx.getSource().sendSuccess(() -> Component.translatable(
                 "command.meow_machine.selfreview_set", on ? "on" : "off"), true);
+        return 1;
+    }
+
+    // ---------------- 玩家自己 ----------------
+
+    /**
+     * {@code /meow my}：看自己当前投稿的状态，以及有没有在待审队列里。
+     *
+     * <p>以前提交完只有一张梗图弹窗，作者看不到「我的稿子审到哪了」；
+     * 队列现在会落盘，所以这里读到的待审是真实的。
+     */
+    private static int mySubmissions(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer self = ctx.getSource().getPlayer();
+        if (self == null) {
+            return 0;
+        }
+        Submission draft = DraftStore.load(self);
+        ctx.getSource().sendSuccess(() -> Component.translatable("command.meow_machine.my_draft",
+                shortId(draft.id()), draft.state().name().toLowerCase(), draft.revision()), false);
+
+        List<SubmissionQueue.Entry> mine = SubmissionQueue.byAuthor(self.getUUID());
+        if (mine.isEmpty()) {
+            ctx.getSource().sendSuccess(() -> Component.translatable(
+                    "command.meow_machine.my_none"), false);
+            return 1;
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                "command.meow_machine.my_queue", mine.size()), false);
+        for (SubmissionQueue.Entry e : mine) {
+            Submission s = e.submission();
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "  " + shortId(s.id()) + "  " + s.state().name().toLowerCase() + "  " + s.title()),
+                    false);
+        }
         return 1;
     }
 

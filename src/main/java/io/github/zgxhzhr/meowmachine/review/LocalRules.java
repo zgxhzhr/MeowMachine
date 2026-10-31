@@ -25,9 +25,9 @@ public final class LocalRules {
      *
      * <p>**必须与 prompt 里列的条款一致**：0.1.0 这里写了 11 条，prompt 只覆盖 3 条，
      * 结果 8 条规则既没有本地实现也没人判；第 18 条还在两边重复判。
-     * 现在本地判的（18 灌水）踢出去，只剩 prompt 真正覆盖的三条。
+     * 0.5.0 起 18 由 AI 判「内容不实/乱码/凑字数」的语义部分，本地仍判「太短」这个可量化部分。
      */
-    public static final int[] AI_ONLY_RULES = {1, 6, 7};
+    public static final int[] AI_ONLY_RULES = {1, 6, 7, 18};
 
     // 第 3 条：emoji（只认明确的 emoji 区段，避免误伤中文标点）
     private static final Pattern EMOJI = Pattern.compile(

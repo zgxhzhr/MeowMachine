@@ -4,7 +4,7 @@ Minecraft **1.20.1 Forge** 模组：内容审核模拟器。玩家用「投稿�
 （本地规则 / 人工 / AI 三路）给出结论，结论通过**梗图弹窗**反馈。梗图全部数据包驱动，加表情不用改代码。
 
 - modid：`meow_machine`
-- 版本：`0.4.0`
+- 版本：`0.5.0`
 - 状态：可构建、可运行，`gradlew runServer` 冒烟测试通过
 
 ---
@@ -137,6 +137,22 @@ data/meow_machine/stickers/<id>.json
 - 输入**在线玩家名** + 「设为审核员 / 设为助理」即可任命（服务端按名字解析，离线会提示）
 - 名单超过一屏时会显示「还有 N 人未显示」，用命令处理
 
+### 裁决原因（0.5.0 起）
+
+审核界面点「打回 / 协改」会先进入原因选择：
+
+- 选**规则号**（1/6/7/12/18/19/22/23/24/29/31）或「说不出依据」
+- 可补一句话说明（会显示给作者）
+- 规则号决定用哪张梗图（第 18 条 →「又是灌水」），作者那边看到「命中：第 N 条」+ 你的说明
+
+## 中文输入（IMBlocker 兼容）
+
+很多中文玩家装了 **IMBlocker**，它只对「白名单屏幕/认识的文本框」打开输入法，
+本模组的自定义界面（尤其自绘正文区）它不认识 → 整个界面中文打不进去。
+
+0.5.0 起 `client/ImeCompat` 用反射接入 IMBlocker 的 `FocusContainer.MINECRAFT.setPreferredState(boolean)`：
+打开编辑/后台/名册/裁决界面时主动要输入法，关闭时还回去。**没装 IMBlocker 就是空操作**，不影响原版行为。
+
 ## 命令
 
 ```
@@ -148,6 +164,7 @@ data/meow_machine/stickers/<id>.json
 /meow review open                                     审核员（打开审核界面）
 /meow review decide <id前缀> <pass|revise|return>      审核员
 /meow review give                                     审核员（发卷轴）
+/meow my                                               任何玩家（看自己投稿状态/待审）
 ```
 
 ---
@@ -164,6 +181,15 @@ API 密钥 sk-...
 
 落盘 `config/meow_machine_ai.json`；空值会自动补默认地址/模型。配置有内存缓存，不会每份投稿都读盘。
 「AI 接管」开关打开后跳过人工优先，直接走 AI。
+
+**密钥处理**（0.5.0 起）：
+
+- 服务端**从不把 key 下发给客户端**，`AdminStatePacket` 只带「是否已配置」
+- 后台输入框永远显示为空、输入时打码；**留空保存 = 不修改**（改地址/模型不用重填 key）
+- 磁盘上的 `config/meow_machine_ai.json` 仍是明文（Minecraft 模组的常规做法，权限靠文件系统）；公共服建议用低额度 key
+
+AI 的语义规则集：`1 主观词句` / `6 机翻` / `7 AIGC` / `18 内容不实或凑字数（含乱码、无意义字符、与标题无关）`
+—— 与 `LocalRules.AI_ONLY_RULES` 一一对应。第 18 条的「太短」由本地规则量判，语义部分交给 AI。
 
 ---
 
@@ -184,21 +210,21 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 │   └── Submission / SubmissionState / Verdict / ReviewFinding / ReviewResult
 ├── sticker/              梗图定义与注册表（数据包加载）
 ├── ai/                   LlmConfig / LlmClient / AiReviewer
-├── network/              12 个包，不用 MenuType（协议号 4）
+├── network/              12 个包，不用 MenuType（协议号 5）
 ├── client/               编辑 / 梗图 / 审核 / 后台 / 审核员管理 五个 Screen
 ├── item/                 投稿卷轴、审核终端
 ├── command/MeowCommands  /meow 命令树
 └── dev/SelfTest          手写断言器（43 条，jar 里已排除）
 ```
 
-协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4），版本不一致的客户端会被 Forge 挡在连接阶段。
+协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5），版本不一致的客户端会被 Forge 挡在连接阶段。
 
 ---
 
 ## 已知限制 / 未做
 
 1. **离线结论信箱仍是内存态**（只有「裁决瞬间作者不在线 + 服务器立刻重启」才会丢）
-2. **AI 未做真实 endpoint 验证**（代码完整、失败路径已加固，但没跑通真实 key）
+2. **AI 未做真实 endpoint 验证**（代码完整、失败路径已加固；DeepSeek 默认配置已就绪）
 3. **名册界面只能任命「在线玩家」**（GUI 没有实体选择器，按名字解析；离线任命仍走命令）
 4. `helpless` / `kurushi` / `laowu` / `meowmeow` 四张梗图未挂载（启动会 warn）
 5. 物品纹理是程序生成的占位图

@@ -74,8 +74,16 @@ public class ReviewerScreen extends Screen {
     }
 
     private void decide(ReviewListPacket.Entry entry, String verdict) {
-        Network.CHANNEL.sendToServer(new DecidePacket(entry.fullId(), verdict));
-        this.onClose();
+        if ("PASS".equals(verdict)) {
+            // 通过不需要原因，直接发
+            Network.CHANNEL.sendToServer(new DecidePacket(entry.fullId(), verdict, -1, ""));
+            this.onClose();
+            return;
+        }
+        // 协改 / 打回：先让审核员选原因（规则号 + 一句话）
+        if (this.minecraft != null) {
+            this.minecraft.setScreen(new DecisionScreen(entry, verdict));
+        }
     }
 
     @Override

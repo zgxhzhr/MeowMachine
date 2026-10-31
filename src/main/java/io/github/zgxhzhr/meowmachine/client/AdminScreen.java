@@ -78,6 +78,8 @@ public class AdminScreen extends Screen {
 
     @Override
     protected void init() {
+        // 有 IMBlocker 时确保输入法可用（自定义界面不在它白名单里）
+        ImeCompat.onTextScreenOpened();
         int cx = this.width / 2;
         int left = cx - FIELD_W / 2;
         int y = 28;
@@ -106,8 +108,14 @@ public class AdminScreen extends Screen {
         this.apiKeyBox = new EditBox(this.font, left, y, FIELD_W, FIELD_H,
                 Component.translatable("gui.meow_machine.admin.apikey"));
         this.apiKeyBox.setMaxLength(256);
-        this.apiKeyBox.setValue(state.apiKey());
-        this.apiKeyBox.setHint(Component.literal("sk-..."));
+        // 密钥从不回传客户端：这里永远是空的，留空提交 = 不修改
+        this.apiKeyBox.setValue("");
+        this.apiKeyBox.setHint(Component.translatable(state.hasKey()
+                ? "gui.meow_machine.admin.apikey_set"
+                : "gui.meow_machine.admin.apikey_unset"));
+        // 输入时也不显示明文
+        this.apiKeyBox.setFormatter((text, cursor) -> Component.literal("•".repeat(text.length()))
+                .getVisualOrderText());
         addRenderableWidget(apiKeyBox);
         y += 22;
 
@@ -189,5 +197,11 @@ public class AdminScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void removed() {
+        ImeCompat.onTextScreenClosed();
+        super.removed();
     }
 }

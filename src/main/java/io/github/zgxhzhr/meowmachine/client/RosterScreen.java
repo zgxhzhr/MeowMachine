@@ -50,6 +50,7 @@ public class RosterScreen extends Screen {
 
     @Override
     protected void init() {
+        ImeCompat.onTextScreenOpened();
         int cx = this.width / 2;
         int left = cx - PANEL_W / 2;
         int top = 30;
@@ -153,5 +154,11 @@ public class RosterScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void removed() {
+        ImeCompat.onTextScreenClosed();
+        super.removed();
     }
 }

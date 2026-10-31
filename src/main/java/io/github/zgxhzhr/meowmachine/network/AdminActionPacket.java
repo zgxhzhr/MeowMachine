@@ -78,8 +78,11 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
             case TOGGLE_SELF_REVIEW -> ReviewerRoster.setSelfReview(
                     !ReviewerRoster.isSelfReviewEnabled());
             case SAVE_AI_CONFIG -> {
-                LlmConfig updated = LlmConfig.cached(configDir)
-                        .withAiConfig(msg.endpoint, msg.apiKey, msg.model);
+                LlmConfig current = LlmConfig.cached(configDir);
+                String key = msg.apiKey == null ? "" : msg.apiKey.trim();
+                // 客户端不回传密钥：留空就沿用旧的（这样改 endpoint/模型不用重填 key）
+                LlmConfig updated = current.withAiConfig(msg.endpoint,
+                        key.isEmpty() ? current.apiKey() : key, msg.model);
                 LlmConfig.save(configDir, updated);
                 MeowMachine.LOG.info("[喵呜机] AI 配置已保存 endpoint={} model={} key={}",
                         updated.endpoint(), updated.model(),
