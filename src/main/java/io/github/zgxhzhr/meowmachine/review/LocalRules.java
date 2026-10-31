@@ -21,13 +21,22 @@ public final class LocalRules {
     }
 
     /**
-     * 只能靠语义判断、由 AI（{@code AiReviewer} 的 prompt）负责的条款编号。
+     * 需要 AI 参与判定的条款（{@code AiReviewer} 的 prompt 里始终列出全部 35 条，
+     * 这里是其中有语义成分、本地判不可靠的那部分）。
      *
-     * <p>**必须与 prompt 里列的条款一致**：0.1.0 这里写了 11 条，prompt 只覆盖 3 条，
-     * 结果 8 条规则既没有本地实现也没人判；第 18 条还在两边重复判。
-     * 0.5.0 起 18 由 AI 判「内容不实/乱码/凑字数」的语义部分，本地仍判「太短」这个可量化部分。
+     * <p>反过来，{@link #LOCAL_ONLY_RULES} 是本地已经能可靠判定的纯格式条款：
+     * 那几条 AI 不用重复报，避免一次投稿收两条一样的意见。
+     *
+     * <p>0.1.0 曾把这里写成 11 条而 prompt 只覆盖 3 条，等于 8 条规则无人判；
+     * 现在清单与 prompt 对齐，且 AI 拿到的是完整 35 条。
      */
-    public static final int[] AI_ONLY_RULES = {1, 6, 7, 18};
+    public static final int[] AI_ONLY_RULES = {
+            1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20, 21,
+            25, 26, 27, 28, 30, 32, 33, 34, 35
+    };
+
+    /** 本地规则已能可靠判定的纯格式条款（AI 不必重复报） */
+    public static final int[] LOCAL_ONLY_RULES = {3, 12, 19, 22, 23, 24, 29, 31};
 
     // 第 3 条：emoji（只认明确的 emoji 区段，避免误伤中文标点）
     private static final Pattern EMOJI = Pattern.compile(

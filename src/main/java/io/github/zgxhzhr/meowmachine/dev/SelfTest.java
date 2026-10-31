@@ -191,14 +191,24 @@ public final class SelfTest {
                 && second.state() == SubmissionState.DRAFT);
     }
 
-    /** AI_ONLY_RULES 必须和 AI prompt 覆盖的条款一致；本地规则不许重复判 */
+    /** 规则表口径：AI 拿到全部 35 条，本地只独占 8 条纯格式 */
     private static void testRuleTables() {
         List<Integer> aiOnly = new java.util.ArrayList<>();
+        List<Integer> localOnly = new java.util.ArrayList<>();
         for (int r : LocalRules.AI_ONLY_RULES) {
             aiOnly.add(r);
         }
-        check("AI_ONLY_RULES 与 prompt 覆盖的条款一致（实际 " + aiOnly + "）",
-                aiOnly.equals(List.of(1, 6, 7, 18)));
+        for (int r : LocalRules.LOCAL_ONLY_RULES) {
+            localOnly.add(r);
+        }
+        check("AI 参与判定的条款数 = 35 − 本地独占 8（实际 " + aiOnly.size() + "）",
+                aiOnly.size() == 27);
+        check("本地独占的 8 条不在 AI 清单里",
+                aiOnly.stream().noneMatch(localOnly::contains));
+        check("AI 清单覆盖 1~35 里所有非本地独占条款",
+                aiOnly.size() + localOnly.size() == 35);
+        check("AI 清单包含机翻/AIGC/内容不实（6/7/18）",
+                aiOnly.contains(6) && aiOnly.contains(7) && aiOnly.contains(18));
         check("第 18 条也在本地有可量化检查（正文太短）", hasRule("", "短", 18));
     }
 

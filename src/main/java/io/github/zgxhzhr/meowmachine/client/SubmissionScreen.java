@@ -1,10 +1,12 @@
 package io.github.zgxhzhr.meowmachine.client;
 
+import io.github.zgxhzhr.meowmachine.network.MySubmissionsRequestPacket;
 import io.github.zgxhzhr.meowmachine.network.Network;
 import io.github.zgxhzhr.meowmachine.network.NewSubmissionPacket;
 import io.github.zgxhzhr.meowmachine.network.OpenEditorPacket;
 import io.github.zgxhzhr.meowmachine.network.SaveDraftPacket;
 import io.github.zgxhzhr.meowmachine.network.SubmitPacket;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -101,10 +103,10 @@ public class SubmissionScreen extends Screen {
         int available = btnY - 8 - bodyTop;
         this.bodyH = Math.max(MIN_BODY_H, Math.min(MAX_BODY_H, available));
 
-        // 三颗按钮并排：新建 / 提交 / 关闭
-        int bw = 96;
-        int gap = 6;
-        int x0 = cx - (bw * 3 + gap * 2) / 2;
+        // 四颗按钮并排：新建 / 提交 / 我的投稿 / 关闭
+        int bw = 72;
+        int gap = 4;
+        int x0 = cx - (bw * 4 + gap * 3) / 2;
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.new_submission"), b -> startNew())
                 .bounds(x0, btnY, bw, 20).build());
@@ -112,8 +114,16 @@ public class SubmissionScreen extends Screen {
                         Component.translatable("gui.meow_machine.submit"), b -> submit())
                 .bounds(x0 + bw + gap, btnY, bw, 20).build());
         addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.cancel"), b -> this.onClose())
+                        Component.translatable("gui.meow_machine.my_button"), b -> openMyList())
                 .bounds(x0 + (bw + gap) * 2, btnY, bw, 20).build());
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.cancel"), b -> this.onClose())
+                .bounds(x0 + (bw + gap) * 3, btnY, bw, 20).build());
+    }
+
+    /** 查自己的投稿列表（当前稿 + 队列里自己的待审） */
+    private void openMyList() {
+        Network.CHANNEL.sendToServer(new MySubmissionsRequestPacket());
     }
 
     private void submit() {
@@ -290,6 +300,30 @@ public class SubmissionScreen extends Screen {
         return super.mouseClicked(mx, my, button);
     }
 
+    /** 把剪贴板内容插到光标处：统一换行、滤掉控制字符、按上限截断 */
+    private void pasteFromClipboard() {
+        String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
+        if (clip == null || clip.isEmpty()) {
+            return;
+        }
+        String normalized = clip.replace("\r\n", "\n").replace('\r', '\n');
+        StringBuilder clean = new StringBuilder(normalized.length());
+        for (int i = 0; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+            if (c == '\n' || !Character.isISOControl(c)) {
+                clean.append(c);
+            }
+        }
+        int room = Network.MAX_BODY_LEN - bodyText.length();
+        if (room <= 0 || clean.length() == 0) {
+            return;
+        }
+        String insert = clean.length() > room ? clean.substring(0, room) : clean.toString();
+        bodyText.insert(caret, insert);
+        caret += insert.length();
+        scrollToCaret();
+    }
+
     /** 鼠标点击 → 光标位置 */
     private void moveCaretToClick(double mx, double my) {
         List<Line> lines = layout();
@@ -328,6 +362,28 @@ public class SubmissionScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (bodyFocused && titleBox != null && !titleBox.isFocused() && editable) {
+            // 剪贴板：自绘输入区不会自动处理 Ctrl+V，必须自己接（0.7.0 之前这里没实现，
+            // 表现就是「标题能粘、正文粘不进去」）
+            if (Screen.hasControlDown()) {
+                switch (keyCode) {
+                    case GLFW.GLFW_KEY_V -> {
+                        pasteFromClipboard();
+                        return true;
+                    }
+                    case GLFW.GLFW_KEY_C -> {
+                        Minecraft.getInstance().keyboardHandler.setClipboard(bodyText.toString());
+                        return true;
+                    }
+                    case GLFW.GLFW_KEY_A -> {
+                        // 没有选择模型，Ctrl+A 统一把光标移到末尾，配合 Ctrl+C 用
+                        caret = bodyText.length();
+                        scrollToCaret();
+                        return true;
+                    }
+                    default -> {
+                    }
+                }
+            }
             switch (keyCode) {
                 case GLFW.GLFW_KEY_BACKSPACE -> {
                     if (caret > 0) {

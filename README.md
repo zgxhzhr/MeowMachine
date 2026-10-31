@@ -4,7 +4,7 @@ Minecraft **1.20.1 Forge** 模组：内容审核模拟器。玩家用「投稿�
 （本地规则 / 人工 / AI 三路）给出结论，结论通过**梗图弹窗**反馈。梗图全部数据包驱动，加表情不用改代码。
 
 - modid：`meow_machine`
-- 版本：`0.6.0`
+- 版本：`0.7.1`
 - 状态：可构建、可运行，`gradlew runServer` 冒烟测试通过
 
 ---
@@ -66,7 +66,14 @@ cd 'E:\Mod\其它项目\MeowMachine'
 挑梗图优先级：**规则专属图** → **结论状态图**（approved / revising / returned / submitted）→ **兜底图**。
 规则图必须语义对得上（曾把「协改中」挂在第 12 条句末标点上，导致「被打回却显示协改中」）。
 
-### 投稿的生命周期 / 多篇投稿
+### 投稿端能看到的入口
+
+- 编辑界面底部四颗按钮：新建投稿 / 提交审核 / **我的投稿** / 关闭
+- 「我的投稿」列出当前草稿与人工队列里自己的稿子（短 id、标题、状态：草稿/待审/已通过/被打回）
+- 命令 `/meow my` 是同一份信息的聊天栏版本
+- 正文区支持 **Ctrl+V 粘贴 / Ctrl+C 复制全文 / Ctrl+A 移动光标到末尾**（自绘输入区不会自动处理剪贴板）
+
+## 投稿的生命周期 / 多篇投稿
 
 - 草稿是「每个玩家当前那一篇」，存在**世界存档**里（`<世界>/data/meow_machine_drafts.dat`）
 - 提交后：本地规则/AI 直接出结论；走人工则入队（队列也落盘，重启不丢）
@@ -216,14 +223,14 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 │   └── Submission / SubmissionState / Verdict / ReviewFinding / ReviewResult
 ├── sticker/              梗图定义与注册表（数据包加载）
 ├── ai/                   LlmConfig / LlmClient / AiReviewer
-├── network/              12 个包，不用 MenuType（协议号 5）
+├── network/              14 个包，不用 MenuType（协议号 6）
 ├── client/               编辑 / 梗图 / 审核 / 后台 / 审核员管理 五个 Screen
 ├── item/                 投稿卷轴、审核终端
 ├── command/MeowCommands  /meow 命令树
 └── dev/SelfTest          手写断言器（43 条，jar 里已排除）
 ```
 
-协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5），版本不一致的客户端会被 Forge 挡在连接阶段。
+协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6），版本不一致的客户端会被 Forge 挡在连接阶段。
 
 ---
 

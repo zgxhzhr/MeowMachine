@@ -2,7 +2,6 @@
   "item.meow_machine.submission_scroll": "Submission Scroll",
   "item.meow_machine.admin_terminal": "Review Terminal",
   "itemGroup.meow_machine": "Meow Machine",
-
   "gui.meow_machine.submission": "Submission",
   "gui.meow_machine.title_field": "Title",
   "gui.meow_machine.title_hint": "Give this submission a title",
@@ -12,7 +11,6 @@
   "gui.meow_machine.new_submission": "New submission",
   "gui.meow_machine.cancel": "Close",
   "gui.meow_machine.status": "Status: %s",
-
   "gui.meow_machine.result_title": "Review result",
   "gui.meow_machine.result.pass": "Approved!",
   "gui.meow_machine.result.revise": "Needs revision",
@@ -21,14 +19,12 @@
   "gui.meow_machine.result.rules": "Hit: %s",
   "gui.meow_machine.no_sticker": "(sticker texture missing)",
   "gui.meow_machine.click_to_close": "Click anywhere to close",
-
   "gui.meow_machine.reviewer_title": "Pending submissions",
   "gui.meow_machine.btn.pass": "Pass",
   "gui.meow_machine.btn.revise": "Revise",
   "gui.meow_machine.btn.return": "Return",
   "gui.meow_machine.close": "Close",
   "gui.meow_machine.more": "%s more not shown (use the command with an id)",
-
   "gui.meow_machine.admin_title": "Review admin",
   "gui.meow_machine.admin.ai": "AI review",
   "gui.meow_machine.admin.takeover": "AI takeover",
@@ -46,7 +42,6 @@
   "gui.meow_machine.admin.stats": "Reviewers: %s · offline backlog: %s",
   "gui.meow_machine.on": "on",
   "gui.meow_machine.off": "off",
-
   "gui.meow_machine.roster_title": "Reviewers",
   "gui.meow_machine.roster.empty": "Roster is empty (OPs can always review)",
   "gui.meow_machine.roster.more": "%s more not shown (use /meow reviewers revoke)",
@@ -56,7 +51,6 @@
   "gui.meow_machine.roster.grant_reviewer": "Make reviewer",
   "gui.meow_machine.roster.grant_assistant": "Make assistant",
   "gui.meow_machine.roster.name_hint": "online player name",
-
   "gui.meow_machine.decide_title": "Pick a reason",
   "gui.meow_machine.decide.who": "%s · %s · %s",
   "gui.meow_machine.decide.note_hint": "optional note",
@@ -73,19 +67,16 @@
   "gui.meow_machine.reason.24": "rule 24 PS/note prefix",
   "gui.meow_machine.reason.29": "rule 29 redundant sentence",
   "gui.meow_machine.reason.31": "rule 31 strikethrough",
-
   "command.meow_machine.my_draft": "Current submission %s · status %s · rev %s",
   "command.meow_machine.my_queue": "%s of them pending:",
   "command.meow_machine.my_none": "No pending submission right now",
   "chat.meow_machine.roster_need_name": "[Meow Machine] Type an online player name first",
   "chat.meow_machine.player_not_online": "[Meow Machine] No such player online: %s",
   "chat.meow_machine.roster_bad_target": "[Meow Machine] Bad roster entry id: %s",
-
   "chat.meow_machine.result": "[Meow Machine] Review result: %s",
   "chat.meow_machine.rules": "[Meow Machine] Rules hit: %s",
   "chat.meow_machine.cannot_edit": "[Meow Machine] This submission was approved and can no longer be edited or resubmitted",
   "chat.meow_machine.empty_submission": "[Meow Machine] Title and body are both empty — write something first",
-
   "command.meow_machine.grant": "Appointed %s as %s",
   "command.meow_machine.revoke": "Revoked %s's reviewer role",
   "command.meow_machine.bad_role": "Role must be reviewer or assistant",
@@ -99,5 +90,13 @@
   "command.meow_machine.no_such_id": "No pending submission with that id",
   "command.meow_machine.decided_ok": "Decided %s: %s",
   "command.meow_machine.roster_empty": "Reviewer roster is empty (OPs can always review)",
-  "command.meow_machine.roster_size": "Reviewers: %s"
+  "command.meow_machine.roster_size": "Reviewers: %s",
+  "gui.meow_machine.my_button": "My posts",
+  "gui.meow_machine.my_title": "My posts",
+  "gui.meow_machine.my_empty": "No posts yet",
+  "gui.meow_machine.my_more": "%s more not shown",
+  "gui.meow_machine.state.draft": "draft",
+  "gui.meow_machine.state.submitted": "pending",
+  "gui.meow_machine.state.approved": "approved",
+  "gui.meow_machine.state.returned": "returned"
 }
