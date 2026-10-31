@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,14 +33,21 @@ import java.util.concurrent.ConcurrentHashMap;
  * 0.1.0 忘了调，导致 {@code file} 恒为 null → {@code save()} 直接空转、
  * 名册与 selfReview 开关从不落盘（重启全丢）。现在 {@link #file()} 还做了兜底：
  * 即使忘了加载，第一次写盘也会自己补上路径，不会再静默失败。
+ *
+ * <p>0.4.0 起名册**连玩家名一起存**，后台的「审核员管理」界面才能认人（只有 UUID 没法看）。
+ * 旧格式（{@code "uuid": "reviewer"}）仍能读，读到后名字留空、界面显示短 UUID。
  */
 public final class ReviewerRoster {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "meow_machine_reviewers.json";
 
-    /** UUID → 角色 */
-    private static final Map<UUID, ReviewerRole> ROSTER = new ConcurrentHashMap<>();
+    /** 名册成员：uuid + 名字（可空）+ 角色 */
+    public record Member(UUID uuid, String name, ReviewerRole role) {
+    }
+
+    /** UUID → 成员 */
+    private static final Map<UUID, Member> ROSTER = new ConcurrentHashMap<>();
 
     /** 单人世界：作者是否可当自己的审核员 */
     private static volatile boolean selfReview = false;
@@ -75,9 +85,20 @@ public final class ReviewerRoster {
             if (reviewers != null) {
                 for (String key : reviewers.keySet()) {
                     try {
-                        ROSTER.put(UUID.fromString(key),
-                                ReviewerRole.valueOf(reviewers.get(key).getAsString().toUpperCase()));
-                    } catch (IllegalArgumentException ignored) {
+                        UUID uuid = UUID.fromString(key);
+                        var value = reviewers.get(key);
+                        if (value.isJsonObject()) {
+                            JsonObject o = value.getAsJsonObject();
+                            String name = o.has("name") ? o.get("name").getAsString() : "";
+                            ReviewerRole role = ReviewerRole.valueOf(
+                                    o.get("role").getAsString().toUpperCase());
+                            ROSTER.put(uuid, new Member(uuid, name, role));
+                        } else {
+                            // 旧格式：uuid → 角色字符串，没有名字
+                            ReviewerRole role = ReviewerRole.valueOf(value.getAsString().toUpperCase());
+                            ROSTER.put(uuid, new Member(uuid, "", role));
+                        }
+                    } catch (IllegalArgumentException | IllegalStateException e) {
                         MeowMachine.LOG.warn("[喵呜机] 审核员名册里有非法条目，已跳过: {}", key);
                     }
                 }
@@ -95,7 +116,12 @@ public final class ReviewerRoster {
             JsonObject root = new JsonObject();
             root.addProperty("selfReview", selfReview);
             JsonObject reviewers = new JsonObject();
-            ROSTER.forEach((k, v) -> reviewers.addProperty(k.toString(), v.name().toLowerCase()));
+            ROSTER.forEach((uuid, member) -> {
+                JsonObject o = new JsonObject();
+                o.addProperty("name", member.name() == null ? "" : member.name());
+                o.addProperty("role", member.role().name().toLowerCase());
+                reviewers.add(uuid.toString(), o);
+            });
             root.add("reviewers", reviewers);
             Files.createDirectories(f.getParent());
             Files.writeString(f, GSON.toJson(root), StandardCharsets.UTF_8);
@@ -107,8 +133,8 @@ public final class ReviewerRoster {
     // ---------------- 任命 ----------------
 
     /** 任命（OP 专用；调用方自己校验权限） */
-    public static void grant(UUID player, ReviewerRole role) {
-        ROSTER.put(player, role);
+    public static void grant(UUID player, String name, ReviewerRole role) {
+        ROSTER.put(player, new Member(player, name == null ? "" : name, role));
         save();
     }
 
@@ -126,14 +152,22 @@ public final class ReviewerRoster {
         return selfReview;
     }
 
-    /** 名册快照（后台/命令列表用） */
-    public static Map<UUID, ReviewerRole> snapshot() {
-        return Map.copyOf(ROSTER);
+    /** 名册成员列表（按名字排序，界面/命令用） */
+    public static List<Member> members() {
+        List<Member> list = new ArrayList<>(ROSTER.values());
+        list.sort(Comparator.comparing(m -> m.name() == null ? "" : m.name(),
+                String.CASE_INSENSITIVE_ORDER));
+        return list;
     }
 
     /** 是否在名册里（不看角色，助理也算） */
     public static boolean isRosterMember(UUID player) {
         return player != null && ROSTER.containsKey(player);
+    }
+
+    public static ReviewerRole roleOf(UUID player) {
+        Member m = player == null ? null : ROSTER.get(player);
+        return m == null ? null : m.role();
     }
 
     // ---------------- 判定 ----------------
@@ -156,7 +190,7 @@ public final class ReviewerRoster {
         if (isOp(player)) {
             return true;
         }
-        ReviewerRole role = ROSTER.get(player.getUUID());
+        ReviewerRole role = roleOf(player.getUUID());
         if (role != null && role.canFinalize()) {
             return true;
         }
@@ -179,6 +213,6 @@ public final class ReviewerRoster {
 
     /** 当前是否**存在**任何能终审的人（决定「人工优先」是否成立） */
     public static boolean hasAnyFinalizer() {
-        return ROSTER.values().stream().anyMatch(ReviewerRole::canFinalize);
+        return ROSTER.values().stream().anyMatch(m -> m.role().canFinalize());
     }
 }

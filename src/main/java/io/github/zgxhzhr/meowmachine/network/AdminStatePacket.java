@@ -39,7 +39,7 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean se
         LlmConfig cfg = LlmConfig.cached(FMLPaths.CONFIGDIR.get());
         return new AdminStatePacket(cfg.enabled(), cfg.takeover(),
                 ReviewerRoster.isSelfReviewEnabled(), SubmissionQueue.size(),
-                ResultInbox.size(), ReviewerRoster.snapshot().size(), cfg.usable(),
+                ResultInbox.size(), ReviewerRoster.members().size(), cfg.usable(),
                 cfg.endpoint(), cfg.apiKey(), cfg.model());
     }
 

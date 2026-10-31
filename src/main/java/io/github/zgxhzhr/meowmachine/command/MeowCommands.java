@@ -18,9 +18,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -100,7 +98,7 @@ public final class MeowCommands {
             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
             String roleName = StringArgumentType.getString(ctx, "role").toUpperCase();
             ReviewerRole role = ReviewerRole.valueOf(roleName);
-            ReviewerRoster.grant(target.getUUID(), role);
+            ReviewerRoster.grant(target.getUUID(), target.getName().getString(), role);
             ctx.getSource().sendSuccess(() -> Component.translatable(
                     "command.meow_machine.grant", target.getName().getString(), role.name()),
                     true);
@@ -131,7 +129,7 @@ public final class MeowCommands {
      * 而当时名册根本没被加载过，正好也没人发现。现在真列。
      */
     private static int listReviewers(CommandContext<CommandSourceStack> ctx) {
-        Map<UUID, ReviewerRole> roster = ReviewerRoster.snapshot();
+        List<ReviewerRoster.Member> roster = ReviewerRoster.members();
         ctx.getSource().sendSuccess(() -> Component.translatable(
                 "command.meow_machine.selfreview_state",
                 ReviewerRoster.isSelfReviewEnabled() ? "on" : "off"), false);
@@ -144,12 +142,12 @@ public final class MeowCommands {
         }
         ctx.getSource().sendSuccess(() -> Component.translatable(
                 "command.meow_machine.roster_size", roster.size()), false);
-        List<Map.Entry<UUID, ReviewerRole>> entries = new ArrayList<>(roster.entrySet());
-        for (Map.Entry<UUID, ReviewerRole> e : entries) {
-            String uuid = e.getKey().toString().substring(0, 8);
-            ReviewerRole role = e.getValue();
+        for (ReviewerRoster.Member m : roster) {
+            String shown = m.name() == null || m.name().isBlank()
+                    ? m.uuid().toString().substring(0, 8) : m.name();
+            ReviewerRole role = m.role();
             ctx.getSource().sendSuccess(() -> Component.literal(
-                    "  " + uuid + "  " + role.name()), false);
+                    "  " + shown + "  " + role.name()), false);
         }
         return 1;
     }

@@ -3,6 +3,7 @@ package io.github.zgxhzhr.meowmachine.client;
 import io.github.zgxhzhr.meowmachine.network.AdminActionPacket;
 import io.github.zgxhzhr.meowmachine.network.AdminStatePacket;
 import io.github.zgxhzhr.meowmachine.network.Network;
+import io.github.zgxhzhr.meowmachine.network.RosterActionPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -118,19 +119,25 @@ public class AdminScreen extends Screen {
         addRenderableWidget(modelBox);
         y += 26;
 
-        // ---------- 保存（和「待审队列」并排放，省一行高度）----------
-        int half = (FIELD_W - 4) / 2;
+        // ---------- 三颗功能键并排：保存 AI 配置 / 待审队列 / 审核员管理 ----------
+        int third = (FIELD_W - 8) / 3;
+        int thirdRowY = y;
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.admin.save"),
                         b -> Network.CHANNEL.sendToServer(AdminActionPacket.saveAiConfig(
                                 endpointBox.getValue(), apiKeyBox.getValue(), modelBox.getValue())))
-                .bounds(left, y, half, 20).build());
+                .bounds(left, thirdRowY, third, 20).build());
 
         this.openReviewButton = addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.admin.open_review", state.pending()),
                         b -> Network.CHANNEL.sendToServer(
                                 AdminActionPacket.of(AdminActionPacket.Action.OPEN_REVIEW)))
-                .bounds(left + half + 4, y, half, 20).build());
+                .bounds(left + third + 4, thirdRowY, third, 20).build());
+
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.admin.roster", state.reviewers()),
+                        b -> Network.CHANNEL.sendToServer(RosterActionPacket.open()))
+                .bounds(left + (third + 4) * 2, thirdRowY, third, 20).build());
 
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.close"), b -> this.onClose())

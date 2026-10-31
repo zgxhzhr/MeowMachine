@@ -4,7 +4,7 @@ Minecraft **1.20.1 Forge** 模组：内容审核模拟器。玩家用「投稿�
 （本地规则 / 人工 / AI 三路）给出结论，结论通过**梗图弹窗**反馈。梗图全部数据包驱动，加表情不用改代码。
 
 - modid：`meow_machine`
-- 版本：`0.3.0`
+- 版本：`0.4.0`
 - 状态：可构建、可运行，`gradlew runServer` 冒烟测试通过
 
 ---
@@ -127,6 +127,15 @@ data/meow_machine/stickers/<id>.json
 | 单人自审 | OP 开关 | 作者可终审自己的稿（只看到自己那份待审） |
 
 名册：`config/meow_machine_reviewers.json`（开局由 `FMLCommonSetupEvent` 加载，重启不丢）
+名册条目录的是 **uuid + 玩家名 + 角色**（旧格式只存 uuid→角色的也能读，界面会显示短 uuid）。
+
+### 审核员管理界面
+
+审核终端 → 右键 → 后台 → **「审核员管理」**：
+
+- 列出名册（名字 + 角色），每行一个「撤销」
+- 输入**在线玩家名** + 「设为审核员 / 设为助理」即可任命（服务端按名字解析，离线会提示）
+- 名单超过一屏时会显示「还有 N 人未显示」，用命令处理
 
 ## 命令
 
@@ -175,14 +184,14 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 │   └── Submission / SubmissionState / Verdict / ReviewFinding / ReviewResult
 ├── sticker/              梗图定义与注册表（数据包加载）
 ├── ai/                   LlmConfig / LlmClient / AiReviewer
-├── network/              10 个包，不用 MenuType（协议号 3）
-├── client/               编辑 / 梗图 / 审核 / 后台四个 Screen
+├── network/              12 个包，不用 MenuType（协议号 4）
+├── client/               编辑 / 梗图 / 审核 / 后台 / 审核员管理 五个 Screen
 ├── item/                 投稿卷轴、审核终端
 ├── command/MeowCommands  /meow 命令树
 └── dev/SelfTest          手写断言器（43 条，jar 里已排除）
 ```
 
-协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3），版本不一致的客户端会被 Forge 挡在连接阶段。
+协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4），版本不一致的客户端会被 Forge 挡在连接阶段。
 
 ---
 
@@ -190,7 +199,7 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 
 1. **离线结论信箱仍是内存态**（只有「裁决瞬间作者不在线 + 服务器立刻重启」才会丢）
 2. **AI 未做真实 endpoint 验证**（代码完整、失败路径已加固，但没跑通真实 key）
-3. **审核员管理只在命令里**，后台只显示名册人数
+3. **名册界面只能任命「在线玩家」**（GUI 没有实体选择器，按名字解析；离线任命仍走命令）
 4. `helpless` / `kurushi` / `laowu` / `meowmeow` 四张梗图未挂载（启动会 warn）
 5. 物品纹理是程序生成的占位图
 

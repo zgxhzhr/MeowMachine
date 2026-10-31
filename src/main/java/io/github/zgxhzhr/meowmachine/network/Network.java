@@ -18,8 +18,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class Network {
 
-    /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3 加入新建投稿包） */
-    private static final String PROTOCOL = "3";
+    /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4 加入名册管理包） */
+    private static final String PROTOCOL = "4";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -97,6 +97,14 @@ public final class Network {
         CHANNEL.messageBuilder(NoticePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(NoticePacket::encode).decoder(NoticePacket::decode)
                 .consumerMainThread(NoticePacket::handle).add();
+
+        // 审核员管理：名册状态 + 后台操作
+        CHANNEL.messageBuilder(RosterStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(RosterStatePacket::encode).decoder(RosterStatePacket::decode)
+                .consumerMainThread(RosterStatePacket::handle).add();
+        CHANNEL.messageBuilder(RosterActionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RosterActionPacket::encode).decoder(RosterActionPacket::decode)
+                .consumerMainThread(RosterActionPacket::handle).add();
 
         MeowMachine.LOG.info("[喵呜机] 网络通道注册完成（{} 个包，协议 {}）", id, PROTOCOL);
     }
