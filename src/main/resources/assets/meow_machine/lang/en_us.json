@@ -179,5 +179,12 @@
   "gui.meow_machine.reason.3": "Rule 3 Kaomoji/emoji",
   "gui.meow_machine.reason.10": "Rule 10 Duplication/misleading",
   "gui.meow_machine.reason.26": "Rule 26 Heading structure",
-  "gui.meow_machine.detail.ai_opinions": "AI opinion"
+  "gui.meow_machine.detail.ai_opinions": "AI opinion",
+  "gui.meow_machine.table_title": "Insert table",
+  "gui.meow_machine.table_rows": "Rows %s",
+  "gui.meow_machine.table_cols": "Cols %s",
+  "gui.meow_machine.table_header": "Header row: %s",
+  "gui.meow_machine.table_on": "on",
+  "gui.meow_machine.table_off": "off",
+  "gui.meow_machine.table_insert": "Insert"
 }

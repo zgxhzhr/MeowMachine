@@ -141,13 +141,23 @@ public class SubmissionScreen extends Screen {
         if (!editable) {
             return;
         }
-        pushUndo();
+        if (idx != 4) {
+            pushUndo();
+        }
         switch (idx) {
             case 0 -> editor.toggleBold();
             case 1 -> editor.toggleItalic();
             case 2 -> editor.toggleList(false);
             case 3 -> editor.toggleList(true);
-            case 4 -> editor.insertTable(2, 3);
+            case 4 -> {
+                pushUndo();
+                if (this.minecraft != null) {
+                    this.minecraft.setScreen(new TableInsertScreen(this, (r, c, h) -> {
+                        editor.insertTable(r, c, h);
+                        layout();
+                    }));
+                }
+            }
             default -> {
             }
         }

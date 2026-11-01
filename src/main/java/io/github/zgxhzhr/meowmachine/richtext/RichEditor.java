@@ -775,13 +775,22 @@ public final class RichEditor {
         anchor = clamp(anchor);
     }
 
-    /** 插入表格：光标所在块之后插入 rows×cols，光标进第一格 */
+    /** 插入表格（首行表头） */
     public void insertTable(int rows, int cols) {
+        insertTable(rows, cols, true);
+    }
+
+    /**
+     * 插入表格：光标所在块之后插入 rows×cols，光标进第一格。
+     *
+     * @param header 首行是否作为表头（&lt;th&gt;）
+     */
+    public void insertTable(int rows, int cols, boolean header) {
         int r = Math.max(1, rows);
         int c = Math.max(1, cols);
         Block2 table = new Block2(Kind.TABLE);
         table.cols = c;
-        table.header = true;
+        table.header = header;
         for (int i = 0; i < r * c; i++) {
             table.cells.add(new ArrayList<>(List.of(RichDoc.Run.plain(""))));
         }
