@@ -173,5 +173,7 @@
   "item.meow_machine.sticker_helpless.story": "喵呜机小声说：「我不太行……但我真的尽力了。」",
   "item.meow_machine.sticker_kurushi.story": "苦鲁西。喵呜机合上稿子，短暂地理解了痛苦。",
   "item.meow_machine.sticker_laowu.story": "老吴——",
-  "item.meow_machine.sticker_meowmeow.story": "喵呜机听到「喵喵喵」，抬头看了一眼，然后继续看稿。"
+  "item.meow_machine.sticker_meowmeow.story": "喵呜机听到「喵喵喵」，抬头看了一眼，然后继续看稿。",
+  "chat.meow_machine.sticker_progress": "[喵呜机] 获得梗图「%s」（收集 %s/%s）",
+  "chat.meow_machine.sticker_complete": "[喵呜机] 集齐 %s 张梗图！"
 }

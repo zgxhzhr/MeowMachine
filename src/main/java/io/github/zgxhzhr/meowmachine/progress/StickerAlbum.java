@@ -64,8 +64,14 @@ public final class StickerAlbum {
 
         MeowMachine.LOG.info("[喵呜机] 梗图收集 {}/{} player={} sticker={}",
                 owned.size(), COLLECTOR_TARGET, player.getName().getString(), path);
+        // 进度得让玩家看得见：每拿到一张新梗图就报一次（否则不知道离成就有多远）
+        player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
+                "chat.meow_machine.sticker_progress",
+                stack.getHoverName(), owned.size(), COLLECTOR_TARGET));
         if (owned.size() >= COLLECTOR_TARGET) {
             MeowAdvancements.award(player, ADVANCEMENT);
+            player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
+                    "chat.meow_machine.sticker_complete", COLLECTOR_TARGET));
         }
     }
 
