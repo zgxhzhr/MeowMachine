@@ -1,5 +1,16 @@
 {
     "rule": 10,
     "priority": 20,
-    "desc": "内容原地打转、像重复了一遍"
+    "desc": "内容原地打转、像重复了一遍",
+    "food": {
+        "hunger": 5,
+        "saturation": 2.0,
+        "effects": [
+            {
+                "id": "minecraft:slowness",
+                "seconds": 10,
+                "amplifier": 0
+            }
+        ]
+    }
 }

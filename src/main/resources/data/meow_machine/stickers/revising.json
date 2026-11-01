@@ -1,5 +1,16 @@
 {
     "state": "revising",
     "priority": 10,
-    "desc": "需要协改"
+    "desc": "需要协改",
+    "food": {
+        "hunger": 3,
+        "saturation": 0.6,
+        "effects": [
+            {
+                "id": "minecraft:speed",
+                "seconds": 20,
+                "amplifier": 1
+            }
+        ]
+    }
 }

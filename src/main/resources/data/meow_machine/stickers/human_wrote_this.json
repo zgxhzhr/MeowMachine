@@ -1,5 +1,16 @@
 {
     "rule": 31,
     "priority": 20,
-    "desc": "删掉重写式的批改"
+    "desc": "删掉重写式的批改",
+    "food": {
+        "hunger": 2,
+        "saturation": 1.0,
+        "effects": [
+            {
+                "id": "minecraft:health_boost",
+                "seconds": 30,
+                "amplifier": 0
+            }
+        ]
+    }
 }

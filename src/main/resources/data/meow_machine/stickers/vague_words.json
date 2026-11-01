@@ -1,5 +1,16 @@
 {
     "rule": 1,
     "priority": 20,
-    "desc": "主观词句：我觉得/应该/大概"
+    "desc": "主观词句：我觉得/应该/大概",
+    "food": {
+        "hunger": 2,
+        "saturation": 0.6,
+        "effects": [
+            {
+                "id": "minecraft:invisibility",
+                "seconds": 15,
+                "amplifier": 0
+            }
+        ]
+    }
 }

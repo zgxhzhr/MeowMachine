@@ -79,7 +79,33 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
                 int priority = o.has("priority") ? o.get("priority").getAsInt() : 0;
                 String desc = o.has("desc") ? o.get("desc").getAsString() : "";
 
-                loaded.add(new Sticker(id, texture, state, rule, fallback, priority, desc));
+                int hunger = 0;
+                float saturation = 0f;
+                String special = "";
+                java.util.List<Sticker.FoodEffect> foodEffects = new java.util.ArrayList<>();
+                if (o.has("food") && o.get("food").isJsonObject()) {
+                    com.google.gson.JsonObject food = o.getAsJsonObject("food");
+                    if (food.has("hunger")) {
+                        hunger = food.get("hunger").getAsInt();
+                    }
+                    if (food.has("saturation")) {
+                        saturation = food.get("saturation").getAsFloat();
+                    }
+                    if (food.has("special")) {
+                        special = food.get("special").getAsString();
+                    }
+                    if (food.has("effects") && food.get("effects").isJsonArray()) {
+                        for (com.google.gson.JsonElement el : food.getAsJsonArray("effects")) {
+                            com.google.gson.JsonObject eo = el.getAsJsonObject();
+                            ResourceLocation eff = new ResourceLocation(eo.get("id").getAsString());
+                            int sec = eo.has("seconds") ? eo.get("seconds").getAsInt() : 10;
+                            int amp = eo.has("amplifier") ? eo.get("amplifier").getAsInt() : 0;
+                            foodEffects.add(new Sticker.FoodEffect(eff, sec, amp));
+                        }
+                    }
+                }
+                loaded.add(new Sticker(id, texture, state, rule, fallback, priority, desc,
+                        hunger, saturation, special, java.util.List.copyOf(foodEffects)));
                 if (!extraRules.isEmpty()) {
                     EXTRA_RULES.put(id, extraRules);
                 }
@@ -145,6 +171,16 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
      * <p>**同一状态可能有多张图**（例如「通过」有一整个系列），此时**随机取一张**，
      * 避免玩家反复看到同一条反馈。数据包里加新图会自动进池，不用改代码。
      */
+    /** 按 id 查（食用效果用） */
+    public static Optional<Sticker> byId(String stickerId) {
+        if (stickerId == null || stickerId.isBlank()) {
+            return Optional.empty();
+        }
+        ResourceLocation rl = ResourceLocation.tryParse(
+                stickerId.contains(":") ? stickerId : "meow_machine:" + stickerId);
+        return rl == null ? Optional.empty() : Optional.ofNullable(BY_ID.get(rl));
+    }
+
     public static Optional<Sticker> forState(String state) {
         if (state == null) {
             return Optional.empty();

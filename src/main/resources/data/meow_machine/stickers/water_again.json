@@ -1,5 +1,16 @@
 {
     "rule": 18,
     "priority": 20,
-    "desc": "又是灌水、凑字数"
+    "desc": "又是灌水、凑字数",
+    "food": {
+        "hunger": 4,
+        "saturation": 1.6,
+        "effects": [
+            {
+                "id": "minecraft:regeneration",
+                "seconds": 5,
+                "amplifier": 0
+            }
+        ]
+    }
 }

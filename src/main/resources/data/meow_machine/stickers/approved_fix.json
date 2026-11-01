@@ -1,5 +1,16 @@
 {
     "state": "approved",
     "priority": 10,
-    "desc": "有小瑕疵但整体不错，通过"
+    "desc": "有小瑕疵但整体不错，通过",
+    "food": {
+        "hunger": 5,
+        "saturation": 4.0,
+        "effects": [
+            {
+                "id": "minecraft:strength",
+                "seconds": 30,
+                "amplifier": 0
+            }
+        ]
+    }
 }

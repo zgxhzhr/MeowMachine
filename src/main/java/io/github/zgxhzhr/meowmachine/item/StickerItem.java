@@ -35,11 +35,27 @@ public class StickerItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, net.minecraft.world.entity.player.Player player,
                                                   InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        boolean view = player.isShiftKeyDown();
         if (level.isClientSide) {
-            // 客户端才需要界面；服务端保持无副作用
-            net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(
-                    net.minecraftforge.api.distmarker.Dist.CLIENT,
-                    () -> () -> io.github.zgxhzhr.meowmachine.client.StickerViewer.open(stickerId));
+            // Shift+右键：看大图；普通右键：吃（服务端结算）
+            if (view) {
+                net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(
+                        net.minecraftforge.api.distmarker.Dist.CLIENT,
+                        () -> () -> io.github.zgxhzhr.meowmachine.client.StickerViewer.open(stickerId));
+            }
+            return InteractionResultHolder.success(stack);
+        }
+        if (view) {
+            return InteractionResultHolder.success(stack);
+        }
+        if (player instanceof net.minecraft.server.level.ServerPlayer sp
+                && io.github.zgxhzhr.meowmachine.sticker.StickerFood.eat(sp, stickerId)) {
+            if (!sp.isCreative()) {
+                stack.shrink(1);
+            }
+            sp.level().playSound(null, sp.blockPosition(),
+                    net.minecraft.sounds.SoundEvents.GENERIC_EAT,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
         }
         return InteractionResultHolder.success(stack);
     }
@@ -78,6 +94,15 @@ public class StickerItem extends Item {
         for (String line : wrap(story, 20)) {
             tooltip.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
         }
+        String food = Component.translatable(
+                "item.meow_machine.sticker_" + stickerId + ".food").getString();
+        if (!food.isEmpty() && !food.startsWith("item.meow_machine")) {
+            for (String line : wrap(food, 22)) {
+                tooltip.add(Component.literal(line).withStyle(ChatFormatting.DARK_GREEN));
+            }
+        }
+        tooltip.add(Component.translatable("item.meow_machine.sticker_hint")
+                .withStyle(ChatFormatting.DARK_GRAY));
         super.appendHoverText(stack, level, tooltip, flag);
     }
 }

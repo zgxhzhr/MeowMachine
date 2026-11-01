@@ -1,5 +1,21 @@
 {
     "state": "approved",
     "priority": 10,
-    "desc": "普通通过"
+    "desc": "普通通过",
+    "food": {
+        "hunger": 6,
+        "saturation": 7.2,
+        "effects": [
+            {
+                "id": "minecraft:resistance",
+                "seconds": 30,
+                "amplifier": 0
+            },
+            {
+                "id": "minecraft:regeneration",
+                "seconds": 30,
+                "amplifier": 0
+            }
+        ]
+    }
 }

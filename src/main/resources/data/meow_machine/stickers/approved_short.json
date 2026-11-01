@@ -1,5 +1,16 @@
 {
     "state": "approved",
     "priority": 10,
-    "desc": "简短但合规，通过"
+    "desc": "简短但合规，通过",
+    "food": {
+        "hunger": 4,
+        "saturation": 2.4,
+        "effects": [
+            {
+                "id": "minecraft:jump_boost",
+                "seconds": 30,
+                "amplifier": 1
+            }
+        ]
+    }
 }

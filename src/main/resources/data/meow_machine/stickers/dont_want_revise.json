@@ -1,5 +1,16 @@
 {
     "state": "returned",
     "priority": 10,
-    "desc": "打回，而且不想让对方再改"
+    "desc": "打回，而且不想让对方再改",
+    "food": {
+        "hunger": 4,
+        "saturation": 1.2,
+        "effects": [
+            {
+                "id": "minecraft:resistance",
+                "seconds": 20,
+                "amplifier": 0
+            }
+        ]
+    }
 }

@@ -2,6 +2,8 @@ package io.github.zgxhzhr.meowmachine.sticker;
 
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.List;
+
 /**
  * 一张梗图的定义。**完全由数据包提供**，Java 里不出现任何具体表情 id。
  *
@@ -25,7 +27,18 @@ import net.minecraft.resources.ResourceLocation;
  */
 public record Sticker(ResourceLocation id, ResourceLocation texture,
                       String state, Integer rule, boolean fallback, int priority,
-                      String desc) {
+                      String desc,
+                      int hunger, float saturation, String special,
+                      List<FoodEffect> foodEffects) {
+
+    /** 食用时附加的状态效果 */
+    public record FoodEffect(ResourceLocation effect, int seconds, int amplifier) {
+    }
+
+    /** 是否可食用（数据包写了 food 且 hunger>0 或有效果） */
+    public boolean edible() {
+        return hunger > 0 || !foodEffects.isEmpty() || (special != null && !special.isBlank());
+    }
 
     /** 解析后的实际纹理路径 */
     public ResourceLocation resolvedTexture() {

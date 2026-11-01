@@ -1,5 +1,16 @@
 {
     "rule": 12,
     "priority": 20,
-    "desc": "句末没有标点"
+    "desc": "句末没有标点",
+    "food": {
+        "hunger": 3,
+        "saturation": 1.8,
+        "effects": [
+            {
+                "id": "minecraft:water_breathing",
+                "seconds": 30,
+                "amplifier": 0
+            }
+        ]
+    }
 }

@@ -1,5 +1,16 @@
 {
     "rule": 23,
     "priority": 20,
-    "desc": "只说「最新版本」这类模糊版本"
+    "desc": "只说「最新版本」这类模糊版本",
+    "food": {
+        "hunger": 4,
+        "saturation": 3.2,
+        "effects": [
+            {
+                "id": "minecraft:luck",
+                "seconds": 20,
+                "amplifier": 0
+            }
+        ]
+    }
 }

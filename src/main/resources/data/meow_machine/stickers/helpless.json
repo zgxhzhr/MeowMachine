@@ -1,4 +1,16 @@
 {
     "priority": 0,
-    "desc": "无奈、自嘲「我不太行」，适合对方改了好几轮还是不行"
+    "desc": "无奈、自嘲「我不太行」，适合对方改了好几轮还是不行",
+    "food": {
+        "hunger": 3,
+        "saturation": 1.4,
+        "special": "random_line",
+        "effects": [
+            {
+                "id": "minecraft:invisibility",
+                "seconds": 45,
+                "amplifier": 0
+            }
+        ]
+    }
 }

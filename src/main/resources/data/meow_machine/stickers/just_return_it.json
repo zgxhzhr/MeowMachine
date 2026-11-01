@@ -1,5 +1,17 @@
 {
     "fallback": true,
     "priority": 100,
-    "desc": "说不出依据，直接打回"
+    "desc": "说不出依据，直接打回",
+    "food": {
+        "hunger": 1,
+        "saturation": 0.0,
+        "special": "clear_negative",
+        "effects": [
+            {
+                "id": "minecraft:resistance",
+                "seconds": 5,
+                "amplifier": 1
+            }
+        ]
+    }
 }

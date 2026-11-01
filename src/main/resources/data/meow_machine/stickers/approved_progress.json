@@ -1,5 +1,16 @@
 {
     "state": "approved",
     "priority": 10,
-    "desc": "有进步，通过"
+    "desc": "有进步，通过",
+    "food": {
+        "hunger": 6,
+        "saturation": 6.0,
+        "effects": [
+            {
+                "id": "minecraft:health_boost",
+                "seconds": 60,
+                "amplifier": 0
+            }
+        ]
+    }
 }

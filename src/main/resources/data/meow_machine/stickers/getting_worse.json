@@ -1,5 +1,10 @@
 {
     "rule": 29,
     "priority": 20,
-    "desc": "越改越倒退"
+    "desc": "越改越倒退",
+    "food": {
+        "hunger": 3,
+        "saturation": 0.8,
+        "special": "slow_mobs"
+    }
 }

@@ -1,5 +1,16 @@
 {
     "rule": 19,
     "priority": 20,
-    "desc": "标点堆叠（？？？/。。。）"
+    "desc": "标点堆叠（？？？/。。。）",
+    "food": {
+        "hunger": 6,
+        "saturation": 2.8,
+        "effects": [
+            {
+                "id": "minecraft:resistance",
+                "seconds": 10,
+                "amplifier": 0
+            }
+        ]
+    }
 }

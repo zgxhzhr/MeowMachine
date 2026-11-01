@@ -1,4 +1,21 @@
 {
     "priority": 0,
-    "desc": "痛苦、难受（苦鲁西），适合内容糟糕到让人看着难受"
+    "desc": "痛苦、难受（苦鲁西），适合内容糟糕到让人看着难受",
+    "food": {
+        "hunger": 2,
+        "saturation": 0.2,
+        "special": "random_line",
+        "effects": [
+            {
+                "id": "minecraft:resistance",
+                "seconds": 30,
+                "amplifier": 0
+            },
+            {
+                "id": "minecraft:slowness",
+                "seconds": 30,
+                "amplifier": 0
+            }
+        ]
+    }
 }

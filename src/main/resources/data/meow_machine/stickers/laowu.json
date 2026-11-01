@@ -1,4 +1,9 @@
 {
     "priority": 0,
-    "desc": "崩溃地喊人求救「老吴——」，适合一眼就废、无从下手的稿子"
+    "desc": "崩溃地喊人求救「老吴——」，适合一眼就废、无从下手的稿子",
+    "food": {
+        "hunger": 4,
+        "saturation": 1.5,
+        "special": "glow_mobs"
+    }
 }

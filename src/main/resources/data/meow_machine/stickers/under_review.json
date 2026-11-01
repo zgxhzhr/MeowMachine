@@ -1,5 +1,16 @@
 {
     "state": "submitted",
     "priority": 10,
-    "desc": "已提交，正在排队等人工"
+    "desc": "已提交，正在排队等人工",
+    "food": {
+        "hunger": 2,
+        "saturation": 0.4,
+        "effects": [
+            {
+                "id": "minecraft:speed",
+                "seconds": 30,
+                "amplifier": 0
+            }
+        ]
+    }
 }

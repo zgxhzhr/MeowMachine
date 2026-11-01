@@ -1,5 +1,21 @@
 {
     "rule": 7,
     "priority": 30,
-    "desc": "AI 泔水、机器味"
+    "desc": "AI 泔水、机器味",
+    "food": {
+        "hunger": 6,
+        "saturation": 4.8,
+        "effects": [
+            {
+                "id": "minecraft:night_vision",
+                "seconds": 60,
+                "amplifier": 0
+            },
+            {
+                "id": "minecraft:saturation",
+                "seconds": 60,
+                "amplifier": 0
+            }
+        ]
+    }
 }

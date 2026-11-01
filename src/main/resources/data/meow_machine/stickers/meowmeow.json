@@ -1,4 +1,21 @@
 {
     "priority": 0,
-    "desc": "卖萌、装傻（喵喵喵），适合对方明显在敷衍或装糊涂"
+    "desc": "卖萌、装傻（喵喵喵），适合对方明显在敷衍或装糊涂",
+    "food": {
+        "hunger": 7,
+        "saturation": 6.0,
+        "special": "random_line",
+        "effects": [
+            {
+                "id": "minecraft:jump_boost",
+                "seconds": 60,
+                "amplifier": 1
+            },
+            {
+                "id": "minecraft:speed",
+                "seconds": 60,
+                "amplifier": 0
+            }
+        ]
+    }
 }

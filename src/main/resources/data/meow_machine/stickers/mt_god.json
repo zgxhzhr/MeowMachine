@@ -1,5 +1,17 @@
 {
     "rule": 6,
     "priority": 20,
-    "desc": "机翻仙人"
+    "desc": "机翻仙人",
+    "food": {
+        "hunger": 5,
+        "saturation": 2.4,
+        "special": "xp10",
+        "effects": [
+            {
+                "id": "minecraft:luck",
+                "seconds": 60,
+                "amplifier": 0
+            }
+        ]
+    }
 }
