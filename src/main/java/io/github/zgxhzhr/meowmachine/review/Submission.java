@@ -16,11 +16,12 @@ import java.util.UUID;
  * @param revision   第几版（每次编辑 +1）
  */
 public record Submission(UUID id, UUID authorUuid, String authorName,
-                         String title, String body, SubmissionState state, int revision) {
+                         String title, String body, SubmissionState state, int revision,
+                         boolean reEdit) {
 
     public static Submission draft(UUID authorUuid, String authorName) {
         return new Submission(UUID.randomUUID(), authorUuid, authorName, "", "",
-                SubmissionState.DRAFT, 0);
+                SubmissionState.DRAFT, 0, false);
     }
 
     /** 改内容：版本号 +1，状态回到 DRAFT（作者改完要再提交） */
@@ -28,13 +29,13 @@ public record Submission(UUID id, UUID authorUuid, String authorName,
         return new Submission(id, authorUuid, authorName,
                 newTitle == null ? "" : newTitle,
                 newBody == null ? "" : newBody,
-                SubmissionState.DRAFT, revision + 1);
+                SubmissionState.DRAFT, revision + 1, reEdit);
     }
 
     /** 提交审核 */
     public Submission submit() {
         return new Submission(id, authorUuid, authorName, title, body,
-                SubmissionState.SUBMITTED, revision);
+                SubmissionState.SUBMITTED, revision, reEdit);
     }
 
     /**
@@ -52,7 +53,13 @@ public record Submission(UUID id, UUID authorUuid, String authorName,
             case REVISE -> SubmissionState.REVISING;
             case RETURN -> SubmissionState.RETURNED;
         };
-        return new Submission(id, authorUuid, authorName, title, body, next, revision);
+        return new Submission(id, authorUuid, authorName, title, body, next, revision, reEdit);
+    }
+
+    /** 标记「这是一次对已通过条目的再编辑」，成就与判定都靠它区分 */
+    public Submission withReEdit(boolean flag) {
+        return flag == reEdit ? this
+                : new Submission(id, authorUuid, authorName, title, body, state, revision, flag);
     }
 
     /** 内容是否为空（空稿不允许提交） */

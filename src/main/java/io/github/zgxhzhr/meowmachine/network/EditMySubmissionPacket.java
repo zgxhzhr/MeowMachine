@@ -67,7 +67,8 @@ public record EditMySubmissionPacket(String fullId) {
                 if (hist.isPresent() && !"approved".equals(hist.get().state())) {
                     Submission restore = new Submission(uuid, player.getUUID(),
                             player.getName().getString(), hist.get().title(),
-                            hist.get().body(), SubmissionState.DRAFT, hist.get().revision() + 1);
+                            hist.get().body(), SubmissionState.DRAFT, hist.get().revision() + 1,
+                            false);
                     DraftStore.save(player, restore);
                     Network.CHANNEL.sendTo(
                             new OpenEditorPacket(restore.title(), restore.body(), "draft"),
@@ -81,7 +82,7 @@ public record EditMySubmissionPacket(String fullId) {
                     Submission restore = new Submission(uuid, player.getUUID(),
                             player.getName().getString(), approved.get().title(),
                             approved.get().body(), SubmissionState.DRAFT,
-                            approved.get().revision() + 1);
+                            approved.get().revision() + 1, true);
                     DraftStore.save(player, restore);
                     Network.CHANNEL.sendTo(
                             new OpenEditorPacket(restore.title(), restore.body(), "draft"),

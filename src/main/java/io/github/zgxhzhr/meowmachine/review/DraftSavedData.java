@@ -56,13 +56,16 @@ public final class DraftSavedData extends SavedData {
                 UUID author = UUID.fromString(t.getString("author"));
                 UUID id = UUID.fromString(t.getString("id"));
                 SubmissionState state;
+                boolean reEdit = t.getBoolean("re_edit");
                 try {
                     state = SubmissionState.valueOf(t.getString("state"));
                 } catch (IllegalArgumentException e) {
                     state = SubmissionState.DRAFT;
+                    reEdit = false;
                 }
                 Submission sub = new Submission(id, author, t.getString("authorName"),
-                        t.getString("title"), t.getString("body"), state, t.getInt("revision"));
+                        t.getString("title"), t.getString("body"), state,
+                        t.getInt("revision"), reEdit);
                 data.drafts.put(author, sub);
             } catch (RuntimeException e) {
                 // 单条坏了不该让整份存档读不出来

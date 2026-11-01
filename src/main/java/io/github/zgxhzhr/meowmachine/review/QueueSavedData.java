@@ -54,24 +54,26 @@ public final class QueueSavedData extends SavedData {
 
     public static QueueSavedData load(CompoundTag tag) {
         QueueSavedData data = new QueueSavedData();
-        ListTag list = tag.getList("queue", Tag.TAG_COMPOUND);
+        ListTag list = tag.getList("entries", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag t = list.getCompound(i);
             try {
-                UUID author = UUID.fromString(t.getString("author"));
                 UUID id = UUID.fromString(t.getString("id"));
                 SubmissionState state;
+                boolean reEdit = t.getBoolean("re_edit");
                 try {
                     state = SubmissionState.valueOf(t.getString("state"));
                 } catch (IllegalArgumentException e) {
                     state = SubmissionState.SUBMITTED;
+                    reEdit = false;
                 }
-                Submission sub = new Submission(id, author, t.getString("authorName"),
-                        t.getString("title"), t.getString("body"), state, t.getInt("revision"));
+                Submission sub = new Submission(id, UUID.fromString(t.getString("author")),
+                        t.getString("authorName"), t.getString("title"), t.getString("body"),
+                        state, t.getInt("revision"), reEdit);
                 data.entries.put(id, new SubmissionQueue.Entry(sub, t.getLong("submittedAt")));
             } catch (RuntimeException e) {
                 io.github.zgxhzhr.meowmachine.MeowMachine.LOG.warn(
-                        "[喵呜机] 待审队列存档里有坏条目，已跳过: {}", e.toString());
+                        "[喵呜机] 队列存档里有坏条目，已跳过: {}", e.toString());
             }
         }
         return data;

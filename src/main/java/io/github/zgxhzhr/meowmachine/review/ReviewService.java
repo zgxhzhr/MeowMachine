@@ -125,7 +125,9 @@ public final class ReviewService {
         var prevApproved = ApprovedIndex.find(sub.id());
         if (prevApproved.isPresent()) {
             var diff = EditDiffs.of(prevApproved.get().body(), sub.body());
+            boolean trivialEdit = false;
             if (diff.trivial()) {
+                trivialEdit = true;
                 localFindings.add(0, new ReviewFinding(10,
                         "只改动了 " + Math.abs(diff.newChars() - diff.oldChars()) + " 字（新增 "
                                 + diff.added() + " 行 / 删除 " + diff.removed() + " 行）",
@@ -136,6 +138,18 @@ public final class ReviewService {
                         "删除 " + diff.removed() + " 行 / 新增 " + diff.added() + " 行",
                         "越改越倒退：这次删得比加得多，或总字数明显缩水"));
             }
+        }
+
+        // 改动过小的再编辑：直接打回，不进人工队列（原稿本来就合规，AI 也会判通过）
+        boolean truncated = localFindings.stream()
+                .anyMatch(f -> f.ruleId() != null && f.ruleId() == 10
+                        && f.reason() != null && f.reason().contains("实质未修改"));
+        if (truncated) {
+            String sticker = pickSticker(Verdict.RETURN, localFindings);
+            MeowMachine.LOG.info("[喵呜机] 再编辑改动过小，直接打回 author={}",
+                    author.getName().getString());
+            return CompletableFuture.completedFuture(
+                    ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
         // ① 有能终审的人、且没开「AI 接管」→ 入人工队列。

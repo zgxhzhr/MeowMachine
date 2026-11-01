@@ -110,10 +110,10 @@ public record SubmitPacket(String title, String body) {
             c.setPacketHandled(true);
             return;
         }
-        if (io.github.zgxhzhr.meowmachine.review.ApprovedIndex.isApproved(existing.id())) {
-            io.github.zgxhzhr.meowmachine.progress.StatsAchievements.onEditApproved(player);
-        }
-        Submission sub = candidate.submit();
+        // 注意：这里只标记「这是一次再编辑」，成就等真正通过之后再发
+        boolean wasApprovedEdit = io.github.zgxhzhr.meowmachine.review.ApprovedIndex
+                .isApproved(existing.id());
+        Submission sub = candidate.submit().withReEdit(wasApprovedEdit || candidate.reEdit());
         DraftStore.save(player, sub);
         io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                 player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_SUBMIT);
@@ -140,6 +140,11 @@ public record SubmitPacket(String title, String body) {
                             io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated);
                             io.github.zgxhzhr.meowmachine.review.ApprovedIndex.record(updated);
                             if (updated.state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.APPROVED) {
+                                if (updated.reEdit()) {
+                                    // 只有「再编辑并通过」才算修改类成就（提交时不算）
+                                    io.github.zgxhzhr.meowmachine.progress.StatsAchievements
+                                            .onEditApproved(player);
+                                }
                                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                                         player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_APPROVED);
                                 if (wasReturned) {

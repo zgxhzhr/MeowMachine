@@ -157,6 +157,9 @@ public final class ReviewActions {
         if (app.authorUuid() != null && serverPlayerOf(app.authorUuid()) != null) {
             var author = serverPlayerOf(app.authorUuid());
             if (verdict == Verdict.PASS) {
+                if (app.reEdit()) {
+                    io.github.zgxhzhr.meowmachine.progress.StatsAchievements.onEditApproved(author);
+                }
                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_approved");
                 if (sub.state() == SubmissionState.RETURNED
                     || sub.state() == SubmissionState.REVISING) {
