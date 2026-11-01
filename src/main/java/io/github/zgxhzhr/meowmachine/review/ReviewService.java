@@ -109,21 +109,23 @@ public final class ReviewService {
             });
         }
 
-        // ① 本地规则先判（不花 token，判得准的部分直接出结论）
-        if (!localFindings.isEmpty()) {
-            String sticker = pickSticker(Verdict.RETURN, localFindings);
-            MeowMachine.LOG.info("[喵呜机] 本地规则命中 {} 条，自动打回 author={}",
-                    localFindings.size(), author.getName().getString());
-            return CompletableFuture.completedFuture(
-                    ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
-        }
-
-        // ② 有能终审的人、且没开「AI 接管」→ 入队等人工裁决
+        // ① 有能终审的人、且没开「AI 接管」→ 入人工队列。
+        //    注意顺序：**人工优先于本地规则**。本地规则命中也要交给审核员，
+        //    它只是确定性预检，不能替人拍板（审核详情页会把预检结果列给审核员看）。
         if (hasHumanFinalizer(server)) {
             SubmissionQueue.enqueue(sub, System.currentTimeMillis());
             return CompletableFuture.completedFuture(
                     ReviewResult.of(Verdict.PENDING, List.of(), "pending-human",
                             StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse("")));
+        }
+
+        // ② 没人能终审 → 本地规则先判（不花 token，判得准的部分直接出结论）
+        if (!localFindings.isEmpty()) {
+            String sticker = pickSticker(Verdict.RETURN, localFindings);
+            MeowMachine.LOG.info("[喵呜机] 无人工可审，本地规则命中 {} 条，自动打回 author={}",
+                    localFindings.size(), author.getName().getString());
+            return CompletableFuture.completedFuture(
+                    ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
         // ③ 没人审 → AI
