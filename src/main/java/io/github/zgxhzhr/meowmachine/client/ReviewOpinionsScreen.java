@@ -52,7 +52,9 @@ public class ReviewOpinionsScreen extends Screen {
         lines.add("—— " + Component.translatable(
                 "gui.meow_machine.detail.local_rules").getString() + " ——");
         List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
-                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(), entry.body());
+                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(),
+                        io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(entry.body()),
+                        entry.body());
         if (pre.isEmpty()) {
             lines.add(none);
         } else {

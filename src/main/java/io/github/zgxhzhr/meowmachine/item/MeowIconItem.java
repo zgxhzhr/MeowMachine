@@ -19,7 +19,9 @@ public class MeowIconItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!level.isClientSide) {
+        if (level.isClientSide) {
+            // 只在客户端发包：服务端调用 sendToServer 会去拿 Minecraft.getInstance()，
+            // 专用服务器上直接 NoClassDefFoundError（审查 P0-8）
             Network.CHANNEL.sendToServer(new ApprovedListRequestPacket());
         }
         return InteractionResultHolder.success(stack);

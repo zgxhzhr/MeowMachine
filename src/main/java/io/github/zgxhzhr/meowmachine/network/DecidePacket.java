@@ -23,7 +23,7 @@ public record DecidePacket(String fullId, String verdict, int ruleId, String not
     public static void encode(DecidePacket msg, FriendlyByteBuf buf) {
         buf.writeUtf(msg.fullId, 40);
         buf.writeUtf(msg.verdict, 16);
-        buf.writeVarInt(msg.ruleId);
+        buf.writeVarInt(msg.ruleId >= -1 && msg.ruleId <= 35 ? msg.ruleId : -1);
         buf.writeUtf(msg.note == null ? "" : msg.note, 200);
         buf.writeUtf(msg.stickerId == null ? "" : msg.stickerId, 64);
     }

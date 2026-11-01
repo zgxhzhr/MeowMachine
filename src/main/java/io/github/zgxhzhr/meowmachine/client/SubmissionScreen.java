@@ -47,6 +47,8 @@ public class SubmissionScreen extends Screen {
     private RichEditor editor;
     private EditBox titleBox;
     private boolean submitted = false;
+    /** 正文超过上限时只提示一次 */
+    private boolean truncatedNotified = false;
 
     private int panelLeft;
     private int bodyTop;
@@ -686,7 +688,24 @@ public class SubmissionScreen extends Screen {
 
     private String bodyHtml() {
         String html = RichHtml.toHtml(editor.doc());
-        return html.length() <= Network.MAX_BODY_LEN ? html : html.substring(0, Network.MAX_BODY_LEN);
+        if (html.length() <= Network.MAX_BODY_LEN) {
+            return html;
+        }
+        // 硬切会把标签切一半（`<td` 只剩开头），重开编辑器整张表消失（审查 P0-3）。
+        // 这里回退到最后一个 '>'，保证切点落在标签边界，并提示一次。
+        int cut = html.lastIndexOf('>', Network.MAX_BODY_LEN);
+        if (cut < Network.MAX_BODY_LEN / 2) {
+            cut = Network.MAX_BODY_LEN;
+        }
+        if (!truncatedNotified) {
+            truncatedNotified = true;
+            if (this.minecraft != null && this.minecraft.player != null) {
+                this.minecraft.player.displayClientMessage(
+                        net.minecraft.network.chat.Component.translatable(
+                                "chat.meow_machine.body_truncated"), false);
+            }
+        }
+        return html.substring(0, cut);
     }
 
     @Override

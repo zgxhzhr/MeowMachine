@@ -89,6 +89,10 @@ public final class ReviewActions {
         SubmissionQueue.claim(sub.id());
 
         // 原因：审核员可以选规则号（决定用哪张梗图）+ 补一句话
+        // 规则号来自客户端，越界值直接当「说不出依据」处理，避免后续 writeUtf 崩包
+        if (ruleId < -1 || ruleId > 35) {
+            ruleId = -1;
+        }
         List<ReviewFinding> findings = List.of();
         if (ruleId >= 0) {
             String reason = (note == null || note.isBlank())

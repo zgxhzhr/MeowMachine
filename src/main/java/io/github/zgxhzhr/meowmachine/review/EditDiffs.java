@@ -53,7 +53,10 @@ public final class EditDiffs {
         if (body == null) {
             return out;
         }
-        for (String raw : body.split("\n")) {
+        // 编辑器输出的 HTML 常常是单行（toHtml 不产生换行），先按标签换成换行再比，
+        // 否则行级对比恒为 0/0，「删得比加得多」这条判据等于死代码（审查 P1）
+        String text = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(body);
+        for (String raw : text.split("\n")) {
             String t = strip(raw).trim();
             if (!t.isEmpty()) {
                 out.add(t);

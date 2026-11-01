@@ -118,6 +118,16 @@ public final class LocalRules {
      * @return 发现列表；空列表表示本地规则没查出错
      */
     public static List<ReviewFinding> check(String title, String body) {
+        return check(title, body, null);
+    }
+
+    /**
+     * 带原始正文（HTML）的检查：编辑器的表格/列表会让「句末标点」「压平检测」误判，
+     * 有真结构时这两项改用段落文本 / 直接跳过。
+     *
+     * @param html 原始正文（{@code body} 是剥好的纯文本）；null 表示没有结构信息
+     */
+    public static List<ReviewFinding> check(String title, String body, String html) {
         List<ReviewFinding> out = new ArrayList<>();
         String t = title == null ? "" : title;
         String b = body == null ? "" : body;
@@ -143,8 +153,12 @@ public final class LocalRules {
             }
         }
 
-        // 第 12 条 句末标点
-        String trimmedBody = b.strip();
+        // 第 12 条 句末标点：有列表/表格时只看段落（单元格本来就不带句号）
+        boolean structured = io.github.zgxhzhr.meowmachine.richtext.RichHtml.hasStructure(html);
+        String prose = structured
+                ? io.github.zgxhzhr.meowmachine.richtext.RichHtml.proseText(html)
+                : b;
+        String trimmedBody = prose.strip();
         if (!trimmedBody.isEmpty() && !ENDS_WITH_PUNCT.matcher(trimmedBody).find()) {
             out.add(new ReviewFinding(12, tail(trimmedBody),
                     "最后一句没有句末标点"));
@@ -195,7 +209,8 @@ public final class LocalRules {
 
         // 第 22 条 Markdown 残留 / 粘贴压平（全文样式异常）
         checkMarkdownResidue(all, out);
-        if (out.stream().noneMatch(f -> f.ruleId() != null && f.ruleId() == 22)) {
+        if (!structured
+                && out.stream().noneMatch(f -> f.ruleId() != null && f.ruleId() == 22)) {
             checkFlattenedTable(b, out);
         }
 
@@ -318,7 +333,7 @@ public final class LocalRules {
     private static void checkTitleStructure(String text, String body, List<ReviewFinding> out) {
         if (!TITLE_TAG.matcher(text).find()) {
             // 长稿没有 [h1=] 之类的结构：百科正文要求分节，整篇流水账过不了排版
-            if (body.replaceAll("\s", "").length() >= MIN_STRUCTURED_CHARS) {
+            if (body.replaceAll("\\s", "").length() >= MIN_STRUCTURED_CHARS) {
                 out.add(new ReviewFinding(26, head(body.strip()),
                         "正文较长但没有 [h1=] 等标题结构，百科正文要分节"));
             }

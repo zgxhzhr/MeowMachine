@@ -16,7 +16,8 @@ public final class ApprovedSavedData extends SavedData {
 
     public static final String DATA_NAME = "meow_machine_approved";
 
-    public record Entry(UUID id, String title, String author, String body, int revision, long time) {
+    public record Entry(UUID id, String title, String author, String authorUuid,
+                        String body, int revision, long time) {
     }
 
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
@@ -46,7 +47,8 @@ public final class ApprovedSavedData extends SavedData {
             try {
                 UUID id = UUID.fromString(t.getString("id"));
                 d.entries.put(id, new Entry(id, t.getString("title"), t.getString("author"),
-                        t.getString("body"), t.getInt("revision"), t.getLong("time")));
+                        t.getString("author_uuid"), t.getString("body"),
+                        t.getInt("revision"), t.getLong("time")));
             } catch (RuntimeException e) {
                 MeowMachine.LOG.warn("[喵呜机] 已通过索引里有坏条目，已跳过: {}", e.toString());
             }
@@ -62,6 +64,7 @@ public final class ApprovedSavedData extends SavedData {
             t.putString("id", e.id().toString());
             t.putString("title", e.title() == null ? "" : e.title());
             t.putString("author", e.author() == null ? "" : e.author());
+            t.putString("author_uuid", e.authorUuid() == null ? "" : e.authorUuid());
             t.putString("body", e.body() == null ? "" : e.body());
             t.putInt("revision", e.revision());
             t.putLong("time", e.time());

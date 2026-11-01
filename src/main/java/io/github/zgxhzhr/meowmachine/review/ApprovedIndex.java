@@ -36,7 +36,7 @@ public final class ApprovedIndex {
             if (!"approved".equals(r.state()) || store.entries().containsKey(r.id())) {
                 continue;
             }
-            store.put(new ApprovedSavedData.Entry(r.id(), r.title(), "", r.body(),
+            store.put(new ApprovedSavedData.Entry(r.id(), r.title(), "", "", r.body(),
                     r.revision(), r.time()));
             added++;
         }
@@ -55,7 +55,17 @@ public final class ApprovedIndex {
         if (store == null || sub == null || sub.state() != SubmissionState.APPROVED) {
             return;
         }
-        store.put(new ApprovedSavedData.Entry(sub.id(), sub.title(), sub.authorName(),
+        // 已通过条目允许别人提交编辑：内容更新，但**原作者署名保留**
+        // （否则编辑者过审后会把原作者的署名顶掉 —— 审查 P0-5）
+        String author = sub.authorName();
+        String authorUuid = sub.authorUuid() == null ? "" : sub.authorUuid().toString();
+        ApprovedSavedData.Entry old = store.entries().get(sub.id());
+        if (old != null && old.authorUuid() != null && !old.authorUuid().isBlank()
+                && !old.authorUuid().equals(authorUuid)) {
+            author = old.author();
+            authorUuid = old.authorUuid();
+        }
+        store.put(new ApprovedSavedData.Entry(sub.id(), sub.title(), author, authorUuid,
                 sub.body(), sub.revision(), System.currentTimeMillis()));
     }
 

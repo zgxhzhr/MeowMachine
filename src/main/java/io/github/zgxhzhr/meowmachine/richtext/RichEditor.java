@@ -516,6 +516,10 @@ public final class RichEditor {
             return;
         }
         if (p.cell() > 0) {
+            // 表格格子之间不能合并（会少一格、框线与内容错位）——直接不响应
+            if (blk.kind == Kind.TABLE) {
+                return;
+            }
             mergeIntoPrevious(blk, p.cell());
             return;
         }
@@ -697,6 +701,19 @@ public final class RichEditor {
         splitRuns(first.cells.get(a.cell()), a.offset(), head, new ArrayList<>());
         List<RichDoc.Run> tail = new ArrayList<>();
         splitRuns(last.cells.get(b.cell()), b.offset(), new ArrayList<>(), tail);
+        // 两端只要有一边是列表/表格，就**只删文字、不删结构块**：
+        // 旧写法会把末块整个 remove，跨块删一次就把列表其余项或整张表吃掉（审查 P0-2）
+        boolean structured = first.kind != Kind.PARA || last.kind != Kind.PARA;
+        if (structured) {
+            first.cells.set(a.cell(), merge(head));
+            last.cells.set(b.cell(), merge(tail));
+            for (int i = endBlock - 1; i > startBlock; i--) {
+                blocks.remove(i);
+            }
+            caret = a;
+            anchor = a;
+            return;
+        }
         first.cells.set(a.cell(), merge(head));
         last.cells.set(b.cell(), merge(tail));
         first.cells.get(a.cell()).addAll(last.cells.get(b.cell()));

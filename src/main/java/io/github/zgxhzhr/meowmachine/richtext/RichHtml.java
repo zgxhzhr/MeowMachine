@@ -33,9 +33,9 @@ public final class RichHtml {
         if (body == null || body.isBlank()) {
             return RichDoc.empty();
         }
-        String lower = body.toLowerCase(Locale.ROOT);
-        boolean looksHtml = lower.contains("<p>") || lower.contains("<p ")
-                || lower.contains("<ul") || lower.contains("<ol") || lower.contains("<table");
+        // 必须带闭合的 '>'：像「表达式 a<p 时怎么办」这种正文里的字面量不能被当成 HTML，
+        // 否则 parse 会从那里开始啃，把后半篇吃掉（审查 P0-9）
+        boolean looksHtml = HAS_BLOCK_TAG.matcher(body).find();
         if (looksHtml) {
             return parse(body);
         }
@@ -47,6 +47,34 @@ public final class RichHtml {
     }
 
     // ---------------- 行内 ----------------
+
+    /** 真正的块级标签（带 '>'）才算 HTML */
+    private static final java.util.regex.Pattern HAS_BLOCK_TAG = java.util.regex.Pattern.compile(
+            "(?i)<(p|table|tbody|thead|tr|td|th|ul|ol|li|h[1-6]|div|br)\\s*/?>");
+
+    /** 正文里是否有真正的列表/表格结构（用于区分「编辑器生成」与「粘贴压平」） */
+    public static boolean hasStructure(String html) {
+        return html != null && java.util.regex.Pattern
+                .compile("(?i)<(table|ul|ol)\\b").matcher(html).find();
+    }
+
+    /**
+     * 只取**段落**文字（不含列表项与表格单元格）。
+     *
+     * <p>本地规则第 12 条（句末标点）拿它判断：表格单元格与列表项本来就不以句号结尾，
+     * 用全文判会 100% 误杀编辑器自己生成的正确内容（审查 P0-1）。
+     */
+    public static String proseText(String html) {
+        StringBuilder sb = new StringBuilder();
+        for (RichDoc.Block block : parseLoose(html).blocks()) {
+            if (block instanceof RichDoc.Para p) {
+                if (!p.text().isBlank()) {
+                    sb.append(p.text()).append('\n');
+                }
+            }
+        }
+        return sb.toString().strip();
+    }
 
     /** 拼接行内片段的纯文本 */
     public static String join(List<RichDoc.Run> runs) {
@@ -153,6 +181,7 @@ public final class RichHtml {
             if (next == pStart) {
                 int end = closeTag(s, next, "p");
                 if (end < 0) {
+                    appendTail(blocks, s, next);
                     break;
                 }
                 blocks.add(new RichDoc.Para(parseInline(s.substring(s.indexOf('>', next) + 1, end))));
@@ -161,6 +190,7 @@ public final class RichHtml {
                 String tag = next == ulStart ? "ul" : "ol";
                 int end = closeTag(s, next, tag);
                 if (end < 0) {
+                    appendTail(blocks, s, next);
                     break;
                 }
                 blocks.add(parseList(s.substring(s.indexOf('>', next) + 1, end), tag.equals("ol")));
@@ -168,6 +198,7 @@ public final class RichHtml {
             } else {
                 int end = closeTag(s, next, "table");
                 if (end < 0) {
+                    appendTail(blocks, s, next);
                     break;
                 }
                 blocks.add(parseTable(s.substring(s.indexOf('>', next) + 1, end)));
@@ -175,6 +206,15 @@ public final class RichHtml {
             }
         }
         return blocks.isEmpty() ? RichDoc.empty() : new RichDoc(blocks);
+    }
+
+    /** 未闭合块：把从这里到结尾的文字保下来，宁可结构不完美也不能吞正文 */
+    private static void appendTail(List<RichDoc.Block> blocks, String s, int from) {
+        int gt = s.indexOf('>', from);
+        String rest = stripTags(gt < 0 ? s.substring(from) : s.substring(gt + 1)).trim();
+        if (!rest.isEmpty()) {
+            blocks.add(new RichDoc.Para(List.of(RichDoc.Run.plain(rest))));
+        }
     }
 
     private static RichDoc.Block parseList(String inner, boolean ordered) {

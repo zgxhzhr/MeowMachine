@@ -65,6 +65,8 @@ public final class SelfTest {
         testRichText();
         testRichEditor();
         testAiText();
+        testStructuredBody();
+        testParseTolerance();
         testRuleTables();
     }
 
@@ -329,6 +331,47 @@ public final class SelfTest {
     }
 
     /** 编辑器内核：悬挂样式、选区样式、列表、表格、回车/退格 */
+    /** 编辑器生成的表格/列表不能被第 12/22 条误杀（审查 P0-1） */
+    private static void testStructuredBody() {
+        io.github.zgxhzhr.meowmachine.richtext.RichDoc.Table t =
+                new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Table(java.util.List.of(
+                        java.util.List.of(java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("渠道", false, false)),
+                                java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("地址", false, false))),
+                        java.util.List.of(java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("官网", false, false)),
+                                java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("mcmod", false, false)))),
+                        true);
+        io.github.zgxhzhr.meowmachine.richtext.RichDoc.BulletList li =
+                new io.github.zgxhzhr.meowmachine.richtext.RichDoc.BulletList(java.util.List.of(
+                        java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("一", false, false)),
+                        java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("二", false, false)),
+                        java.util.List.of(new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("三", false, false))));
+        io.github.zgxhzhr.meowmachine.richtext.RichDoc doc =
+                new io.github.zgxhzhr.meowmachine.richtext.RichDoc(java.util.List.of(
+                        new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Para(java.util.List.of(
+                                new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("开头段落有句号。", false, false))),
+                        t, li,
+                        new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Para(java.util.List.of(
+                                new io.github.zgxhzhr.meowmachine.richtext.RichDoc.Run("结尾段落有句号。", false, false)))));
+        String html = io.github.zgxhzhr.meowmachine.richtext.RichHtml.toHtml(doc);
+        var findings = io.github.zgxhzhr.meowmachine.review.LocalRules.check("测试",
+                io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(html), html);
+        check("编辑器表格+列表不误判第 12/22 条", findings.isEmpty());
+    }
+
+    /** 正文里出现字面量 `<p` 不能被当成 HTML 吞掉后半篇（审查 P0-9） */
+    private static void testParseTolerance() {
+        String body = "表达式 a<p 时怎么办。后半句还在。";
+        String text = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(
+                io.github.zgxhzhr.meowmachine.richtext.RichHtml.toHtml(
+                        io.github.zgxhzhr.meowmachine.richtext.RichHtml.parseLoose(body)));
+        check("字面量 <p 不会吞正文", text.contains("后半句还在"));
+        io.github.zgxhzhr.meowmachine.review.EditDiffs.Diff d =
+                io.github.zgxhzhr.meowmachine.review.EditDiffs.of(
+                        "<p>第一段内容在这里。</p><p>第二段内容也在这里。</p>",
+                        "<p>第一段内容在这里。</p>");
+        check("单行 HTML 也能算出删除行", d.removed() >= 1);
+    }
+
     /** 给 AI 的文本必须保留列表/表格结构，否则它会以为作者没建列表 */
     private static void testAiText() {
         String html = "<p>说明一句。</p>"

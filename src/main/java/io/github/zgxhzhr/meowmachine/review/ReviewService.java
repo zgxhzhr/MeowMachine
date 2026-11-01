@@ -54,7 +54,7 @@ public final class ReviewService {
                                                           Submission sub, LlmConfig cfg) {
         String plainBody = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(sub.body());
         List<ReviewFinding> localFindings =
-                new java.util.ArrayList<>(LocalRules.check(sub.title(), plainBody));
+                new java.util.ArrayList<>(LocalRules.check(sub.title(), plainBody, sub.body()));
         // AI 看结构化文本：列表/表格保留结构，否则它会以为作者没建列表
         String aiText = io.github.zgxhzhr.meowmachine.richtext.RichHtml.toAiText(sub.body());
 
@@ -62,7 +62,8 @@ public final class ReviewService {
         // 它可以确认、纠正或忽略，并写附言——这是纯规则判定做不到的。
         boolean aiTakesOver = cfg.usable() && cfg.takeover();
         if (aiTakesOver) {
-            return AiReviewer.review(cfg, sub.title(), aiText, localFindings).thenApply(ai -> {
+            return AiReviewer.review(cfg, sub.title(), aiText, localFindings)
+                    .thenApplyAsync(ai -> {
                 if (!ai.available()) {
                     // AI 不可用：退回本地规则（有命中就按本地打回，否则兜底）
                     if (!localFindings.isEmpty()) {
@@ -110,6 +111,12 @@ public final class ReviewService {
                 String sticker = aiSticker != null ? aiSticker
                         : pickSticker(Verdict.RETURN, findings);
                 return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
+            }, server).exceptionally(ex -> {
+                MeowMachine.LOG.error("[喵呜机] AI 接管裁决异常，退回本地规则", ex);
+                return localFindings.isEmpty()
+                        ? fallbackReturn("AI 审核异常，无法确认内容，先按打回处理")
+                        : ReviewResult.of(Verdict.RETURN, localFindings, "local-rules",
+                                pickSticker(Verdict.RETURN, localFindings));
             });
         }
 
@@ -130,19 +137,24 @@ public final class ReviewService {
         if (hasHumanFinalizer(server)) {
             ReviewResult pending = ReviewResult.of(Verdict.PENDING, List.of(), "pending-human",
                     StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse(""));
-            if (cfg.usable()) {
-                // 开 AI 但不接管：AI 先跑一遍，发现存成「AI 意见」交给人工，
-                // 不作为结论（人工裁决仍然优先）。
-                return AiReviewer.review(cfg, sub.title(), aiText, localFindings).thenApply(ai -> {
-                    if (ai.available()) {
-                        // 通过也留一句（AI 的附言/默认说明），别让详情里一直显示「无」
-                        AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
-                    }
-                    SubmissionQueue.enqueue(sub, System.currentTimeMillis());
-                    return pending;
-                });
-            }
+            // **先入队再问 AI**：AI 有 20s 超时窗口，旧写法把入队放在回调里，
+            // 窗口期内稿件不在任何持久化结构里，停服就永久丢（审查 P0-7）。
             SubmissionQueue.enqueue(sub, System.currentTimeMillis());
+            if (cfg.usable()) {
+                // 开 AI 但不接管：AI 跑一遍，发现存成「AI 意见」交给人工，不作为结论；
+                // 回调切回服务端主线程再写存档（审查 P0-6）。
+                AiReviewer.review(cfg, sub.title(), aiText, localFindings)
+                        .thenApplyAsync(ai -> {
+                            if (ai.available()) {
+                                AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
+                            }
+                            return pending;
+                        }, server)
+                        .exceptionally(ex -> {
+                            MeowMachine.LOG.warn("[喵呜机] 人工队列的 AI 预审失败（不影响入队）", ex);
+                            return pending;
+                        });
+            }
             return CompletableFuture.completedFuture(pending);
         }
 
@@ -157,7 +169,8 @@ public final class ReviewService {
 
         // ③ 没人审 → AI
         if (cfg.usable()) {
-            return AiReviewer.review(cfg, sub.title(), aiText).thenApply(ai -> {
+            return AiReviewer.review(cfg, sub.title(), aiText)
+                    .thenApplyAsync(ai -> {
                 if (!ai.available()) {
                     return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
                 }
@@ -185,6 +198,9 @@ public final class ReviewService {
                 String sticker = aiSticker != null ? aiSticker
                         : pickSticker(Verdict.RETURN, ai.findings());
                 return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
+            }, server).exceptionally(ex -> {
+                MeowMachine.LOG.error("[喵呜机] 自动审核异常，按兜底打回处理", ex);
+                return fallbackReturn("审核异常，无法确认内容，先按打回处理");
             });
         }
 
