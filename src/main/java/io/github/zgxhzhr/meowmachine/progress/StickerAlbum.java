@@ -2,10 +2,13 @@ package io.github.zgxhzhr.meowmachine.progress;
 
 import io.github.zgxhzhr.meowmachine.MeowMachine;
 import io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements;
+import io.github.zgxhzhr.meowmachine.item.StickerItem;
 import io.github.zgxhzhr.meowmachine.registry.ModItems;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -13,10 +16,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * 梗图收藏册：审核结果里出现的梗图，会给作者发一张同款物品；集齐 8 张不同 → 成就。
+ * 梗图收藏册：记录玩家收集到的**不同种类**梗图，集齐 8 种发成就。
  *
- * <p>为什么不用 {@code inventory_changed} 成就：那个触发器只能判「背包里有某样东西」，
- * 判不了「不同种类够 8 个」。所以已收集的种类记在玩家持久数据里，由这里判定并授奖。
+ * <p>两条入口：
+ * <ul>
+ *   <li>{@link #grant} —— 审核结果发放梗图物品时调用；</li>
+ *   <li>{@link #scanInventory} —— 登录时扫背包补记。创造模式直接拿的、或 0.18 之前
+ *       就拿到的梗图不会经过发放逻辑，不补扫的话进度永远到不了 8。</li>
+ * </ul>
  */
 public final class StickerAlbum {
 
@@ -31,7 +38,7 @@ public final class StickerAlbum {
     /**
      * 发一张梗图物品并记录收集进度。
      *
-     * @param player    收件人（离线时不发，item 只走在线路径）
+     * @param player    收件人
      * @param stickerId 梗图 id（可带命名空间）
      */
     public static void grant(ServerPlayer player, String stickerId) {
@@ -45,41 +52,89 @@ public final class StickerAlbum {
                 player.drop(stack, false);
             }
         }
+        String path = pathOf(stickerId);
+        Set<String> owned = loadOwned(player);
+        if (owned.add(path)) {
+            saveOwned(player, owned);
+            announce(player, stack, owned.size());
+        }
+    }
 
-        String path = stickerId.contains(":") ? stickerId.substring(stickerId.indexOf(':') + 1) : stickerId;
-        CompoundTag data = player.getPersistentData();
+    /**
+     * 扫背包补记：创造模式拿的、旧版本就有的梗图都算进来。
+     *
+     * @return 新增的种类数
+     */
+    public static int scanInventory(ServerPlayer player) {
+        if (player == null) {
+            return 0;
+        }
+        Set<String> owned = loadOwned(player);
+        int before = owned.size();
+        ItemStack firstNew = ItemStack.EMPTY;
+
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.getItem() instanceof StickerItem sticker && owned.add(sticker.stickerId())) {
+                if (firstNew.isEmpty()) {
+                    firstNew = stack;
+                }
+            }
+        }
+        for (ItemStack stack : player.getInventory().offhand) {
+            if (stack.getItem() instanceof StickerItem sticker && owned.add(sticker.stickerId())) {
+                if (firstNew.isEmpty()) {
+                    firstNew = stack;
+                }
+            }
+        }
+        if (owned.size() > before) {
+            saveOwned(player, owned);
+            announce(player, firstNew, owned.size());
+        }
+        return owned.size() - before;
+    }
+
+    /** 已收集种类数 */
+    public static int collected(ServerPlayer player) {
+        return loadOwned(player).size();
+    }
+
+    // ---------------- 内部 ----------------
+
+    private static String pathOf(String stickerId) {
+        return stickerId.contains(":") ? stickerId.substring(stickerId.indexOf(':') + 1) : stickerId;
+    }
+
+    private static Set<String> loadOwned(ServerPlayer player) {
         Set<String> owned = new LinkedHashSet<>();
+        CompoundTag data = player.getPersistentData();
         ListTag list = data.getList(KEY, Tag.TAG_STRING);
         for (int i = 0; i < list.size(); i++) {
             owned.add(list.getString(i));
         }
-        if (!owned.add(path)) {
-            return;
-        }
-        ListTag updated = new ListTag();
-        for (String id : owned) {
-            updated.add(net.minecraft.nbt.StringTag.valueOf(id));
-        }
-        data.put(KEY, updated);
-
-        MeowMachine.LOG.info("[喵呜机] 梗图收集 {}/{} player={} sticker={}",
-                owned.size(), COLLECTOR_TARGET, player.getName().getString(), path);
-        // 进度得让玩家看得见：每拿到一张新梗图就报一次（否则不知道离成就有多远）
-        player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
-                "chat.meow_machine.sticker_progress",
-                stack.getHoverName(), owned.size(), COLLECTOR_TARGET));
-        if (owned.size() >= COLLECTOR_TARGET) {
-            MeowAdvancements.award(player, ADVANCEMENT);
-            player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
-                    "chat.meow_machine.sticker_complete", COLLECTOR_TARGET));
-        }
+        return owned;
     }
 
-    /** 已收集种类数（自测/日志用） */
-    public static int collected(ServerPlayer player) {
-        if (player == null) {
-            return 0;
+    private static void saveOwned(ServerPlayer player, Set<String> owned) {
+        ListTag list = new ListTag();
+        for (String id : owned) {
+            list.add(StringTag.valueOf(id));
         }
-        return player.getPersistentData().getList(KEY, Tag.TAG_STRING).size();
+        player.getPersistentData().put(KEY, list);
+    }
+
+    private static void announce(ServerPlayer player, ItemStack stack, int count) {
+        MeowMachine.LOG.info("[喵呜机] 梗图收集 {}/{} player={}",
+                count, COLLECTOR_TARGET, player.getName().getString());
+        Component name = stack.isEmpty()
+                ? Component.literal("梗图")
+                : stack.getHoverName();
+        player.sendSystemMessage(Component.translatable(
+                "chat.meow_machine.sticker_progress", name, count, COLLECTOR_TARGET));
+        if (count >= COLLECTOR_TARGET) {
+            MeowAdvancements.award(player, ADVANCEMENT);
+            player.sendSystemMessage(Component.translatable(
+                    "chat.meow_machine.sticker_complete", COLLECTOR_TARGET));
+        }
     }
 }

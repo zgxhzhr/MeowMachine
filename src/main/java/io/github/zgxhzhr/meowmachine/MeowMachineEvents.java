@@ -73,6 +73,9 @@ public final class MeowMachineEvents {
         if (!(event.getEntity() instanceof ServerPlayer sp)) {
             return;
         }
+        // 扫背包补记梗图收集：创造模式拿的、旧版本已有的都算，否则收藏家成就永远差几张
+        io.github.zgxhzhr.meowmachine.progress.StickerAlbum.scanInventory(sp);
+
         net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
         if (data.getBoolean("meow_machine_terminal_granted")) {
             return;

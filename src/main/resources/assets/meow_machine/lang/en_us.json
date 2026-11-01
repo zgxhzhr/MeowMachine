@@ -175,5 +175,6 @@
   "item.meow_machine.sticker_laowu.story": "LAOWU--",
   "item.meow_machine.sticker_meowmeow.story": "MeowMachine heard \"meow meow\", looked up once, then went back to reading.",
   "chat.meow_machine.sticker_progress": "[MeowMachine] Got sticker \"%s\" (%s/%s collected)",
-  "chat.meow_machine.sticker_complete": "[MeowMachine] All %s stickers collected!"
+  "chat.meow_machine.sticker_complete": "[MeowMachine] All %s stickers collected!",
+  "gui.meow_machine.sticker_view_title": "Sticker"
 }

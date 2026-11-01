@@ -2,6 +2,8 @@ package io.github.zgxhzhr.meowmachine.item;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -27,6 +29,19 @@ public class StickerItem extends Item {
 
     public String stickerId() {
         return stickerId;
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, net.minecraft.world.entity.player.Player player,
+                                                  InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (level.isClientSide) {
+            // 客户端才需要界面；服务端保持无副作用
+            net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(
+                    net.minecraftforge.api.distmarker.Dist.CLIENT,
+                    () -> () -> io.github.zgxhzhr.meowmachine.client.StickerViewer.open(stickerId));
+        }
+        return InteractionResultHolder.success(stack);
     }
 
     @Override
