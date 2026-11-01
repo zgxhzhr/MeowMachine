@@ -3,6 +3,7 @@ package io.github.zgxhzhr.meowmachine.client;
 import io.github.zgxhzhr.meowmachine.network.EditMySubmissionPacket;
 import io.github.zgxhzhr.meowmachine.network.MySubmissionsPacket;
 import io.github.zgxhzhr.meowmachine.network.Network;
+import io.github.zgxhzhr.meowmachine.network.OpenAdminRequestPacket;
 import io.github.zgxhzhr.meowmachine.network.ReviewListRequestPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -70,11 +71,15 @@ public class MySubmissionsScreen extends Screen {
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.my_review_list"),
                         b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
-                .bounds(cx - 104, y, 100, 20).build());
+                .bounds(cx - 158, y, 100, 20).build());
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.my_admin"),
+                        b -> Network.CHANNEL.sendToServer(new OpenAdminRequestPacket()))
+                .bounds(cx - 50, y, 100, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.close"),
                         b -> this.onClose())
-                .bounds(cx + 4, y, 100, 20).build());
+                .bounds(cx + 58, y, 100, 20).build());
     }
 
     @Override

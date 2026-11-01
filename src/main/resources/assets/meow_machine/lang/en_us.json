@@ -186,5 +186,9 @@
   "gui.meow_machine.table_header": "Header row: %s",
   "gui.meow_machine.table_on": "on",
   "gui.meow_machine.table_off": "off",
-  "gui.meow_machine.table_insert": "Insert"
+  "gui.meow_machine.table_insert": "Insert",
+  "gui.meow_machine.opinions_title": "Review opinions",
+  "gui.meow_machine.opinions_button": "Opinions",
+  "gui.meow_machine.my_admin": "Admin",
+  "gui.meow_machine.detail.none": "none"
 }

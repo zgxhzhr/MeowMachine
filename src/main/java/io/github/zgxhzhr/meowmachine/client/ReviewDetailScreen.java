@@ -72,54 +72,13 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
-        if (!entry.notes().isEmpty()) {
-            lines.add("");
-            lines.add("—— " + Component.translatable("gui.meow_machine.note_section").getString() + " ——");
-            for (String note : entry.notes()) {
-                if (this.font.width(note) <= PANEL_W - 16) {
-                    lines.add(note);
-                    continue;
-                }
-                StringBuilder cur = new StringBuilder();
-                for (int i = 0; i < note.length(); i++) {
-                    char ch = note.charAt(i);
-                    if (this.font.width(cur.toString() + ch) > PANEL_W - 16 && cur.length() > 0) {
-                        lines.add(cur.toString());
-                        cur.setLength(0);
-                    }
-                    cur.append(ch);
-                }
-                lines.add(cur.toString());
-            }
-        }
+        this.bodyTop = TOP;
 
-        // 顶部三栏摘要（AI 意见 / 本地规则预检 / 助理意见），显示在正文框外面
-        headLines.clear();
-        if (!entry.aiOpinions().isEmpty()) {
-            headLines.add(Component.translatable("gui.meow_machine.detail.ai_opinions").getString()
-                    + "：" + ruleSummary(entry.aiOpinions()));
-        }
-        java.util.List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
-                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(), entry.body());
-        if (!pre.isEmpty()) {
-            java.util.List<String> ids = new java.util.ArrayList<>();
-            for (var f : pre) {
-                ids.add("第" + (f.ruleId() == null ? "?" : f.ruleId()) + "条");
-            }
-            headLines.add(Component.translatable(
-                    "gui.meow_machine.detail.local_rules").getString() + "：" + String.join(" / ", ids));
-        }
-        if (!entry.notes().isEmpty()) {
-            headLines.add(Component.translatable("gui.meow_machine.note_section").getString()
-                    + "：" + entry.notes().size() + " 条");
-        }
-        this.bodyTop = TOP + Math.max(0, headLines.size() * 11);
-
-        int bw = 84;
-        int gap = 6;
+        int bw = 72;
+        int gap = 5;
         int by = this.height - 28;
         if (canFinalize) {
-            int x0 = cx - (bw * 4 + gap * 3) / 2;
+            int x0 = cx - (bw * 5 + gap * 4) / 2;
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.btn.pass"), b -> decide("PASS"))
                     .bounds(x0, by, bw, 20).build());
@@ -130,19 +89,27 @@ public class ReviewDetailScreen extends Screen {
                             Component.translatable("gui.meow_machine.btn.return"), b -> decide("RETURN"))
                     .bounds(x0 + (bw + gap) * 2, by, bw, 20).build());
             addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.opinions_button"),
+                            b -> this.minecraft.setScreen(new ReviewOpinionsScreen(entry)))
+                    .bounds(x0 + (bw + gap) * 3, by, bw, 20).build());
+            addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.back"),
                             b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
-                    .bounds(x0 + (bw + gap) * 3, by, bw, 20).build());
+                    .bounds(x0 + (bw + gap) * 4, by, bw, 20).build());
         } else {
-            int x0 = cx - (bw * 2 + gap) / 2;
+            int x0 = cx - (bw * 3 + gap * 2) / 2;
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.note_write"),
                             b -> this.minecraft.setScreen(new AddNoteScreen(entry)))
                     .bounds(x0, by, bw, 20).build());
             addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.opinions_button"),
+                            b -> this.minecraft.setScreen(new ReviewOpinionsScreen(entry)))
+                    .bounds(x0 + bw + gap, by, bw, 20).build());
+            addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.back"),
                             b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
-                    .bounds(x0 + bw + gap, by, bw, 20).build());
+                    .bounds(x0 + (bw + gap) * 2, by, bw, 20).build());
         }
         clampScroll();
     }
@@ -183,10 +150,6 @@ public class ReviewDetailScreen extends Screen {
         g.drawString(this.font,
                 Component.literal(trim(entry.title(), PANEL_W)), left, 40, 0xDDDDDD, false);
 
-        for (int i = 0; i < headLines.size(); i++) {
-            g.drawString(this.font, Component.literal(trim(headLines.get(i), PANEL_W)),
-                    left, bodyTop - 11 * (headLines.size() - i), 0xFFAA44, false);
-        }
         g.fill(left - 1, bodyTop - 1, left + PANEL_W + 1, bodyTop + viewHeight + 1, 0xFF808080);
         g.fill(left, bodyTop, left + PANEL_W, bodyTop + viewHeight, 0xFF101010);
 

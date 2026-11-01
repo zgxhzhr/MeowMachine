@@ -186,5 +186,9 @@
   "gui.meow_machine.table_header": "首行表头：%s",
   "gui.meow_machine.table_on": "开",
   "gui.meow_machine.table_off": "关",
-  "gui.meow_machine.table_insert": "插入"
+  "gui.meow_machine.table_insert": "插入",
+  "gui.meow_machine.opinions_title": "审核意见",
+  "gui.meow_machine.opinions_button": "意见",
+  "gui.meow_machine.my_admin": "审核后台",
+  "gui.meow_machine.detail.none": "无"
 }
