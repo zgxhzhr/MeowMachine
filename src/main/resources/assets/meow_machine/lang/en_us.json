@@ -193,5 +193,14 @@
   "gui.meow_machine.table_cols_label": "Cols",
   "gui.meow_machine.pass_reason_hint": "Reason for approval (optional, shown to author)",
   "gui.meow_machine.pass_sticker_title": "Pick a sticker for approval",
-  "gui.meow_machine.pass_sticker_default": "Random"
+  "gui.meow_machine.pass_sticker_default": "Random",
+  "advancements.meow_machine.reviewer_ten.title": "reviewer_ten",
+  "advancements.meow_machine.rejector_five.title": "rejector_five",
+  "advancements.meow_machine.edited_approved.title": "edited_approved",
+  "advancements.meow_machine.editor_five.title": "editor_five",
+  "advancements.meow_machine.reviewer_ten.description": "reviewer_ten",
+  "advancements.meow_machine.rejector_five.description": "rejector_five",
+  "advancements.meow_machine.edited_approved.description": "edited_approved",
+  "advancements.meow_machine.editor_five.description": "editor_five",
+  "gui.meow_machine.detail.diff": "Changes"
 }

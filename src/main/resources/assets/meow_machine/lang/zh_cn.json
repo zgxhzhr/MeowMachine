@@ -193,5 +193,14 @@
   "gui.meow_machine.table_cols_label": "列数",
   "gui.meow_machine.pass_reason_hint": "通过理由（可选，会显示给作者）",
   "gui.meow_machine.pass_sticker_title": "通过用哪张梗图",
-  "gui.meow_machine.pass_sticker_default": "默认随机"
+  "gui.meow_machine.pass_sticker_default": "默认随机",
+  "advancements.meow_machine.reviewer_ten.title": "审满十次",
+  "advancements.meow_machine.rejector_five.title": "铁面无私",
+  "advancements.meow_machine.edited_approved.title": "我来改一笔",
+  "advancements.meow_machine.editor_five.title": "精益求精",
+  "advancements.meow_machine.reviewer_ten.description": "终裁别人的投稿 10 次",
+  "advancements.meow_machine.rejector_five.description": "打回 5 次",
+  "advancements.meow_machine.edited_approved.description": "编辑一个已通过的条目并重新提交",
+  "advancements.meow_machine.editor_five.description": "修改已通过条目 5 次",
+  "gui.meow_machine.detail.diff": "修改对比"
 }

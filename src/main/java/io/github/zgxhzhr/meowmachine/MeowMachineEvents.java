@@ -52,6 +52,7 @@ public final class MeowMachineEvents {
         SubmissionHistory.attach(event.getServer());
         io.github.zgxhzhr.meowmachine.ai.AiConfigStore.attach(event.getServer());
         io.github.zgxhzhr.meowmachine.review.AiOpinions.attach(event.getServer());
+        io.github.zgxhzhr.meowmachine.review.ApprovedIndex.attach(event.getServer());
         io.github.zgxhzhr.meowmachine.review.ReviewNotes.attach(event.getServer());
     }
 
@@ -63,6 +64,7 @@ public final class MeowMachineEvents {
         SubmissionHistory.detach();
         io.github.zgxhzhr.meowmachine.ai.AiConfigStore.detach();
         io.github.zgxhzhr.meowmachine.review.AiOpinions.detach();
+        io.github.zgxhzhr.meowmachine.review.ApprovedIndex.detach();
         io.github.zgxhzhr.meowmachine.review.ReviewNotes.detach();
     }
 
@@ -79,6 +81,7 @@ public final class MeowMachineEvents {
         }
         // 扫背包补记梗图收集：创造模式拿的、旧版本已有的都算，否则收藏家成就永远差几张
         io.github.zgxhzhr.meowmachine.progress.StickerAlbum.scanInventory(sp);
+        grantIconOnce(sp);
 
         net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
         if (data.getBoolean("meow_machine_terminal_granted")) {
@@ -89,6 +92,17 @@ public final class MeowMachineEvents {
                 io.github.zgxhzhr.meowmachine.registry.ModItems.ADMIN_TERMINAL.get()));
         sp.sendSystemMessage(Component.translatable("chat.meow_machine.terminal_granted"));
         MeowMachine.LOG.info("[喵呜机] 已发放审核终端给 {}", sp.getName().getString());
+    }
+
+    /** 首次进入世界发一个「喵喵喵」图标物品（条目册入口，后续扩展） */
+    private static void grantIconOnce(ServerPlayer sp) {
+        net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
+        if (data.getBoolean("meow_machine_icon_granted")) {
+            return;
+        }
+        data.putBoolean("meow_machine_icon_granted", true);
+        sp.getInventory().add(new net.minecraft.world.item.ItemStack(
+                io.github.zgxhzhr.meowmachine.registry.ModItems.MEOW_ICON.get()));
     }
 
     /**

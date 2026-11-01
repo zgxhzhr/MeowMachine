@@ -65,6 +65,17 @@ public class ReviewOpinionsScreen extends Screen {
         lines.add("");
 
         lines.add("—— " + Component.translatable(
+                "gui.meow_machine.detail.diff").getString() + " ——");
+        if (entry.diffLines().isEmpty()) {
+            lines.add(none);
+        } else {
+            for (String d : entry.diffLines()) {
+                lines.addAll(wrap(d, PANEL_W - 16));
+            }
+        }
+        lines.add("");
+
+        lines.add("—— " + Component.translatable(
                 "gui.meow_machine.note_section").getString() + " ——");
         if (entry.notes().isEmpty()) {
             lines.add(none);

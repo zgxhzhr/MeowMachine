@@ -37,7 +37,8 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
      * @param body 正文（**剥掉 HTML 标签后的纯文本**，审核员要能读到实际内容）
      */
     public record Entry(String fullId, String shortId, String author, String title, String body,
-                        List<String> notes, List<String> aiOpinions) {
+                        List<String> notes, List<String> aiOpinions,
+                        List<String> diffLines) {
 
         public static Entry of(Submission s) {
             String full = s.id().toString();
@@ -45,8 +46,15 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             if (plain.length() > MAX_BODY) {
                 plain = plain.substring(0, MAX_BODY);
             }
+            List<String> diff = new ArrayList<>();
+            io.github.zgxhzhr.meowmachine.review.ApprovedSavedData.Entry prev =
+                    io.github.zgxhzhr.meowmachine.review.ApprovedIndex.find(s.id()).orElse(null);
+            if (prev != null) {
+                var d = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(prev.body(), s.body());
+                diff.addAll(d.summaryLines());
+            }
             return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain,
-                    ReviewNotes.of(s.id()), AiOpinions.of(s.id()));
+                    ReviewNotes.of(s.id()), AiOpinions.of(s.id()), List.copyOf(diff));
         }
     }
 
@@ -93,6 +101,10 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             for (String n : e.aiOpinions()) {
                 buf.writeUtf(n, 240);
             }
+            buf.writeVarInt(e.diffLines().size());
+            for (String n : e.diffLines()) {
+                buf.writeUtf(n, 240);
+            }
         }
     }
 
@@ -135,7 +147,16 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             for (int k = 0; k < ac; k++) {
                 ai.add(buf.readUtf(240));
             }
-            list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes), List.copyOf(ai)));
+            int dc = buf.readVarInt();
+            if (dc < 0 || dc > 16) {
+                throw new DecoderException("喵呜机：对比条数非法: " + dc);
+            }
+            List<String> diff = new ArrayList<>(dc);
+            for (int k = 0; k < dc; k++) {
+                diff.add(buf.readUtf(240));
+            }
+            list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes),
+                    List.copyOf(ai), List.copyOf(diff)));
         }
         return new ReviewListPacket(list, canFinalize, assistant, List.copyOf(approved));
     }

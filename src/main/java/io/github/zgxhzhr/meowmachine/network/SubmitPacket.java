@@ -71,6 +71,9 @@ public record SubmitPacket(String title, String body) {
             c.setPacketHandled(true);
             return;
         }
+        if (io.github.zgxhzhr.meowmachine.review.ApprovedIndex.isApproved(existing.id())) {
+            io.github.zgxhzhr.meowmachine.progress.StatsAchievements.onEditApproved(player);
+        }
         Submission sub = candidate.submit();
         DraftStore.save(player, sub);
         io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
@@ -96,6 +99,7 @@ public record SubmitPacket(String title, String body) {
                         if (updated.state() != sub.state()) {
                             DraftStore.save(player, updated);
                             io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated);
+                            io.github.zgxhzhr.meowmachine.review.ApprovedIndex.record(updated);
                             if (updated.state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.APPROVED) {
                                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                                         player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_APPROVED);

@@ -53,7 +53,8 @@ public final class ReviewService {
     public static CompletableFuture<ReviewResult> process(MinecraftServer server, ServerPlayer author,
                                                           Submission sub, LlmConfig cfg) {
         String plainBody = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(sub.body());
-        List<ReviewFinding> localFindings = LocalRules.check(sub.title(), plainBody);
+        List<ReviewFinding> localFindings =
+                new java.util.ArrayList<>(LocalRules.check(sub.title(), plainBody));
         // AI 看结构化文本：列表/表格保留结构，否则它会以为作者没建列表
         String aiText = io.github.zgxhzhr.meowmachine.richtext.RichHtml.toAiText(sub.body());
 
@@ -74,7 +75,7 @@ public final class ReviewService {
                 // 实测 AI 会把「## 核心玩法 / - 列表」判成「格式没有明显问题」放行。
                 List<ReviewFinding> hardFormat = localFindings.stream()
                         .filter(f -> f.ruleId() != null
-                                && (f.ruleId() == 22 || f.ruleId() == 26))
+                                && (f.ruleId() == 22 || f.ruleId() == 26 || f.ruleId() == 29))
                         .toList();
                 AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
                 MeowMachine.LOG.info(
@@ -110,6 +111,17 @@ public final class ReviewService {
                         : pickSticker(Verdict.RETURN, findings);
                 return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
             });
+        }
+
+        // ①.0 修改已通过条目：对比上一版，删得比加得多/字数缩水 → 本地第 29 条（越改越倒退）
+        var prevApproved = ApprovedIndex.find(sub.id());
+        if (prevApproved.isPresent()) {
+            var diff = EditDiffs.of(prevApproved.get().body(), sub.body());
+            if (diff.regressed()) {
+                localFindings.add(0, new ReviewFinding(29,
+                        "删除 " + diff.removed() + " 行 / 新增 " + diff.added() + " 行",
+                        "越改越倒退：这次删得比加得多，或总字数明显缩水"));
+            }
         }
 
         // ① 有能终审的人、且没开「AI 接管」→ 入人工队列。

@@ -128,7 +128,13 @@ public final class ReviewActions {
         ReviewResult result = ReviewResult.of(verdict, findings,
                 reviewer == null ? "console" : reviewer.getName().getString(), sticker);
 
-        SubmissionHistory.record(sub.apply(result));
+        if (reviewer != null) {
+            io.github.zgxhzhr.meowmachine.progress.StatsAchievements.onReview(
+                    reviewer, verdict == Verdict.RETURN || verdict == Verdict.REVISE);
+        }
+        Submission app = sub.apply(result);
+        SubmissionHistory.record(app);
+        ApprovedIndex.record(app);
         if (reviewer != null) {
             io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                     reviewer,
