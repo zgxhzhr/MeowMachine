@@ -184,6 +184,10 @@ public final class ReviewService {
                 return byRule.get().id().toString();
             }
         }
+        // ①.5 打回但没有任何规则图可用 → 用「要不直接打回算了」那张
+        if (verdict == Verdict.RETURN && StickerRegistry.exists("meow_machine:just_return_it")) {
+            return "meow_machine:just_return_it";
+        }
         // ② 按结论挑状态图
         String state = switch (verdict) {
             case PASS -> "approved";

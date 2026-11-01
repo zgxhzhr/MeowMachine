@@ -97,9 +97,10 @@ public final class ReviewActions {
         findings = List.copyOf(withNotes);
         ReviewNotes.clear(sub.id());
 
+        // 「说不出依据」时用「要不直接打回算了」那张图；其它情况按规则图 → 状态图
         String sticker = ruleId >= 0
                 ? StickerRegistry.forRule(ruleId).map(s -> s.id().toString()).orElse(stateSticker(verdict))
-                : stateSticker(verdict);
+                : unexplainedSticker(verdict);
         ReviewResult result = ReviewResult.of(verdict, findings,
                 reviewer == null ? "console" : reviewer.getName().getString(), sticker);
 
@@ -111,6 +112,22 @@ public final class ReviewActions {
         }
         deliver(serverOf(reviewer), sub, result);
         return Outcome.OK;
+    }
+
+    /**
+     * 「说不出依据」用哪张图。
+     *
+     * <p>打回时要的是「要不直接打回算了」那张（just_return_it），而不是状态图；
+     * 协改仍用协改中，通过仍用通过系列。
+     */
+    private static String unexplainedSticker(Verdict verdict) {
+        if (verdict == Verdict.RETURN) {
+            String fallback = "meow_machine:just_return_it";
+            if (StickerRegistry.exists(fallback)) {
+                return fallback;
+            }
+        }
+        return stateSticker(verdict);
     }
 
     /** 按结论挑状态梗图（规则图没有命中时的退路） */
