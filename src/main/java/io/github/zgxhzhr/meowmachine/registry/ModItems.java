@@ -44,15 +44,57 @@ public final class ModItems {
             "loop_again", "no_period", "which_version", "vague_words", "punct_storm"
     };
 
+    /**
+     * 梗图食物属性：{饥饿值, 绝对饱和度}。
+     *
+     * <p>必须在注册期确定（FoodProperties 不能运行时改），所以这里与
+     * {@code data/meow_machine/stickers/*.json} 的 food 字段保持一致；
+     * 挂上原版食物属性后，AppleSkin 之类的模组才会显示饥饿/饱和度图标。
+     */
+    private static final java.util.Map<String, float[]> STICKER_FOOD = java.util.Map.ofEntries(
+            java.util.Map.entry("under_review", new float[]{2, 0.4f}),
+            java.util.Map.entry("dont_want_revise", new float[]{4, 1.2f}),
+            java.util.Map.entry("revising", new float[]{3, 0.6f}),
+            java.util.Map.entry("just_return_it", new float[]{1, 0.0f}),
+            java.util.Map.entry("water_again", new float[]{4, 1.6f}),
+            java.util.Map.entry("ai_slop", new float[]{6, 4.8f}),
+            java.util.Map.entry("mt_god", new float[]{5, 2.4f}),
+            java.util.Map.entry("format_broken", new float[]{5, 3.0f}),
+            java.util.Map.entry("getting_worse", new float[]{3, 0.8f}),
+            java.util.Map.entry("human_wrote_this", new float[]{2, 1.0f}),
+            java.util.Map.entry("approved_progress", new float[]{6, 6.0f}),
+            java.util.Map.entry("approved_plain", new float[]{6, 7.2f}),
+            java.util.Map.entry("approved_short", new float[]{4, 2.4f}),
+            java.util.Map.entry("approved_fix", new float[]{5, 4.0f}),
+            java.util.Map.entry("helpless", new float[]{3, 1.4f}),
+            java.util.Map.entry("kurushi", new float[]{2, 0.2f}),
+            java.util.Map.entry("laowu", new float[]{4, 1.5f}),
+            java.util.Map.entry("meowmeow", new float[]{7, 6.0f}),
+            java.util.Map.entry("loop_again", new float[]{5, 2.0f}),
+            java.util.Map.entry("no_period", new float[]{3, 1.8f}),
+            java.util.Map.entry("which_version", new float[]{4, 3.2f}),
+            java.util.Map.entry("vague_words", new float[]{2, 0.6f}),
+            java.util.Map.entry("punct_storm", new float[]{6, 2.8f})
+    );
+
     /** 梗图 id → 物品 */
     private static final java.util.Map<String, RegistryObject<Item>> STICKER_ITEMS =
             new java.util.LinkedHashMap<>();
 
     static {
         for (String id : STICKER_IDS) {
+            float[] food = STICKER_FOOD.getOrDefault(id, new float[]{0, 0});
+            Item.Properties props = new Item.Properties().stacksTo(16);
+            if (food[0] >= 1) {
+                props = props.food(new net.minecraft.world.food.FoodProperties.Builder()
+                        .nutrition((int) food[0])
+                        .saturationMod(food[1] / (food[0] * 2f))
+                        .alwaysEat()
+                        .build());
+            }
+            Item.Properties finalProps = props;
             STICKER_ITEMS.put(id, ITEMS.register("sticker_" + id,
-                    () -> new io.github.zgxhzhr.meowmachine.item.StickerItem(
-                            new Item.Properties().stacksTo(16), id)));
+                    () -> new io.github.zgxhzhr.meowmachine.item.StickerItem(finalProps, id)));
         }
     }
 

@@ -37,28 +37,20 @@ public final class StickerFood {
      *
      * @return true 表示吃成功（调用方负责扣物品）
      */
-    public static boolean eat(ServerPlayer player, String stickerId) {
+    /** 只负责效果/特殊行为/成就：饱食度与饱和度交给原版 FoodProperties */
+    public static void applyExtras(ServerPlayer player, String stickerId) {
         Sticker st = StickerRegistry.byId(stickerId).orElse(null);
-        if (st == null || !st.edible()) {
-            return false;
+        if (st == null) {
+            return;
         }
-        CompoundTag data = PlayerData.persisted(player);
-
-        // 饱食度与饱和度（各图不同）
-        player.getFoodData().eat(st.hunger(), st.saturation());
-
-        // 状态效果
         for (Sticker.FoodEffect fe : st.foodEffects()) {
             MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(fe.effect());
             if (effect != null) {
                 player.addEffect(new MobEffectInstance(effect, fe.seconds() * 20, fe.amplifier()));
             }
         }
-
-        // 特殊行为
         applySpecial(player, st);
-
-        // 记录吃过哪些，给成就用
+        CompoundTag data = PlayerData.persisted(player);
         List<String> eaten = readEaten(data);
         if (!eaten.contains(st.id().getPath())) {
             eaten.add(st.id().getPath());
@@ -70,8 +62,12 @@ public final class StickerFood {
                 MeowAdvancements.award(player, "meow_marked");
             }
         }
-        MeowMachine.LOG.debug("[喵呜机] {} 食用了梗图 {}", player.getName().getString(), st.id());
-        return true;
+    }
+
+    /** 旧入口：保留给可能的外部调用（饱食度由原版处理，这里只补效果） */
+    public static boolean eat(ServerPlayer player, String stickerId) {
+        applyExtras(player, stickerId);
+        return StickerRegistry.byId(stickerId).isPresent();
     }
 
     private static void applySpecial(ServerPlayer player, Sticker st) {

@@ -67,15 +67,14 @@ public class StickerItem extends Item {
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level,
                                      net.minecraft.world.entity.LivingEntity entity) {
-        if (entity instanceof net.minecraft.server.level.ServerPlayer sp
-                && io.github.zgxhzhr.meowmachine.sticker.StickerFood.eat(sp, stickerId)) {
+        // 饱食度/饱和度由原版食物系统处理（FoodProperties），这里只补效果与冷却
+        if (entity instanceof net.minecraft.server.level.ServerPlayer sp) {
+            io.github.zgxhzhr.meowmachine.sticker.StickerFood.applyExtras(sp, stickerId);
             if (!sp.isCreative()) {
-                stack.shrink(1);
+                sp.getCooldowns().addCooldown(this, 400);
             }
-            // 原版物品冷却：20 秒（400 tick），物品栏上会显示冷却盖
-            sp.getCooldowns().addCooldown(this, 400);
         }
-        return stack;
+        return super.finishUsingItem(stack, level, entity);
     }
 
     /**
