@@ -37,9 +37,10 @@ public record MySubmissionsPacket(List<Entry> rows) {
      * @param state   状态（小写：draft / submitted / approved / returned）
      * @param pending  是否在人工队列里
      * @param editable 能否点「编辑」（已通过的不行）
+     * @param body     正文（剥标签纯文本，够「查看」看内容）
      */
     public record Entry(String id, String shortId, String title, String state,
-                        boolean pending, boolean editable) {
+                        boolean pending, boolean editable, String body) {
     }
 
     /** 组装：当前草稿打头，后面接队列里属于该玩家的条目（按 id 去重） */
@@ -62,7 +63,7 @@ public record MySubmissionsPacket(List<Entry> rows) {
                 if (seen.add(r.id().toString())) {
                     rows.add(new Entry(r.id().toString(), r.id().toString().substring(0, 8),
                             r.title(), r.state(), false,
-                            !"approved".equals(r.state())));
+                            !"approved".equals(r.state()), plainBody(r.body())));
                 }
             }
         }
@@ -73,7 +74,15 @@ public record MySubmissionsPacket(List<Entry> rows) {
         String id = s.id().toString();
         String state = s.state().name().toLowerCase();
         return new Entry(id, id.substring(0, 8), s.title(), state, pending,
-                !"approved".equals(state));
+                !"approved".equals(state), plainBody(s.body()));
+    }
+
+    /** 正文在列表包里的长度上限 */
+    private static final int MAX_BODY = 4096;
+
+    private static String plainBody(String body) {
+        String plain = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(body);
+        return plain.length() > MAX_BODY ? plain.substring(0, MAX_BODY) : plain;
     }
 
     public static void encode(MySubmissionsPacket msg, FriendlyByteBuf buf) {
@@ -85,6 +94,7 @@ public record MySubmissionsPacket(List<Entry> rows) {
             buf.writeUtf(e.state(), 16);
             buf.writeBoolean(e.pending());
             buf.writeBoolean(e.editable());
+            buf.writeUtf(e.body() == null ? "" : e.body(), MAX_BODY);
         }
     }
 
@@ -97,7 +107,7 @@ public record MySubmissionsPacket(List<Entry> rows) {
         for (int i = 0; i < n; i++) {
             rows.add(new Entry(buf.readUtf(40), buf.readUtf(12),
                     buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(16),
-                    buf.readBoolean(), buf.readBoolean()));
+                    buf.readBoolean(), buf.readBoolean(), buf.readUtf(MAX_BODY)));
         }
         return new MySubmissionsPacket(rows);
     }

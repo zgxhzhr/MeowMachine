@@ -115,5 +115,8 @@
   "gui.meow_machine.note_section": "审核意见",
   "gui.meow_machine.roster.members_header": "名册",
   "gui.meow_machine.roster.online_header": "在线玩家（点按钮任命）",
-  "gui.meow_machine.roster.no_online": "没有其他在线玩家"
+  "gui.meow_machine.roster.no_online": "没有其他在线玩家",
+  "gui.meow_machine.btn.preview": "查看",
+  "gui.meow_machine.view_title": "查看投稿",
+  "gui.meow_machine.view_empty": "（这篇没有正文）"
 }

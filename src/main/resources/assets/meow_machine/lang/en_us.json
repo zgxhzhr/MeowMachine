@@ -115,5 +115,8 @@
   "gui.meow_machine.note_section": "Review notes",
   "gui.meow_machine.roster.members_header": "Roster",
   "gui.meow_machine.roster.online_header": "Online players (click to appoint)",
-  "gui.meow_machine.roster.no_online": "No other players online"
+  "gui.meow_machine.roster.no_online": "No other players online",
+  "gui.meow_machine.btn.preview": "View",
+  "gui.meow_machine.view_title": "View submission",
+  "gui.meow_machine.view_empty": "(no body)"
 }

@@ -199,8 +199,8 @@ public final class LocalRules {
         // 第 10 条 重复内容（逐句比对；AI 容易把「结构相似」臆断成整段重复，所以本地兜一条确定性的）
         checkDuplicates(b, out);
 
-        // 第 26 条 标题结构（只在真的用了标题标记时才判，纯文本投稿不涉及）
-        checkTitleStructure(all, out);
+        // 第 26 条 标题结构（用了标记就查层级；长稿连标记都没有也算缺结构）
+        checkTitleStructure(all, b, out);
 
         return out;
     }
@@ -269,7 +269,28 @@ public final class LocalRules {
      *
      * <p>方括号标记是站点语法，本身不算问题；错的是结构。
      */
-    private static void checkTitleStructure(String text, List<ReviewFinding> out) {
+    /**
+     * 标题结构（第 26 条）。
+     *
+     * @param text 标题+正文（查层级用）
+     * @param body 正文（判断「长稿却完全没标题结构」用）
+     */
+    private static void checkTitleStructure(String text, String body, List<ReviewFinding> out) {
+        if (!TITLE_TAG.matcher(text).find()) {
+            // 长稿没有 [h1=] 之类的结构：百科正文要求分节，整篇流水账过不了排版
+            if (body.replaceAll("\s", "").length() >= MIN_STRUCTURED_CHARS) {
+                out.add(new ReviewFinding(26, head(body.strip()),
+                        "正文较长但没有 [h1=] 等标题结构，百科正文要分节"));
+            }
+            return;
+        }
+        checkTitleLevels(text, out);
+    }
+
+    /** 正文超过这个字数就要求有标题结构 */
+    private static final int MIN_STRUCTURED_CHARS = 200;
+
+    private static void checkTitleLevels(String text, List<ReviewFinding> out) {
         Matcher m = TITLE_TAG.matcher(text);
         int prevLevel = -1;
         int firstLevel = -1;

@@ -60,6 +60,7 @@ public final class SelfTest {
         testTitleStructure();
         testDuplicates();
         testMarkdownResidue();
+        testHeadingStructure();
         testRichText();
         testRichEditor();
         testRuleTables();
@@ -111,6 +112,26 @@ public final class SelfTest {
                 "推进顺序是固定的：先找到星尘矿石，用原版熔炉烧出第一批星尘锭。",
                 "· 星尘矿石生成在地下 Y −16 至 Y 48 之间。");
         check("正常的 [hN=] 与编辑器列表不判第 22 条", !hasRule("", ok, 22));
+    }
+
+    /**
+     * 第 26 条：长稿必须分节（有 [h1=] 等标题结构）。
+     *
+     * <p>实测：一篇几百字、没有任何标题的稿子被 AI 放行了；百科正文要求分节，
+     * 这是确定性的排版问题，交本地判。
+     */
+    private static void testHeadingStructure() {
+        StringBuilder longBody = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            longBody.append("这是第").append(i).append("段正常介绍文字，用来把长度撑过两百字，");
+            longBody.append("说明这个页面确实写了不少内容但没有分节。\n");
+        }
+        check("长稿没有标题结构判第 26 条", hasRule("", longBody.toString(), 26));
+
+        String withHeading = "[h1=概述]\n" + longBody + "[h2=核心玩法]\n一小段。";
+        check("有 h1 的长稿不判第 26 条", !hasRule("", withHeading, 26));
+
+        check("短稿不要求标题结构", !hasRule("", "短短一句说明。", 26));
     }
 
     /**

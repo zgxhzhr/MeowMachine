@@ -23,6 +23,7 @@ public class MySubmissionsScreen extends Screen {
     private static final int ROW_H = 24;
     private static final int MAX_ROWS = 8;
     private static final int ROW_BTN_W = 48;
+    private static final int PREVIEW_BTN_W = 42;
     private static final int TEXT_W = PANEL_W - ROW_BTN_W - 12;
 
     private final List<MySubmissionsPacket.Entry> rows;
@@ -44,14 +45,25 @@ public class MySubmissionsScreen extends Screen {
 
         for (int i = 0; i < shown; i++) {
             MySubmissionsPacket.Entry e = rows.get(i);
+            int y = top + i * ROW_H + 2;
+            // 查看：任何状态都能读内容（通过后只读，也得能看）
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.btn.preview"),
+                            b -> {
+                                if (this.minecraft != null) {
+                                    this.minecraft.setScreen(new SubmissionViewScreen(e));
+                                }
+                            })
+                    .bounds(left + PANEL_W - ROW_BTN_W - PREVIEW_BTN_W - 4, y,
+                            PREVIEW_BTN_W, 18).build());
             if (!e.editable()) {
-                continue; // 已通过的稿子只读
+                continue; // 已通过的稿子只读，没有编辑按钮
             }
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.btn.edit"),
                             b -> Network.CHANNEL.sendToServer(
                                     new EditMySubmissionPacket(e.id())))
-                    .bounds(left + PANEL_W - ROW_BTN_W, top + i * ROW_H + 2, ROW_BTN_W, 18).build());
+                    .bounds(left + PANEL_W - ROW_BTN_W, y, ROW_BTN_W, 18).build());
         }
 
         int y = this.height - 28;
