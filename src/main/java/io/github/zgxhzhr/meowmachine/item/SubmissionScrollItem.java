@@ -36,13 +36,11 @@ public class SubmissionScrollItem extends Item {
 
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             Submission draft = DraftStore.load(sp);
-            // 每次右键都要一份**新的**投稿：
-            // 只有「还在写、且已经写了内容」的草稿才继续打开；
-            // 已提交 / 已打回 / 已通过的内容都不再自动带出来（那些去「我的投稿」里看/编辑）
-            boolean unfinishedDraft = draft.state()
-                    == io.github.zgxhzhr.meowmachine.review.SubmissionState.DRAFT
-                    && !draft.isEmpty();
-            if (!unfinishedDraft) {
+            // 草稿就继续编辑（哪怕还没写内容）；已提交 / 已打回 / 已通过一律开新稿，
+            // 那些内容去「我的投稿」里查看或点编辑
+            boolean isDraft = draft.state()
+                    == io.github.zgxhzhr.meowmachine.review.SubmissionState.DRAFT;
+            if (!isDraft) {
                 draft = DraftStore.startNew(sp);
             }
             OpenEditorPacket packet = new OpenEditorPacket(
