@@ -51,6 +51,7 @@ public final class MeowMachineEvents {
         ResultInbox.attach(event.getServer());
         SubmissionHistory.attach(event.getServer());
         io.github.zgxhzhr.meowmachine.ai.AiConfigStore.attach(event.getServer());
+        io.github.zgxhzhr.meowmachine.review.AiOpinions.attach(event.getServer());
         io.github.zgxhzhr.meowmachine.review.ReviewNotes.attach(event.getServer());
     }
 
@@ -61,6 +62,7 @@ public final class MeowMachineEvents {
         ResultInbox.detach();
         SubmissionHistory.detach();
         io.github.zgxhzhr.meowmachine.ai.AiConfigStore.detach();
+        io.github.zgxhzhr.meowmachine.review.AiOpinions.detach();
         io.github.zgxhzhr.meowmachine.review.ReviewNotes.detach();
     }
 

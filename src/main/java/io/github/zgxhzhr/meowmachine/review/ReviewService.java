@@ -113,10 +113,21 @@ public final class ReviewService {
         //    注意顺序：**人工优先于本地规则**。本地规则命中也要交给审核员，
         //    它只是确定性预检，不能替人拍板（审核详情页会把预检结果列给审核员看）。
         if (hasHumanFinalizer(server)) {
+            ReviewResult pending = ReviewResult.of(Verdict.PENDING, List.of(), "pending-human",
+                    StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse(""));
+            if (cfg.usable()) {
+                // 开 AI 但不接管：AI 先跑一遍，发现存成「AI 意见」交给人工，
+                // 不作为结论（人工裁决仍然优先）。
+                return AiReviewer.review(cfg, sub.title(), plainBody, localFindings).thenApply(ai -> {
+                    if (ai.available() && !ai.findings().isEmpty()) {
+                        AiOpinions.put(sub.id(), ai.findings());
+                    }
+                    SubmissionQueue.enqueue(sub, System.currentTimeMillis());
+                    return pending;
+                });
+            }
             SubmissionQueue.enqueue(sub, System.currentTimeMillis());
-            return CompletableFuture.completedFuture(
-                    ReviewResult.of(Verdict.PENDING, List.of(), "pending-human",
-                            StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse("")));
+            return CompletableFuture.completedFuture(pending);
         }
 
         // ② 没人能终审 → 本地规则先判（不花 token，判得准的部分直接出结论）

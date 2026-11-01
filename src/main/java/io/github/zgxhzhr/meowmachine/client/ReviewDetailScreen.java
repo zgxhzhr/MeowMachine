@@ -32,8 +32,8 @@ public class ReviewDetailScreen extends Screen {
     private int viewHeight;
     /** 正文框顶部（有预检行时下移） */
     private int bodyTop = TOP;
-    /** 本地规则预检摘要（正文框外单独一行） */
-    private String precheck = "";
+    /** 顶部三栏摘要：AI 意见 / 本地规则 / 助理意见（正文框外） */
+    private final java.util.List<String> headLines = new java.util.ArrayList<>();
 
     public ReviewDetailScreen(ReviewListPacket.Entry entry, boolean canFinalize, boolean assistant) {
         super(Component.translatable("gui.meow_machine.detail_title"));
@@ -93,25 +93,27 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
-        // 本地规则预检：只算摘要，显示在正文框**外面**，不混进正文
+        // 顶部三栏摘要（AI 意见 / 本地规则预检 / 助理意见），显示在正文框外面
+        headLines.clear();
+        if (!entry.aiOpinions().isEmpty()) {
+            headLines.add(Component.translatable("gui.meow_machine.detail.ai_opinions").getString()
+                    + "：" + ruleSummary(entry.aiOpinions()));
+        }
         java.util.List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
                 io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(), entry.body());
-        if (pre.isEmpty()) {
-            this.precheck = "";
-            this.bodyTop = TOP;
-        } else {
-            StringBuilder sb = new StringBuilder();
+        if (!pre.isEmpty()) {
+            java.util.List<String> ids = new java.util.ArrayList<>();
             for (var f : pre) {
-                if (sb.length() > 0) {
-                    sb.append(" / ");
-                }
-                sb.append("第").append(f.ruleId() == null ? "?" : f.ruleId()).append("条");
+                ids.add("第" + (f.ruleId() == null ? "?" : f.ruleId()) + "条");
             }
-            this.precheck = Component.translatable(
-                    "gui.meow_machine.detail.local_rules").getString() + "：" + sb;
-            this.bodyTop = TOP + 12;
+            headLines.add(Component.translatable(
+                    "gui.meow_machine.detail.local_rules").getString() + "：" + String.join(" / ", ids));
         }
-        this.viewHeight = bottom - this.bodyTop - 6;
+        if (!entry.notes().isEmpty()) {
+            headLines.add(Component.translatable("gui.meow_machine.note_section").getString()
+                    + "：" + entry.notes().size() + " 条");
+        }
+        this.bodyTop = TOP + Math.max(0, headLines.size() * 11);
 
         int bw = 84;
         int gap = 6;
@@ -181,9 +183,9 @@ public class ReviewDetailScreen extends Screen {
         g.drawString(this.font,
                 Component.literal(trim(entry.title(), PANEL_W)), left, 40, 0xDDDDDD, false);
 
-        if (!precheck.isEmpty()) {
-            g.drawString(this.font, Component.literal(trim(precheck, PANEL_W)),
-                    left, bodyTop - 11, 0xFFAA44, false);
+        for (int i = 0; i < headLines.size(); i++) {
+            g.drawString(this.font, Component.literal(trim(headLines.get(i), PANEL_W)),
+                    left, bodyTop - 11 * (headLines.size() - i), 0xFFAA44, false);
         }
         g.fill(left - 1, bodyTop - 1, left + PANEL_W + 1, bodyTop + viewHeight + 1, 0xFF808080);
         g.fill(left, bodyTop, left + PANEL_W, bodyTop + viewHeight, 0xFF101010);
@@ -200,6 +202,16 @@ public class ReviewDetailScreen extends Screen {
         }
 
         super.render(g, mouseX, mouseY, partialTick);
+    }
+
+    /** "第 7 条：xxx" 这类行只取条号做摘要 */
+    private String ruleSummary(java.util.List<String> lines) {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (String line : lines) {
+            int idx = line.indexOf("：");
+            ids.add(idx > 0 ? line.substring(0, idx) : line);
+        }
+        return String.join(" / ", ids);
     }
 
     private String trim(String s, int maxWidth) {

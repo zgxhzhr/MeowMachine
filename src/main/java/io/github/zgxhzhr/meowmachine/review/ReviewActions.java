@@ -96,6 +96,7 @@ public final class ReviewActions {
         }
         findings = List.copyOf(withNotes);
         ReviewNotes.clear(sub.id());
+        AiOpinions.clear(sub.id());
 
         // 「说不出依据」时用「要不直接打回算了」那张图；其它情况按规则图 → 状态图
         String sticker = ruleId >= 0

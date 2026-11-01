@@ -178,5 +178,6 @@
   "chat.meow_machine.roster_role_taken": "[MeowMachine] %s already has a role; revoke it first to change role",
   "gui.meow_machine.reason.3": "Rule 3 Kaomoji/emoji",
   "gui.meow_machine.reason.10": "Rule 10 Duplication/misleading",
-  "gui.meow_machine.reason.26": "Rule 26 Heading structure"
+  "gui.meow_machine.reason.26": "Rule 26 Heading structure",
+  "gui.meow_machine.detail.ai_opinions": "AI opinion"
 }

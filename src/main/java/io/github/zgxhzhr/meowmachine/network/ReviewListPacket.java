@@ -1,6 +1,7 @@
 package io.github.zgxhzhr.meowmachine.network;
 
 import io.github.zgxhzhr.meowmachine.client.ReviewerScreenOpener;
+import io.github.zgxhzhr.meowmachine.review.AiOpinions;
 import io.github.zgxhzhr.meowmachine.review.ReviewNotes;
 import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
@@ -34,7 +35,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
      * @param body 正文（**剥掉 HTML 标签后的纯文本**，审核员要能读到实际内容）
      */
     public record Entry(String fullId, String shortId, String author, String title, String body,
-                        List<String> notes) {
+                        List<String> notes, List<String> aiOpinions) {
 
         public static Entry of(Submission s) {
             String full = s.id().toString();
@@ -43,7 +44,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
                 plain = plain.substring(0, MAX_BODY);
             }
             return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain,
-                    ReviewNotes.of(s.id()));
+                    ReviewNotes.of(s.id()), AiOpinions.of(s.id()));
         }
     }
 
@@ -81,6 +82,10 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             for (String n : e.notes()) {
                 buf.writeUtf(n, 240);
             }
+            buf.writeVarInt(e.aiOpinions().size());
+            for (String n : e.aiOpinions()) {
+                buf.writeUtf(n, 240);
+            }
         }
     }
 
@@ -107,7 +112,15 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             for (int k = 0; k < nc; k++) {
                 notes.add(buf.readUtf(240));
             }
-            list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes)));
+            int ac = buf.readVarInt();
+            if (ac < 0 || ac > 16) {
+                throw new DecoderException("喵呜机：AI 意见条数非法: " + ac);
+            }
+            List<String> ai = new ArrayList<>(ac);
+            for (int k = 0; k < ac; k++) {
+                ai.add(buf.readUtf(240));
+            }
+            list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes), List.copyOf(ai)));
         }
         return new ReviewListPacket(list, canFinalize, assistant);
     }

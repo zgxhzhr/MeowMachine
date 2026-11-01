@@ -178,5 +178,6 @@
   "chat.meow_machine.roster_role_taken": "[喵呜机] %s 已有其他身份，想换角色请先撤销",
   "gui.meow_machine.reason.3": "第 3 条 颜文字/emoji",
   "gui.meow_machine.reason.10": "第 10 条 重复/误导",
-  "gui.meow_machine.reason.26": "第 26 条 标题结构"
+  "gui.meow_machine.reason.26": "第 26 条 标题结构",
+  "gui.meow_machine.detail.ai_opinions": "AI 意见"
 }
