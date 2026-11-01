@@ -54,12 +54,8 @@ public final class ReviewService {
                                                           Submission sub, LlmConfig cfg) {
         String plainBody = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(sub.body());
         List<ReviewFinding> localFindings = LocalRules.check(sub.title(), plainBody);
-        // 改稿再投是同一个 id：先清掉上一轮 AI 意见，否则人工看到的是旧稿的意见
-        AiOpinions.clear(sub.id());
         // AI 看结构化文本：列表/表格保留结构，否则它会以为作者没建列表
         String aiText = io.github.zgxhzhr.meowmachine.richtext.RichHtml.toAiText(sub.body());
-        // 改稿再投是同一个 id：先清掉上一轮 AI 意见，否则人工看到的是旧稿的意见
-        AiOpinions.clear(sub.id());
 
         // 「AI 接管」：AI 的判断**优于本地规则**，本地命中的条款只当线索交给它，
         // 它可以确认、纠正或忽略，并写附言——这是纯规则判定做不到的。
@@ -80,6 +76,7 @@ public final class ReviewService {
                         .filter(f -> f.ruleId() != null
                                 && (f.ruleId() == 22 || f.ruleId() == 26))
                         .toList();
+                AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
                 MeowMachine.LOG.info(
                         "[喵呜机] AI 接管裁决 author={} 本地线索 {} 条（其中格式 {} 条）/ AI 违规 {} 条",
                         author.getName().getString(), localFindings.size(),
@@ -125,8 +122,9 @@ public final class ReviewService {
                 // 开 AI 但不接管：AI 先跑一遍，发现存成「AI 意见」交给人工，
                 // 不作为结论（人工裁决仍然优先）。
                 return AiReviewer.review(cfg, sub.title(), aiText, localFindings).thenApply(ai -> {
-                    if (ai.available() && !ai.findings().isEmpty()) {
-                        AiOpinions.put(sub.id(), ai.findings());
+                    if (ai.available()) {
+                        // 通过也留一句（AI 的附言/默认说明），别让详情里一直显示「无」
+                        AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
                     }
                     SubmissionQueue.enqueue(sub, System.currentTimeMillis());
                     return pending;
@@ -151,6 +149,7 @@ public final class ReviewService {
                 if (!ai.available()) {
                     return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
                 }
+                AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
                 String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
                 if (aiSticker != null) {
                     boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));

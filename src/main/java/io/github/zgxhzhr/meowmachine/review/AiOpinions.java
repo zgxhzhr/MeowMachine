@@ -52,6 +52,29 @@ public final class AiOpinions {
         }
     }
 
+    /**
+     * 按一次 AI 结论记录意见：违规逐条记；**通过时也记一句**（AI 的附言或默认说明）。
+     *
+     * <p>以前「AI 没发现违规」就什么都不存，结果审核详情里 AI 意见永远是「无」，
+     * 看起来像意见被吞了。现在通过也留痕；AI 不可用时不动已有记录（保留旧的）。
+     */
+    public static void putOutcome(UUID submissionId, List<ReviewFinding> findings, String note) {
+        if (submissionId == null) {
+            return;
+        }
+        if (findings != null && !findings.isEmpty()) {
+            put(submissionId, findings);
+            return;
+        }
+        String text = (note == null || note.isBlank()) ? "AI 未发现违规，允许通过" : "通过：" + note.trim();
+        List<String> lines = new ArrayList<>();
+        lines.add(text);
+        BY_SUBMISSION.put(submissionId, lines);
+        if (store != null) {
+            store.put(submissionId, lines);
+        }
+    }
+
     public static List<String> of(UUID submissionId) {
         if (submissionId == null) {
             return List.of();

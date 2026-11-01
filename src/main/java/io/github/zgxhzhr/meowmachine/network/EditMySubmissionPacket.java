@@ -82,8 +82,6 @@ public record EditMySubmissionPacket(String fullId) {
             }
             // 从队列撤回：作者要改，就不该同时让审核员审一份要变的稿子
             SubmissionQueue.drop(uuid);
-            io.github.zgxhzhr.meowmachine.review.AiOpinions.clear(uuid);
-            io.github.zgxhzhr.meowmachine.review.AiOpinions.clear(uuid);
             target = queued.get();
             DraftStore.save(player, target);
             MeowMachine.LOG.info("[喵呜机] 作者撤回待审稿继续编辑 id={} author={}",
