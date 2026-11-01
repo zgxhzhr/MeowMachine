@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "meow_machine:sticker/kurushi"
+        "layer0": "meow_machine:item/sticker_kurushi"
     }
 }

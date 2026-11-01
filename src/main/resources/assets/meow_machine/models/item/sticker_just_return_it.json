@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "meow_machine:sticker/just_return_it"
+        "layer0": "meow_machine:item/sticker_just_return_it"
     }
 }

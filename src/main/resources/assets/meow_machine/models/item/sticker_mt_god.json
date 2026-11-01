@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "meow_machine:sticker/mt_god"
+        "layer0": "meow_machine:item/sticker_mt_god"
     }
 }
