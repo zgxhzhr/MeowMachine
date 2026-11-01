@@ -4,7 +4,7 @@ Minecraft **1.20.1 Forge** 模组：内容审核模拟器。玩家用「投稿�
 （本地规则 / 人工 / AI 三路）给出结论，结论通过**梗图弹窗**反馈。梗图全部数据包驱动，加表情不用改代码。
 
 - modid：`meow_machine`
-- 版本：`0.8.0`（**开发测试阶段**：只走 0.x.y，修 bug 加末位；`1.0.0` 保留给正式发布时再升）
+- 版本：`0.9.0`（**开发测试阶段**：只走 0.x.y，修 bug 加末位；`1.0.0` 保留给正式发布时再升）
 - 状态：可构建、可运行，`gradlew runServer` 冒烟测试通过
 
 ---
@@ -71,7 +71,25 @@ cd 'E:\Mod\其它项目\MeowMachine'
 - 编辑界面底部四颗按钮：新建投稿 / 提交审核 / **我的投稿** / 关闭
 - 「我的投稿」列出当前草稿与人工队列里自己的稿子（短 id、标题、状态：草稿/待审/已通过/被打回）
 - 命令 `/meow my` 是同一份信息的聊天栏版本
-- 正文区支持 **Ctrl+V 粘贴 / Ctrl+C 复制全文 / Ctrl+A 移动光标到末尾**（自绘输入区不会自动处理剪贴板）
+- 正文是**富文本编辑器**（见下节），不再只支持纯文本
+
+
+## 正文富文本编辑器（0.9.0）
+
+正文按原生 MC百科编辑器的**输入层**实现：编辑者能做出来的只有五种操作，标题靠手打 `[hN=标题]` 文字。
+
+| 工具栏 | 行为 |
+|---|---|
+| `B` | 粗体：有选区作用于选区；无选区切换「悬挂样式」，之后输入的字带上 |
+| `I` | 斜体，同上 |
+| `•` | 无序列表：光标段落 ↔ 列表互转，多段选中整段切换，再点一次撤销 |
+| `1.` | 有序列表，同上 |
+| `⊞` | 插入 2×3 表格（首行表头），插入后光标进第一格 |
+
+键盘：`Enter` 拆段 / 列表内新建项（空项回车退出列表）/ 表格内换行；`Tab`/`Shift+Tab` 表格跳格；`Ctrl+B/I`、`Ctrl+Z` 撤销、`Ctrl+A` 全选、`Ctrl+C` 复制、`Ctrl+V` 粘贴（粘贴会剥掉外部标签）；方向键移动、`Shift+方向键` 扩选、鼠标拖选。
+
+存储：正文以站点同款 HTML 保存（`<p>`、`<strong>`、`<em>`、`<ul>/<ol><li><p>`、`<table><th>/<td valign="top">`），
+提交时服务端先 `stripTags` 再交给规则/AI，所以第 26 条的标题结构检查仍然看得到 `[hN=]`。
 
 ## 投稿的生命周期 / 多篇投稿
 
@@ -221,18 +239,19 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 │   ├── ResultInbox       离线作者的待补发结论（写穿 InboxSavedData）
 │   ├── QueueSavedData    队列的世界存档（<世界>/data/meow_machine_queue.dat）
 │   ├── InboxSavedData    离线结论的世界存档（<世界>/data/meow_machine_inbox.dat）
+│   ├── richtext/         富文本模型 / HTML 解析序列化 / 编辑器内核（纯 Java）
 │   ├── DraftStore / DraftSavedData   草稿（世界存档）
 │   └── Submission / SubmissionState / Verdict / ReviewFinding / ReviewResult
 ├── sticker/              梗图定义与注册表（数据包加载）
 ├── ai/                   LlmConfig / LlmClient / AiReviewer
-├── network/              14 个包，不用 MenuType（协议号 6）
+├── network/              14 个包，不用 MenuType（协议号 7）
 ├── client/               编辑 / 梗图 / 审核 / 后台 / 审核员管理 五个 Screen
 ├── item/                 投稿卷轴、审核终端
 ├── command/MeowCommands  /meow 命令树
 └── dev/SelfTest          手写断言器（43 条，jar 里已排除）
 ```
 
-协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6），版本不一致的客户端会被 Forge 挡在连接阶段。
+协议号改动时机：**包结构一变就 +1**（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6，0.9.0=7），版本不一致的客户端会被 Forge 挡在连接阶段。
 
 ---
 
@@ -242,6 +261,7 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 2. **名册界面只能任命「在线玩家」**（GUI 没有实体选择器，按名字解析；离线任命仍走命令）
 3. `helpless` / `kurushi` / `laowu` / `meowmeow` 四张梗图未挂载（启动会 warn）
 4. 物品纹理是程序生成的占位图
+5. 富文本只做了五种（粗/斜/两种列表/表格），表格固定 2×3、不支持合并单元格与字色/上标
 
 ---
 

@@ -19,7 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class Network {
 
     /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6 加入「我的投稿」） */
-    private static final String PROTOCOL = "6";
+    private static final String PROTOCOL = "7";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -28,7 +28,7 @@ public final class Network {
     /** 标题长度上限（字符） */
     public static final int MAX_TITLE_LEN = 64;
     /** 正文长度上限（字符）。真正落库前服务端还会再夹一次，客户端限制只是体验 */
-    public static final int MAX_BODY_LEN = 4096;
+    public static final int MAX_BODY_LEN = 16384;
 
     private Network() {
     }

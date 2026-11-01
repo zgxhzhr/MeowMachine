@@ -53,7 +53,8 @@ public final class ReviewService {
     public static CompletableFuture<ReviewResult> process(MinecraftServer server, ServerPlayer author,
                                                           Submission sub, LlmConfig cfg) {
         // ① 本地规则先判（不花 token，判得准的部分直接出结论）
-        List<ReviewFinding> localFindings = LocalRules.check(sub.title(), sub.body());
+        String plainBody = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(sub.body());
+        List<ReviewFinding> localFindings = LocalRules.check(sub.title(), plainBody);
         if (!localFindings.isEmpty()) {
             String sticker = pickSticker(Verdict.RETURN, localFindings);
             MeowMachine.LOG.info("[喵呜机] 本地规则命中 {} 条，自动打回 author={}",
@@ -75,7 +76,7 @@ public final class ReviewService {
 
         // ③ 没人审（或 AI 接管）→ AI
         if (cfg.usable()) {
-            return AiReviewer.review(cfg, sub.title(), sub.body()).thenApply(ai -> {
+            return AiReviewer.review(cfg, sub.title(), plainBody).thenApply(ai -> {
                 if (!ai.available()) {
                     // AI 没给出可信结论 → 走兜底，**绝不能当通过**
                     return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");

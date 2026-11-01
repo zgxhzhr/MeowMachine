@@ -56,6 +56,6 @@ public record Submission(UUID id, UUID authorUuid, String authorName,
 
     /** 内容是否为空（空稿不允许提交） */
     public boolean isEmpty() {
-        return title.isBlank() && body.isBlank();
+        return title.isBlank() && io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(body).isBlank();
     }
 }

@@ -6,86 +6,77 @@ import io.github.zgxhzhr.meowmachine.network.NewSubmissionPacket;
 import io.github.zgxhzhr.meowmachine.network.OpenEditorPacket;
 import io.github.zgxhzhr.meowmachine.network.SaveDraftPacket;
 import io.github.zgxhzhr.meowmachine.network.SubmitPacket;
+import io.github.zgxhzhr.meowmachine.richtext.RichDoc;
+import io.github.zgxhzhr.meowmachine.richtext.RichEditor;
+import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 /**
- * 投稿编辑界面：标题（单行 EditBox）+ 正文（**自绘多行输入区**）。
+ * 投稿编辑界面：标题（原版 EditBox）+ **富文本正文**。
  *
- * <p>为什么正文不用 EditBox：MC 1.20.1 的 {@code EditBox} 是单行控件，
- * 文字垂直居中、且会过滤掉换行符。正文需要换行，只能自己维护缓冲区并逐行绘制。
+ * <p>正文按原生 MC百科编辑器的输入层来：编辑者能做的只有五种操作——
+ * 粗体、斜体、无序列表、有序列表、表格；标题是手打的 {@code [hN=…]} 文字，不是按钮。
  *
- * <p>本版新增：
- * <ul>
- *   <li><b>正文光标</b>：左右移动 / Home / End / Delete / 上下跨行 / 鼠标点击定位，
- *       光标闪一下，输入不再只能在末尾追加（0.1.0 的老限制）。</li>
- *   <li><b>「新建投稿」按钮</b>：不再被一份草稿锁死一辈子。</li>
- *   <li><b>关界面暂存草稿</b>（0.2.0 加入）与<b>按钮贴底</b>（矮窗口不出屏）。</li>
- * </ul>
+ * <p>渲染方式：把文档排成「字符盒」（每个字记录所属块/单元/偏移与屏幕坐标），
+ * 用它做点选、拖选、选区高亮、光标与折行；粗斜体直接用 Minecraft 的
+ * {@code Style.bold/italic} 渲染（原版字体本来就会画斜体，不用自己剪切）。
  */
 public class SubmissionScreen extends Screen {
 
-    private static final int PANEL_W = 300;
+    private static final int PANEL_W = 320;
     private static final int TITLE_H = 18;
     private static final int LINE_H = 10;
-    private static final int INNER_PAD = 4;
+    private static final int PAD = 4;
+    private static final int TOOLBAR_H = 18;
     private static final int MIN_BODY_H = 60;
-    private static final int MAX_BODY_H = 150;
-    /** 光标闪烁周期（毫秒，半个周期亮/灭） */
-    private static final long CARET_BLINK_MS = 500L;
 
     private final OpenEditorPacket draft;
-    private EditBox titleBox;
-
-    /** 正文缓冲区（原文，含换行） */
-    private final StringBuilder bodyText;
-
-    /** 正文区是否获得焦点（点标题框会切回去） */
-    private boolean bodyFocused = false;
-
-    /** 正文滚动行数（内容超出可视区时） */
-    private int bodyScroll = 0;
-
-    /** IMBlocker 的状态可能在焦点变化后被它重新计算，这里定期重申一次（约每秒） */
-    private int imeReassert = 0;
-
-    /** 正文光标位置（bodyText 的字符下标，0..length） */
-    private int caret = 0;
-
-    /** 本次是否点了「提交审核」——提交后关闭时不该再发草稿暂存 */
-    private boolean submitted = false;
-
-    /** 当前草稿是否还能编辑（已通过的稿子只能看） */
     private final boolean editable;
+    private RichEditor editor;
+    private EditBox titleBox;
+    private boolean submitted = false;
 
     private int panelLeft;
     private int bodyTop;
     private int bodyH;
+    private int contentHeight = 0;
+    private int scrollY = 0;
+
+    /** 排版缓存：字符盒 + 表格框（x, y, w, h, cols） */
+    private final List<CharBox> boxes = new ArrayList<>();
+    private final List<int[]> tableFrames = new ArrayList<>();
+
+    /** 撤销栈（粗粒度：每次命令前存一份 HTML） */
+    private final Deque<String> undoStack = new ArrayDeque<>();
+
+    private record CharBox(int block, int cell, int offset, int x, int y, int w, char ch,
+                           boolean bold, boolean italic) {
+    }
 
     public SubmissionScreen(OpenEditorPacket draft) {
         super(Component.translatable("gui.meow_machine.submission"));
         this.draft = draft;
-        this.bodyText = new StringBuilder(draft.body() == null ? "" : draft.body());
         this.editable = !"approved".equalsIgnoreCase(draft.status());
-        this.caret = this.bodyText.length();
+        this.editor = new RichEditor(RichHtml.parseLoose(draft.body()));
     }
 
     @Override
     protected void init() {
-        // 有 IMBlocker 时把输入法打开：自定义界面不在它的白名单里，否则中文打不进来
         ImeCompat.onTextScreenOpened();
         int cx = this.width / 2;
-        // 顶部区域：标题/状态两行文字，再往下才是输入区
         int top = Math.max(44, Math.min(this.height / 4, 72));
-
         this.panelLeft = cx - PANEL_W / 2;
 
         this.titleBox = new EditBox(this.font, panelLeft, top, PANEL_W, TITLE_H,
@@ -96,127 +87,212 @@ public class SubmissionScreen extends Screen {
         this.titleBox.setEditable(editable);
         this.addRenderableWidget(this.titleBox);
 
-        this.bodyTop = top + TITLE_H + 8;
+        // ---------- 工具栏：粗体 / 斜体 / 无序 / 有序 / 表格 ----------
+        int toolbarY = top + TITLE_H + 4;
+        int bw = 34;
+        int gap = 2;
+        String[] labels = {"B", "I", "•", "1.", "⊞"};
+        for (int i = 0; i < labels.length; i++) {
+            final int idx = i;
+            addRenderableWidget(Button.builder(Component.literal(labels[i]), b -> onToolbar(idx))
+                    .bounds(panelLeft + i * (bw + gap), toolbarY, bw, TOOLBAR_H).build());
+        }
 
-        // 按钮贴底（留 30px），正文吃剩下的高度——这样任何 GUI scale 下按钮都在屏内
+        this.bodyTop = toolbarY + TOOLBAR_H + 4;
+
+        // ---------- 底部四颗功能键 ----------
         int btnY = this.height - 30;
-        int available = btnY - 8 - bodyTop;
-        this.bodyH = Math.max(MIN_BODY_H, Math.min(MAX_BODY_H, available));
-
-        // 四颗按钮并排：新建 / 提交 / 我的投稿 / 关闭
-        int bw = 72;
-        int gap = 4;
-        int x0 = cx - (bw * 4 + gap * 3) / 2;
+        this.bodyH = Math.max(MIN_BODY_H, btnY - 8 - bodyTop);
+        int fw = 72;
+        int fg = 4;
+        int x0 = cx - (fw * 4 + fg * 3) / 2;
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.new_submission"), b -> startNew())
-                .bounds(x0, btnY, bw, 20).build());
+                .bounds(x0, btnY, fw, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.submit"), b -> submit())
-                .bounds(x0 + bw + gap, btnY, bw, 20).build());
+                .bounds(x0 + fw + fg, btnY, fw, 20).build());
         addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.my_button"), b -> openMyList())
-                .bounds(x0 + (bw + gap) * 2, btnY, bw, 20).build());
+                        Component.translatable("gui.meow_machine.my_button"),
+                        b -> Network.CHANNEL.sendToServer(new MySubmissionsRequestPacket()))
+                .bounds(x0 + (fw + fg) * 2, btnY, fw, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.cancel"), b -> this.onClose())
-                .bounds(x0 + (bw + gap) * 3, btnY, bw, 20).build());
+                .bounds(x0 + (fw + fg) * 3, btnY, fw, 20).build());
+
+        this.layout();
     }
 
-    /** 查自己的投稿列表（当前稿 + 队列里自己的待审） */
-    private void openMyList() {
-        Network.CHANNEL.sendToServer(new MySubmissionsRequestPacket());
-    }
+    // ---------------- 工具栏 ----------------
 
-    private void submit() {
+    private void onToolbar(int idx) {
         if (!editable) {
             return;
         }
-        Network.CHANNEL.sendToServer(new SubmitPacket(titleBox.getValue(), bodyText.toString()));
-        this.submitted = true;
-        this.onClose();
-    }
-
-    /** 丢当前草稿开新稿：服务端会回一个空的 OpenEditorPacket，客户端借此换界面 */
-    private void startNew() {
-        Network.CHANNEL.sendToServer(new NewSubmissionPacket());
-    }
-
-    /**
-     * 关闭时暂存草稿。
-     *
-     * <p>「提交」路径关闭时不发（服务端已经存过 SUBMITTED 版本）；
-     * 其它情况（ESC / 点关闭 / 点标题栏的叉）都把当前内容存成草稿。
-     */
-    @Override
-    public void onClose() {
-        if (!submitted && editable) {
-            Network.CHANNEL.sendToServer(
-                    new SaveDraftPacket(titleBox.getValue(), bodyText.toString()));
-        }
-        super.onClose();
-    }
-
-    // ---------------- 文本布局 ----------------
-
-    /** 一行显示文本 + 它在 bodyText 里的起始下标 */
-    private record Line(String text, int start) {
-    }
-
-    /** 把缓冲区按换行 + 宽度折成显示行，并记下每行对应的原文下标 */
-    private List<Line> layout() {
-        List<Line> out = new ArrayList<>();
-        int maxWidth = PANEL_W - INNER_PAD * 2;
-        int lineStart = 0;
-        StringBuilder cur = new StringBuilder();
-
-        for (int i = 0; i < bodyText.length(); i++) {
-            char ch = bodyText.charAt(i);
-            if (ch == '\n') {
-                out.add(new Line(cur.toString(), lineStart));
-                cur.setLength(0);
-                lineStart = i + 1;
-                continue;
-            }
-            if (cur.length() > 0 && this.font.width(cur.toString() + ch) > maxWidth) {
-                out.add(new Line(cur.toString(), lineStart));
-                lineStart = i;
-                cur.setLength(0);
-            }
-            cur.append(ch);
-        }
-        out.add(new Line(cur.toString(), lineStart));
-        return out;
-    }
-
-    /** 光标在第几个显示行 */
-    private int caretLine(List<Line> lines) {
-        for (int i = lines.size() - 1; i >= 0; i--) {
-            if (lines.get(i).start() <= caret) {
-                return i;
+        pushUndo();
+        switch (idx) {
+            case 0 -> editor.toggleBold();
+            case 1 -> editor.toggleItalic();
+            case 2 -> editor.toggleList(false);
+            case 3 -> editor.toggleList(true);
+            case 4 -> editor.insertTable(2, 3);
+            default -> {
             }
         }
-        return 0;
+        layout();
     }
 
-    /** 光标在行内的列号（限制在行文本长度内） */
-    private int caretColumn(Line line) {
-        return Math.max(0, Math.min(caret - line.start(), line.text().length()));
+    private void pushUndo() {
+        undoStack.push(RichHtml.toHtml(editor.doc()));
+        while (undoStack.size() > 50) {
+            undoStack.removeLast();
+        }
     }
 
-    private int visibleLines() {
-        return Math.max(1, (bodyH - INNER_PAD * 2) / LINE_H);
+    private void undo() {
+        if (undoStack.isEmpty()) {
+            return;
+        }
+        editor = new RichEditor(RichHtml.parse(undoStack.pop()));
+        layout();
     }
 
-    /** 保证光标所在行在可视区内 */
+    // ---------------- 排版 ----------------
+
+    private void layout() {
+        boxes.clear();
+        tableFrames.clear();
+        int left = panelLeft + PAD;
+        int right = panelLeft + PANEL_W - PAD;
+        int maxW = right - left;
+        int y = bodyTop + PAD;
+
+        for (int b = 0; b < editor.blockCount(); b++) {
+            String kind = editor.kindAt(b);
+            List<List<RichDoc.Run>> cells = editor.cellsAt(b);
+            if (kind.equals("para") || kind.equals("ul") || kind.equals("ol")) {
+                for (int c = 0; c < cells.size(); c++) {
+                    String prefix = kind.equals("ul") ? "• "
+                            : kind.equals("ol") ? (c + 1) + ". " : "";
+                    int indent = kind.equals("para") ? 0 : 12;
+                    y = layoutCell(b, c, cells.get(c), left + indent, y, maxW - indent, prefix);
+                }
+            } else {
+                int cols = Math.max(1, editor.colsAt(b));
+                int cellW = maxW / cols;
+                for (int r = 0; r * cols < cells.size(); r++) {
+                    int rowTop = y;
+                    int rowH = LINE_H + PAD;
+                    for (int c = 0; c < cols && r * cols + c < cells.size(); c++) {
+                        int cellX = left + c * cellW;
+                        int consumed = layoutCell(b, r * cols + c, cells.get(r * cols + c),
+                                cellX + 3, rowTop + 2, cellW - 6, "");
+                        rowH = Math.max(rowH, consumed - rowTop + 2);
+                    }
+                    tableFrames.add(new int[]{left, rowTop, maxW, rowH, cols});
+                    y = rowTop + rowH;
+                }
+            }
+        }
+        this.contentHeight = y - bodyTop + PAD;
+        clampScroll();
+    }
+
+    /** 排一个单元（段落 / 列表项 / 表格单元格），返回下一行 y */
+    private int layoutCell(int block, int cell, List<RichDoc.Run> runs,
+                           int x0, int y0, int maxW, String prefix) {
+        int x = x0;
+        int y = y0;
+        int right = x0 + maxW;
+        int offsetBase = -prefix.length();
+        int cursor = 0;
+
+        if (!prefix.isEmpty()) {
+            for (char ch : prefix.toCharArray()) {
+                int w = this.font.width(String.valueOf(ch));
+                boxes.add(new CharBox(block, cell, 0, x, y, w, ch, false, false));
+                x += w;
+            }
+        }
+        for (RichDoc.Run run : runs) {
+            for (int i = 0; i < run.text().length(); i++) {
+                char ch = run.text().charAt(i);
+                if (ch == '\n') {
+                    x = x0;
+                    y += LINE_H;
+                    continue;
+                }
+                String s = String.valueOf(ch);
+                int w = this.font.width(s);
+                if (x + w > right && x > x0) {
+                    x = x0;
+                    y += LINE_H;
+                }
+                boxes.add(new CharBox(block, cell, Math.max(0, cursor + offsetBase),
+                        x, y, w, ch, run.bold(), run.italic()));
+                x += w;
+                cursor++;
+            }
+        }
+        return y + LINE_H;
+    }
+
+    private void clampScroll() {
+        int maxScroll = Math.max(0, contentHeight - bodyH);
+        scrollY = Math.max(0, Math.min(scrollY, maxScroll));
+    }
+
     private void scrollToCaret() {
-        List<Line> lines = layout();
-        int lineIndex = caretLine(lines);
-        int visible = visibleLines();
-        bodyScroll = Math.max(0, Math.min(bodyScroll, Math.max(0, lines.size() - visible)));
-        if (lineIndex < bodyScroll) {
-            bodyScroll = lineIndex;
-        } else if (lineIndex >= bodyScroll + visible) {
-            bodyScroll = lineIndex - visible + 1;
+        CharBox caretBox = caretBox();
+        if (caretBox == null) {
+            return;
         }
+        int y = caretBox.y() - bodyTop;
+        if (y < 0) {
+            scrollY += y - PAD;
+        } else if (y > bodyH - LINE_H) {
+            scrollY += y - (bodyH - LINE_H) + PAD;
+        }
+        clampScroll();
+    }
+
+    // ---------------- 光标 / 命中 ----------------
+
+    private CharBox caretBox() {
+        RichEditor.Pos caret = editor.caret();
+        CharBox last = null;
+        for (CharBox b : boxes) {
+            if (b.block() == caret.block() && b.cell() == caret.cell()) {
+                if (b.offset() == caret.offset()) {
+                    return b;
+                }
+                last = b;
+                if (b.offset() > caret.offset()) {
+                    return b;
+                }
+            }
+        }
+        return last;
+    }
+
+    private RichEditor.Pos posAt(double mx, double my) {
+        int py = (int) my + scrollY;
+        CharBox best = null;
+        int bestDist = Integer.MAX_VALUE;
+        for (CharBox b : boxes) {
+            int dx = (int) Math.abs(mx - (b.x() + b.w() / 2.0));
+            int dy = Math.abs(py - (b.y() + LINE_H / 2));
+            int dist = dy * 400 + dx;
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = b;
+            }
+        }
+        if (best == null) {
+            return new RichEditor.Pos(0, 0, 0);
+        }
+        int off = mx > best.x() + best.w() / 2.0 ? best.offset() + 1 : best.offset();
+        return new RichEditor.Pos(best.block(), best.cell(), off);
     }
 
     // ---------------- 渲染 ----------------
@@ -226,14 +302,7 @@ public class SubmissionScreen extends Screen {
         this.renderBackground(g);
         int cx = this.width / 2;
 
-        // 正文是自绘控件，IMBlocker 不认识它，失去 EditBox 焦点后可能把输入法关掉；
-        // 只要正文还在焦点上就定期重申「我需要输入法」
-        if (bodyFocused && editable && (++imeReassert % 20 == 0)) {
-            ImeCompat.wantIme(true);
-        }
-
-        // 标题与状态：放在输入区上方，不压住输入框
-        int titleY = Math.max(6, this.bodyTop - TITLE_H - 26);
+        int titleY = Math.max(6, this.bodyTop - TITLE_H - TOOLBAR_H - 30);
         g.drawCenteredString(this.font, this.title, cx, titleY, 0xFFFFFF);
         g.drawCenteredString(this.font,
                 Component.translatable("gui.meow_machine.status", draft.status()),
@@ -241,37 +310,79 @@ public class SubmissionScreen extends Screen {
 
         super.render(g, mouseX, mouseY, partialTick);
 
-        // 正文区边框（获得焦点时描亮边）
-        int border = bodyFocused ? 0xFFFFFFFF : 0xFF808080;
-        g.fill(panelLeft - 1, bodyTop - 1, panelLeft + PANEL_W + 1, bodyTop + bodyH + 1, border);
+        g.fill(panelLeft - 1, bodyTop - 1, panelLeft + PANEL_W + 1, bodyTop + bodyH + 1, 0xFF808080);
         g.fill(panelLeft, bodyTop, panelLeft + PANEL_W, bodyTop + bodyH, 0xFF000000);
 
-        // 正文文本：逐行画，超出可视区时按 bodyScroll 截断
-        List<Line> lines = layout();
-        int visible = visibleLines();
-        int start = Math.min(bodyScroll, Math.max(0, lines.size() - visible));
-        for (int i = 0; i < visible && start + i < lines.size(); i++) {
-            g.drawString(this.font, Component.literal(lines.get(start + i).text()),
-                    panelLeft + INNER_PAD, bodyTop + INNER_PAD + i * LINE_H,
-                    bodyFocused ? 0xFFFFFF : 0xCCCCCC, false);
+        // 表格框
+        for (int[] f : tableFrames) {
+            int x = f[0];
+            int y = f[1] - scrollY;
+            int w = f[2];
+            int h = f[3];
+            int cols = f[4];
+            g.fill(x, y, x + w, y + 1, 0xFF707070);
+            g.fill(x, y + h - 1, x + w, y + h, 0xFF707070);
+            g.fill(x, y, x + 1, y + h, 0xFF707070);
+            g.fill(x + w - 1, y, x + w, y + h, 0xFF707070);
+            for (int c = 1; c < cols; c++) {
+                int vx = x + c * (w / cols);
+                g.fill(vx, y, vx + 1, y + h, 0xFF707070);
+            }
         }
 
-        // 空正文时给个提示；不可编辑时给个说明
-        if (lines.size() == 1 && lines.get(0).text().isEmpty()) {
-            g.drawString(this.font, Component.translatable(
-                            editable ? "gui.meow_machine.body_hint" : "gui.meow_machine.body_readonly"),
-                    panelLeft + INNER_PAD, bodyTop + INNER_PAD, 0x707070, false);
+        // 选区高亮
+        RichEditor.Pos a = editor.anchor();
+        RichEditor.Pos b = editor.caret();
+        RichEditor.Pos lo = a.compareTo(b) <= 0 ? a : b;
+        RichEditor.Pos hi = a.compareTo(b) <= 0 ? b : a;
+        if (!lo.equals(hi)) {
+            for (CharBox box : boxes) {
+                RichEditor.Pos p = new RichEditor.Pos(box.block(), box.cell(), box.offset());
+                if (p.compareTo(lo) >= 0 && p.compareTo(hi) < 0) {
+                    int py = box.y() - scrollY;
+                    if (py >= bodyTop && py < bodyTop + bodyH) {
+                        g.fill(box.x(), py, box.x() + box.w(), py + LINE_H, 0x66FFFFFF);
+                    }
+                }
+            }
         }
 
-        // 光标：只画在可视区内，并且闪一下
-        if (bodyFocused && editable && (System.currentTimeMillis() / CARET_BLINK_MS) % 2 == 0) {
-            int lineIndex = caretLine(lines);
-            if (lineIndex >= start && lineIndex < start + visible) {
-                Line line = lines.get(lineIndex);
-                int col = caretColumn(line);
-                int caretX = panelLeft + INNER_PAD + this.font.width(line.text().substring(0, col));
-                int caretY = bodyTop + INNER_PAD + (lineIndex - start) * LINE_H;
-                g.fill(caretX, caretY - 1, caretX + 1, caretY + this.font.lineHeight, 0xFFFFFFFF);
+        // 绘制文本：同一行、同一样式、位置连续的字符合成一次绘制（省 draw call）
+        int i = 0;
+        while (i < boxes.size()) {
+            CharBox first = boxes.get(i);
+            int py = first.y() - scrollY;
+            if (py < bodyTop - LINE_H || py > bodyTop + bodyH
+                    || first.ch() == ' ' || first.ch() == '\n') {
+                i++;
+                continue;
+            }
+            StringBuilder sb = new StringBuilder().append(first.ch());
+            int j = i + 1;
+            while (j < boxes.size()) {
+                CharBox prev = boxes.get(j - 1);
+                CharBox cur = boxes.get(j);
+                if (cur.y() != first.y() || cur.bold() != first.bold()
+                        || cur.italic() != first.italic()
+                        || cur.ch() == ' ' || cur.ch() == '\n'
+                        || cur.x() != prev.x() + prev.w()) {
+                    break;
+                }
+                sb.append(cur.ch());
+                j++;
+            }
+            Style style = Style.EMPTY.withBold(first.bold()).withItalic(first.italic());
+            g.drawString(this.font, Component.literal(sb.toString()).withStyle(style),
+                    first.x(), py, 0xFFFFFF, false);
+            i = j;
+        }
+
+        // 光标
+        CharBox caret = caretBox();
+        if (caret != null && (System.currentTimeMillis() / 500L) % 2 == 0) {
+            int py = caret.y() - scrollY;
+            if (py >= bodyTop && py < bodyTop + bodyH) {
+                g.fill(caret.x(), py, caret.x() + 1, py + LINE_H, 0xFFFFFFFF);
             }
         }
     }
@@ -280,67 +391,31 @@ public class SubmissionScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        // 点正文区：获得焦点并把光标移到点击位置
-        boolean inBody = mx >= panelLeft && mx <= panelLeft + PANEL_W
-                && my >= bodyTop && my <= bodyTop + bodyH;
-        if (inBody && editable) {
-            bodyFocused = true;
+        if (editable && inBody(mx, my)) {
             titleBox.setFocused(false);
             this.setFocused(null);
-            // 自绘正文对 IMBlocker 是「未知控件」，焦点一离开 EditBox 它就把输入法关了，
-            // 所以每次点进正文都再要一次
             ImeCompat.wantIme(true);
-            moveCaretToClick(mx, my);
+            editor.setCaret(posAt(mx, my));
+            layout();
+            scrollToCaret();
             return true;
-        }
-        if (mx >= panelLeft && mx <= panelLeft + PANEL_W
-                && my >= titleBox.getY() && my <= titleBox.getY() + TITLE_H) {
-            bodyFocused = false;
         }
         return super.mouseClicked(mx, my, button);
     }
 
-    /** 把剪贴板内容插到光标处：统一换行、滤掉控制字符、按上限截断 */
-    private void pasteFromClipboard() {
-        String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
-        if (clip == null || clip.isEmpty()) {
-            return;
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (editable && inBody(mx, my)) {
+            editor.select(editor.anchor(), posAt(mx, my));
+            layout();
+            return true;
         }
-        String normalized = clip.replace("\r\n", "\n").replace('\r', '\n');
-        StringBuilder clean = new StringBuilder(normalized.length());
-        for (int i = 0; i < normalized.length(); i++) {
-            char c = normalized.charAt(i);
-            if (c == '\n' || !Character.isISOControl(c)) {
-                clean.append(c);
-            }
-        }
-        int room = Network.MAX_BODY_LEN - bodyText.length();
-        if (room <= 0 || clean.length() == 0) {
-            return;
-        }
-        String insert = clean.length() > room ? clean.substring(0, room) : clean.toString();
-        bodyText.insert(caret, insert);
-        caret += insert.length();
-        scrollToCaret();
+        return super.mouseDragged(mx, my, button, dx, dy);
     }
 
-    /** 鼠标点击 → 光标位置 */
-    private void moveCaretToClick(double mx, double my) {
-        List<Line> lines = layout();
-        int visible = visibleLines();
-        int start = Math.min(bodyScroll, Math.max(0, lines.size() - visible));
-        int row = (int) ((my - bodyTop - INNER_PAD) / LINE_H);
-        int lineIndex = Math.max(0, Math.min(lines.size() - 1, start + row));
-        Line line = lines.get(lineIndex);
-
-        int relX = (int) (mx - (panelLeft + INNER_PAD));
-        int col = 0;
-        while (col < line.text().length()
-                && this.font.width(line.text().substring(0, col + 1)) <= Math.max(0, relX)) {
-            col++;
-        }
-        caret = line.start() + col;
-        scrollToCaret();
+    private boolean inBody(double mx, double my) {
+        return mx >= panelLeft && mx <= panelLeft + PANEL_W
+                && my >= bodyTop && my <= bodyTop + bodyH;
     }
 
     @Override
@@ -348,121 +423,171 @@ public class SubmissionScreen extends Screen {
         if (!editable) {
             return false;
         }
-        if (bodyFocused && titleBox != null && !titleBox.isFocused()) {
-            if (bodyText.length() < Network.MAX_BODY_LEN && !Character.isISOControl(c)) {
-                bodyText.insert(caret, c);
-                caret++;
-                scrollToCaret();
-            }
+        if (titleBox != null && titleBox.isFocused()) {
+            return super.charTyped(c, modifiers);
+        }
+        if (Character.isISOControl(c)) {
             return true;
         }
-        return super.charTyped(c, modifiers);
+        pushUndo();
+        editor.typeText(String.valueOf(c));
+        layout();
+        scrollToCaret();
+        return true;
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (bodyFocused && titleBox != null && !titleBox.isFocused() && editable) {
-            // 剪贴板：自绘输入区不会自动处理 Ctrl+V，必须自己接（0.7.0 之前这里没实现，
-            // 表现就是「标题能粘、正文粘不进去」）
-            if (Screen.hasControlDown()) {
-                switch (keyCode) {
-                    case GLFW.GLFW_KEY_V -> {
-                        pasteFromClipboard();
-                        return true;
-                    }
-                    case GLFW.GLFW_KEY_C -> {
-                        Minecraft.getInstance().keyboardHandler.setClipboard(bodyText.toString());
-                        return true;
-                    }
-                    case GLFW.GLFW_KEY_A -> {
-                        // 没有选择模型，Ctrl+A 统一把光标移到末尾，配合 Ctrl+C 用
-                        caret = bodyText.length();
-                        scrollToCaret();
-                        return true;
-                    }
-                    default -> {
-                    }
-                }
-            }
+        if (titleBox != null && titleBox.isFocused()) {
+            return super.keyPressed(keyCode, scanCode, modifiers);
+        }
+        if (!editable) {
+            return super.keyPressed(keyCode, scanCode, modifiers);
+        }
+        boolean shift = Screen.hasShiftDown();
+
+        if (Screen.hasControlDown()) {
             switch (keyCode) {
-                case GLFW.GLFW_KEY_BACKSPACE -> {
-                    if (caret > 0) {
-                        bodyText.deleteCharAt(caret - 1);
-                        caret--;
-                        scrollToCaret();
-                    }
+                case GLFW.GLFW_KEY_B -> {
+                    pushUndo();
+                    editor.toggleBold();
+                    layout();
                     return true;
                 }
-                case GLFW.GLFW_KEY_DELETE -> {
-                    if (caret < bodyText.length()) {
-                        bodyText.deleteCharAt(caret);
-                        scrollToCaret();
-                    }
+                case GLFW.GLFW_KEY_I -> {
+                    pushUndo();
+                    editor.toggleItalic();
+                    layout();
                     return true;
                 }
-                case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
-                    if (bodyText.length() < Network.MAX_BODY_LEN) {
-                        bodyText.insert(caret, '\n');
-                        caret++;
-                        scrollToCaret();
+                case GLFW.GLFW_KEY_V -> {
+                    pushUndo();
+                    String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
+                    if (clip != null && !clip.isEmpty()) {
+                        editor.typeText(RichHtml.stripTags(clip)
+                                .replace("\r\n", "\n").replace('\r', '\n'));
                     }
-                    return true;
-                }
-                case GLFW.GLFW_KEY_LEFT -> {
-                    if (caret > 0) {
-                        caret--;
-                        scrollToCaret();
-                    }
-                    return true;
-                }
-                case GLFW.GLFW_KEY_RIGHT -> {
-                    if (caret < bodyText.length()) {
-                        caret++;
-                        scrollToCaret();
-                    }
-                    return true;
-                }
-                case GLFW.GLFW_KEY_HOME -> {
-                    List<Line> homeLines = layout();
-                    caret = homeLines.get(caretLine(homeLines)).start();
+                    layout();
                     scrollToCaret();
                     return true;
                 }
-                case GLFW.GLFW_KEY_END -> {
-                    List<Line> lines = layout();
-                    Line line = lines.get(caretLine(lines));
-                    caret = line.start() + line.text().length();
-                    scrollToCaret();
+                case GLFW.GLFW_KEY_C -> {
+                    Minecraft.getInstance().keyboardHandler.setClipboard(editor.doc().toPlainText());
                     return true;
                 }
-                case GLFW.GLFW_KEY_UP -> {
-                    moveCaretVertically(-1);
+                case GLFW.GLFW_KEY_A -> {
+                    editor.selectAll();
+                    layout();
                     return true;
                 }
-                case GLFW.GLFW_KEY_DOWN -> {
-                    moveCaretVertically(1);
-                    return true;
-                }
-                case GLFW.GLFW_KEY_ESCAPE -> {
-                    this.onClose();
+                case GLFW.GLFW_KEY_Z -> {
+                    undo();
                     return true;
                 }
                 default -> {
                 }
             }
         }
+
+        switch (keyCode) {
+            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                pushUndo();
+                editor.enter();
+                layout();
+                scrollToCaret();
+                return true;
+            }
+            case GLFW.GLFW_KEY_BACKSPACE -> {
+                pushUndo();
+                editor.backspace();
+                layout();
+                scrollToCaret();
+                return true;
+            }
+            case GLFW.GLFW_KEY_DELETE -> {
+                pushUndo();
+                editor.deleteForward();
+                layout();
+                scrollToCaret();
+                return true;
+            }
+            case GLFW.GLFW_KEY_TAB -> {
+                boolean moved = shift ? editor.moveToPrevCell() : editor.moveToNextCell();
+                if (moved) {
+                    layout();
+                    scrollToCaret();
+                }
+                return true;
+            }
+            case GLFW.GLFW_KEY_LEFT -> {
+                RichEditor.Pos from = editor.caret();
+                editor.moveLeft();
+                if (shift) {
+                    editor.select(from, editor.caret());
+                }
+                layout();
+                scrollToCaret();
+                return true;
+            }
+            case GLFW.GLFW_KEY_RIGHT -> {
+                RichEditor.Pos from = editor.caret();
+                editor.moveRight();
+                if (shift) {
+                    editor.select(from, editor.caret());
+                }
+                layout();
+                scrollToCaret();
+                return true;
+            }
+            case GLFW.GLFW_KEY_HOME -> {
+                RichEditor.Pos c = editor.caret();
+                editor.setCaret(new RichEditor.Pos(c.block(), c.cell(), 0));
+                layout();
+                return true;
+            }
+            case GLFW.GLFW_KEY_END -> {
+                RichEditor.Pos c = editor.caret();
+                int len = RichHtml.join(editor.runsAt(c.block(), c.cell())).length();
+                editor.setCaret(new RichEditor.Pos(c.block(), c.cell(), len));
+                layout();
+                return true;
+            }
+            case GLFW.GLFW_KEY_ESCAPE -> {
+                this.onClose();
+                return true;
+            }
+            default -> {
+            }
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    /** 上下跨显示行移动光标，尽量保持列号 */
-    private void moveCaretVertically(int delta) {
-        List<Line> lines = layout();
-        int lineIndex = caretLine(lines);
-        int col = caretColumn(lines.get(lineIndex));
-        int target = Math.max(0, Math.min(lines.size() - 1, lineIndex + delta));
-        Line targetLine = lines.get(target);
-        caret = targetLine.start() + Math.min(col, targetLine.text().length());
-        scrollToCaret();
+    // ---------------- 提交 / 关闭 ----------------
+
+    private void submit() {
+        if (!editable) {
+            return;
+        }
+        Network.CHANNEL.sendToServer(new SubmitPacket(titleBox.getValue(), bodyHtml()));
+        this.submitted = true;
+        this.onClose();
+    }
+
+    private void startNew() {
+        Network.CHANNEL.sendToServer(new NewSubmissionPacket());
+    }
+
+    private String bodyHtml() {
+        String html = RichHtml.toHtml(editor.doc());
+        return html.length() <= Network.MAX_BODY_LEN ? html : html.substring(0, Network.MAX_BODY_LEN);
+    }
+
+    @Override
+    public void onClose() {
+        if (!submitted && editable) {
+            Network.CHANNEL.sendToServer(new SaveDraftPacket(titleBox.getValue(), bodyHtml()));
+        }
+        super.onClose();
     }
 
     @Override
@@ -472,7 +597,6 @@ public class SubmissionScreen extends Screen {
 
     @Override
     public void removed() {
-        // 关界面或被新界面替换：把 IMBlocker 的输入法状态还回去
         ImeCompat.onTextScreenClosed();
         super.removed();
     }

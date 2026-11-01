@@ -24,6 +24,28 @@ public final class RichHtml {
     private RichHtml() {
     }
 
+    /**
+     * 宽松解析：新稿是 HTML；0.8.x 及更早的旧草稿是纯文本。
+     *
+     * <p>纯文本按行拆成段落（标题标记照原样留在文字里），这样旧草稿打开不会变成一坨。
+     */
+    public static RichDoc parseLoose(String body) {
+        if (body == null || body.isBlank()) {
+            return RichDoc.empty();
+        }
+        String lower = body.toLowerCase(Locale.ROOT);
+        boolean looksHtml = lower.contains("<p>") || lower.contains("<p ")
+                || lower.contains("<ul") || lower.contains("<ol") || lower.contains("<table");
+        if (looksHtml) {
+            return parse(body);
+        }
+        List<RichDoc.Block> blocks = new ArrayList<>();
+        for (String line : body.split("\n", -1)) {
+            blocks.add(new RichDoc.Para(List.of(RichDoc.Run.plain(line))));
+        }
+        return blocks.isEmpty() ? RichDoc.empty() : new RichDoc(blocks);
+    }
+
     // ---------------- 行内 ----------------
 
     /** 拼接行内片段的纯文本 */
@@ -102,8 +124,7 @@ public final class RichHtml {
     // ---------------- 解析 ----------------
 
     /** 解析正文 HTML；不认识的标签剥掉但保留文字 */
-    public static RichDoc parse(String html) {
-        if (html == null || html.isBlank()) {
+    public static RichDoc parse(String html) {        if (html == null || html.isBlank()) {
             return RichDoc.empty();
         }
         String s = html.trim();

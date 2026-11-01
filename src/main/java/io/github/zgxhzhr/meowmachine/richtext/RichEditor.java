@@ -454,6 +454,37 @@ public final class RichEditor {
         anchor = caret;
     }
 
+    /** 删除光标后的字符（段尾则吞并下一单元/下一段） */
+    public void deleteForward() {
+        if (hasSelection()) {
+            deleteSelection();
+            return;
+        }
+        Pos p = caret;
+        Block2 blk = blocks.get(p.block());
+        String text = textOf(blk.cells.get(p.cell()));
+        if (p.offset() < text.length()) {
+            deleteRange(p, new Pos(p.block(), p.cell(), p.offset() + 1));
+            return;
+        }
+        if (p.cell() + 1 < blk.cells.size()) {
+            List<RichDoc.Run> joined = new ArrayList<>(blk.cells.get(p.cell()));
+            joined.addAll(blk.cells.get(p.cell() + 1));
+            blk.cells.set(p.cell(), merge(joined));
+            blk.cells.remove(p.cell() + 1);
+            return;
+        }
+        if (p.block() + 1 < blocks.size()) {
+            Block2 next = blocks.get(p.block() + 1);
+            if (next.kind == Kind.PARA && blk.kind == Kind.PARA) {
+                List<RichDoc.Run> joined = new ArrayList<>(blk.cells.get(p.cell()));
+                joined.addAll(next.cells.get(0));
+                blk.cells.set(p.cell(), merge(joined));
+                blocks.remove(p.block() + 1);
+            }
+        }
+    }
+
     /** 回车：段落拆成两段；列表新建同级项（空项退出列表）；表格内换行 */
     public void enter() {
         if (hasSelection()) {
