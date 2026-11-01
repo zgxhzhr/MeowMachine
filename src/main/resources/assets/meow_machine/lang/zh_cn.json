@@ -181,8 +181,6 @@
   "gui.meow_machine.reason.26": "第 26 条 标题结构",
   "gui.meow_machine.detail.ai_opinions": "AI 意见",
   "gui.meow_machine.table_title": "插入表格",
-  "gui.meow_machine.table_rows": "行 %s",
-  "gui.meow_machine.table_cols": "列 %s",
   "gui.meow_machine.table_header": "首行表头：%s",
   "gui.meow_machine.table_on": "开",
   "gui.meow_machine.table_off": "关",
@@ -190,5 +188,7 @@
   "gui.meow_machine.opinions_title": "审核意见",
   "gui.meow_machine.opinions_button": "意见",
   "gui.meow_machine.my_admin": "审核后台",
-  "gui.meow_machine.detail.none": "无"
+  "gui.meow_machine.detail.none": "无",
+  "gui.meow_machine.table_rows_label": "行数",
+  "gui.meow_machine.table_cols_label": "列数"
 }
