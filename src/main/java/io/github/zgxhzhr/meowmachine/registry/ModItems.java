@@ -40,7 +40,8 @@ public final class ModItems {
             "under_review", "dont_want_revise", "revising", "just_return_it",
             "water_again", "ai_slop", "mt_god", "format_broken",
             "getting_worse", "human_wrote_this", "approved_progress", "approved_plain",
-            "approved_short", "approved_fix", "helpless", "kurushi", "laowu", "meowmeow"
+            "approved_short", "approved_fix", "helpless", "kurushi", "laowu", "meowmeow",
+            "loop_again", "no_period", "which_version", "vague_words", "punct_storm"
     };
 
     /** 梗图 id → 物品 */

@@ -202,5 +202,15 @@
   "advancements.meow_machine.rejector_five.description": "打回 5 次",
   "advancements.meow_machine.edited_approved.description": "编辑一个已通过的条目并重新提交",
   "advancements.meow_machine.editor_five.description": "修改已通过条目 5 次",
-  "gui.meow_machine.detail.diff": "修改对比"
+  "gui.meow_machine.detail.diff": "修改对比",
+  "item.meow_machine.sticker_loop_again": "梗图·又在循环",
+  "item.meow_machine.sticker_no_period": "梗图·句号找不到",
+  "item.meow_machine.sticker_which_version": "梗图·占卜版本",
+  "item.meow_machine.sticker_vague_words": "梗图·我觉得不行",
+  "item.meow_machine.sticker_punct_storm": "梗图·好多标点",
+  "item.meow_machine.sticker_loop_again.story": "喵呜机读到第三段时停住了。这句话它半小时前刚读过，连标点都一样。它把稿子翻回第一页，确认作者真的只写了一遍。",
+  "item.meow_machine.sticker_no_period.story": "喵呜机从头翻到尾，句号始终没有出现。它在最后一行停住，替作者补了一个，又删掉——这不该是它干的活。",
+  "item.meow_machine.sticker_which_version.story": "喵呜机盯着「最新版本」四个字看了很久。它去问作者，作者说「你猜」。于是它开始占卜。",
+  "item.meow_machine.sticker_vague_words.story": "喵呜机数了数：这段里有七个「我觉得」，两个「应该」，一个「大概」。它想问依据在哪，想了想又没问。",
+  "item.meow_machine.sticker_punct_storm.story": "喵呜机读到那串问号时眨了眨眼。它数不清作者到底问了几个问题，只确定自己一个也不想回答。"
 }

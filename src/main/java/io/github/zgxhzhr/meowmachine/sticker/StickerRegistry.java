@@ -45,6 +45,9 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
     private static volatile Map<String, List<Sticker>> BY_STATE = Map.of();
     private static volatile Map<Integer, Sticker> BY_RULE = Map.of();
     private static volatile Sticker FALLBACK = null;
+    /** 一张图挂多条规则时，额外规则（id → 规则号） */
+    private static final java.util.Map<ResourceLocation, java.util.List<Integer>> EXTRA_RULES =
+            new java.util.HashMap<>();
 
     public StickerRegistry() {
         super(GSON, "stickers");
@@ -66,11 +69,20 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
                         ? new ResourceLocation(o.get("texture").getAsString()) : null;
                 String state = o.has("state") ? o.get("state").getAsString() : null;
                 Integer rule = o.has("rule") ? o.get("rule").getAsInt() : null;
+                java.util.List<Integer> extraRules = new java.util.ArrayList<>();
+                if (o.has("rules") && o.get("rules").isJsonArray()) {
+                    for (com.google.gson.JsonElement el : o.getAsJsonArray("rules")) {
+                        extraRules.add(el.getAsInt());
+                    }
+                }
                 boolean fallback = o.has("fallback") && o.get("fallback").getAsBoolean();
                 int priority = o.has("priority") ? o.get("priority").getAsInt() : 0;
                 String desc = o.has("desc") ? o.get("desc").getAsString() : "";
 
                 loaded.add(new Sticker(id, texture, state, rule, fallback, priority, desc));
+                if (!extraRules.isEmpty()) {
+                    EXTRA_RULES.put(id, extraRules);
+                }
             } catch (Exception e) {
                 MeowMachine.LOG.warn("[喵呜机] 梗图定义解析失败 {}: {}", fileId, e.toString());
             }
@@ -97,6 +109,12 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
             }
             if (s.rule() != null) {
                 byRule.putIfAbsent(s.rule(), s);
+            }
+            java.util.List<Integer> extra = EXTRA_RULES.get(s.id());
+            if (extra != null) {
+                for (Integer r : extra) {
+                    byRule.putIfAbsent(r, s);
+                }
             }
             if (s.state() == null && s.rule() == null) {
                 untriggerable.add(s.id().toString());
