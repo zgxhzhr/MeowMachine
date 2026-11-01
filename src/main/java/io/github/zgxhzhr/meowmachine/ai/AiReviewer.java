@@ -31,18 +31,19 @@ import java.util.concurrent.CompletableFuture;
 public final class AiReviewer {
 
     /** 解析结果：违规列表 + 可选的选图 */
-    private record Parsed(List<ReviewFinding> findings, String sticker) {
+    private record Parsed(List<ReviewFinding> findings, String sticker, String note) {
     }
 
     /** 一次 AI 审核的结果：available=false 表示「没拿到可信结论」 */
-    public record AiOutcome(boolean available, List<ReviewFinding> findings, String stickerId) {
+    public record AiOutcome(boolean available, List<ReviewFinding> findings,
+                            String stickerId, String note) {
 
         public static AiOutcome unavailable() {
-            return new AiOutcome(false, List.of(), null);
+            return new AiOutcome(false, List.of(), null, null);
         }
 
-        public static AiOutcome of(List<ReviewFinding> findings, String stickerId) {
-            return new AiOutcome(true, List.copyOf(findings), stickerId);
+        public static AiOutcome of(List<ReviewFinding> findings, String stickerId, String note) {
+            return new AiOutcome(true, List.copyOf(findings), stickerId, note);
         }
 
         public boolean clean() {
@@ -133,12 +134,16 @@ public final class AiReviewer {
             sb.append("""
                     输出 JSON 时可以带一个可选字段 "sticker"，值为上面目录里的某张图 id；
                     只有确实贴切时才写，拿不准就不要写（服务端会自己按规则/状态挑）。
+                    标了「仅 AI 可选」的图没有本地触发条件，只能由你选：
+                    打回/协改时如果稿子的情绪明显（无奈、难受、崩溃、敷衍），可以挑它们；
+                    通过时优先用 approved_ 系列并按情况区分（有进步 / 普通 / 简短 / 有小瑕疵）。
                     """);
         }
         sb.append("""
                 只输出一个 JSON 对象，不要任何解释文字，不要 markdown 代码块：
-                {"violations":[{"rule":<规则号>,"quote":"<原文片段>","reason":"<一句话原因>"}],"sticker":"<可选，梗图 id>"}
-                没有违规时输出：{"violations":[]}
+                {"violations":[{"rule":<规则号>,"quote":"<原文片段>","reason":"<一句话原因>"}],
+                 "note":"<可选，给作者的附言>","sticker":"<可选，梗图 id>"}
+                没有违规时输出：{"violations":[],"note":"<可选附言>"}
                 """);
         return sb.toString();
     }
@@ -159,13 +164,34 @@ public final class AiReviewer {
      * @return {@link AiOutcome}；**失败时 available=false**（不代表通过，调用方要兜底）
      */
     public static CompletableFuture<AiOutcome> review(LlmConfig cfg, String title, String body) {
+        return review(cfg, title, body, null);
+    }
+
+    /**
+     * 带「本地规则线索」的审核。
+     *
+     * <p>接管模式下 AI 的判断优先于本地规则：本地命中的条款作为**线索**交给它，
+     * 它可以确认、纠正或忽略，并写一句附言——这正是比纯规则判定强的地方。
+     *
+     * @param localHints 本地规则命中的发现（可为 null）
+     */
+    public static CompletableFuture<AiOutcome> review(LlmConfig cfg, String title, String body,
+                                                      List<ReviewFinding> localHints) {
         if (!cfg.usable()) {
             return CompletableFuture.completedFuture(AiOutcome.unavailable());
         }
-        String user = "标题：" + (title == null ? "" : title)
-                + "\n正文：\n" + (body == null ? "" : body);
-        return LlmClient.chat(cfg, systemPrompt(), user)
-                .thenApply(raw -> parse(raw).map(p -> AiOutcome.of(p.findings(), p.sticker())).orElseGet(() -> {
+        StringBuilder user = new StringBuilder();
+        user.append("标题：").append(title == null ? "" : title)
+                .append("\n正文：\n").append(body == null ? "" : body);
+        if (localHints != null && !localHints.isEmpty()) {
+            user.append("\n\n本地规则自动检出的疑点（仅供参考，你可以确认、纠正或忽略）：");
+            for (ReviewFinding f : localHints) {
+                user.append("\n- 第 ").append(f.ruleId() == null ? "?" : f.ruleId())
+                        .append(" 条：").append(f.reason() == null ? "" : f.reason());
+            }
+        }
+        return LlmClient.chat(cfg, systemPrompt(), user.toString())
+                .thenApply(raw -> parse(raw).map(p -> AiOutcome.of(p.findings(), p.sticker(), p.note())).orElseGet(() -> {
                     MeowMachine.LOG.warn("[喵呜机] AI 返回内容无法解析，按「AI 不可用」处理");
                     return AiOutcome.unavailable();
                 }))
@@ -212,7 +238,9 @@ public final class AiReviewer {
             }
             String sticker = root.has("sticker") && !root.get("sticker").isJsonNull()
                     ? root.get("sticker").getAsString().trim() : null;
-            return Optional.of(new Parsed(List.copyOf(out), sticker));
+            String note = root.has("note") && !root.get("note").isJsonNull()
+                    ? clamp(root.get("note").getAsString(), MAX_REASON) : null;
+            return Optional.of(new Parsed(List.copyOf(out), sticker, note));
         } catch (RuntimeException ex) {
             MeowMachine.LOG.warn("[喵呜机] AI 返回内容不是可解析的 JSON: {}", head(raw));
             return Optional.empty();

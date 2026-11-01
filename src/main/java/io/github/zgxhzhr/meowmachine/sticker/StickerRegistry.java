@@ -157,25 +157,38 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
         return id != null && BY_ID.containsKey(id);
     }
 
+    /** 某张图的触发状态（没有 state 返回 null） */
+    public static String stateOf(String stickerId) {
+        if (stickerId == null || stickerId.isBlank()) {
+            return null;
+        }
+        ResourceLocation id = ResourceLocation.tryParse(stickerId);
+        Sticker s = id == null ? null : BY_ID.get(id);
+        return s == null ? null : s.state();
+    }
+
     /**
-     * 给 AI 的梗图目录：只列**能被选中**的图（有 state / rule / fallback 的）。
+     * 给 AI 的梗图目录：**全部**梗图都列出来。
      *
      * <p>AI 判完可以自己挑一张最贴切的图，比本地「按规则号硬映射」更细
      * （尤其是四张「通过」：有进步 / 普通 / 简短 / 有小瑕疵）。
+     *
+     * <p>没有 state / rule / fallback 的图本地选不到，但**AI 可以选**——
+     * 它们本来就是情绪化的打回图（无奈、痛苦、求救、卖萌），只在 AI 判定时有意义。
      */
     public static List<String> catalogLines() {
         List<String> lines = new ArrayList<>();
         for (Sticker s : ALL) {
-            if (!s.fallback() && s.state() == null && s.rule() == null) {
-                continue;
-            }
+            boolean aiOnly = !s.fallback() && s.state() == null && s.rule() == null;
             StringBuilder sb = new StringBuilder("- ").append(s.id());
             if (s.fallback()) {
                 sb.append(" | fallback");
             } else if (s.rule() != null) {
                 sb.append(" | rule ").append(s.rule());
-            } else {
+            } else if (s.state() != null) {
                 sb.append(" | state ").append(s.state());
+            } else {
+                sb.append(" | 仅 AI 可选");
             }
             if (s.desc() != null && !s.desc().isBlank()) {
                 sb.append(" | ").append(s.desc());
