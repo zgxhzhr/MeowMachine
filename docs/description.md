@@ -1,80 +1,73 @@
 # Meow Machine
 
-**A Minecraft mod that turns wiki writing into a review workflow you can play.**
+**A fan-made Minecraft mod about passing a wiki's editorial review — half teaching tool, half game.**
 
-Meow Machine recreates the experience of submitting to a community encyclopedia — inside Minecraft. Players write wiki-style entries on a Submission Scroll using a built-in rich-text editor, submit them, and watch them pass through a real review pipeline. Every verdict comes back as a collectible sticker, complete with a short in-game story.
+Meow Machine (喵呜机) is an unofficial fan work (二次创作) based on **Meow Machine, the administrator of MCMOD (mcmod.cn)** — the Chinese Minecraft encyclopedia. The mod does not try to recreate the website; it takes the thing MCMOD is famous for, its editorial standards, and turns it into something you can actually play.
 
-## Three kinds of review, one verdict
+## What kind of mod is it
 
-An entry can be judged three different ways, in the same order a real submission site would use:
+It is a **half-tutorial, half-gameplay** mod.
 
-* **Deterministic rules** — 13 local checks catch the mechanical problems instantly: missing sentence punctuation, stacked punctuation, filler text, Markdown that leaked in from a paste, flattened tables and lists, broken heading structure, duplicated paragraphs.
-* **AI review** — an OpenAI-compatible model (DeepSeek by default) reads the entry against the full 35-rule editorial standard, writes a human-readable note, and can even pick the sticker that fits the mood.
-* **Human review** — designated reviewers on the server's roster open the queue, read the entry, see AI opinions and local pre-checks side by side, and make the final call with Approve / Revise / Reject.
+* **The teaching half**: MCMOD's public editing standard is a numbered rule set. In the mod those rules are real, working checks — deterministic ones run in code, semantic ones are handed to an AI model. Writing an entry and seeing exactly which rule you broke is the tutorial.
+* **The game half**: entries are written on an in-game scroll, go through a queue, get reviewed by designated players, and come back as verdicts, stickers, items and achievements. There is a reason to write well beyond "the rule says so".
 
-Servers decide the balance: with a reviewer online, submissions wait for a person; with AI takeover enabled, the model rules directly; with nobody available, the deterministic rules and AI fall back gracefully. The AI never blocks the flow, and AI failure is never treated as approval.
+## What's in the mod
 
-## Writing that actually looks like a wiki
+**A real editor, not a chat box.** Entries are written on a Submission Scroll with a rich-text editor: bold, italic, unordered and ordered lists, and tables are actual structures inserted from a toolbar, serialized to the same HTML the site itself uses. Headings stay as hand-typed `[hN=...]` tokens, because that is how editors really write them. Tables can be sized row by row and column by column, with an optional header row.
 
-The editor is not a plain text box. Bold, italic, unordered and ordered lists, and tables are real structures — inserted with a toolbar and serialized to the same HTML the encyclopedia itself uses. Headings stay as typed `[hN=...]` tokens, exactly as editors write them by hand. Tables can be sized row by row and column by column, with an optional header row.
+**Three reviewers, one verdict.** A submitted entry can be judged three ways: deterministic local rules, an AI reviewer connected to any OpenAI-compatible endpoint (DeepSeek by default), or human reviewers from the server roster. Servers choose the balance — wait for a person, let the AI take over, or let rules and AI cover when nobody is around. The AI never blocks the pipeline, and an AI failure is never treated as a pass.
 
-## Stickers, not error codes
+**Verdicts arrive as stickers.** There are 23 stickers, each with its own short in-game story and a matching item. Approve, revise, reject, duplicate content, machine translation, flattened tables — every situation has a face. Collect eight kinds and a hidden advancement unlocks. Sticker definitions are data-driven, so a pack can add its own.
 
-Verdicts are delivered as stickers: 23 of them, each with its own in-game short story and a matching item. Get one for finishing a review, one for a typo-free short entry, one for a spectacularly broken layout. Collect eight different kinds and a hidden advancement unlocks. Sticker definitions live in data packs, so a pack can add its own without touching code.
+**Approved entries stay editable.** Approved does not mean frozen: anyone can browse the approved list and submit an edit that goes through review again, with the original author's credit preserved. Reviewers see a change summary, and an edit that guts the article is flagged as a regression instead of quietly passing.
 
-## Approved entries are alive
+**Smaller systems that tie it together.** Ten-plus advancements across writing, reviewing and collecting; a mystery crafting recipe that turns an approved sticker plus any item into a random item already craftable in your world; a role system where operators, reviewers and assistants have genuinely different powers; and AI settings stored per save, never sent to clients.
 
-Approved entries are not frozen. Any player can browse the approved list, read an entry, and submit an edit through review again — with the original author's credit preserved. Reviewers see a change summary (word delta, removed lines), and an edit that guts the article is flagged as "worse than before" instead of quietly passing.
+## The loop
 
-## Extras
-
-* **10+ advancements** covering submissions, decisions, revisions and sticker collecting.
-* **Mystery crafting** — combine an approved sticker with any item to draw a random item that already exists as a crafting result in your world; the odds favour vanilla items and the result stays hidden until you open it.
-* **Roles that mean something** — OP, reviewer and assistant have distinct powers; an assistant can read and comment but never make the final call, even if they are an operator.
-* **Per-save AI configuration** — API key, endpoint, model and timeout are stored inside the world save, never sent to clients, and never printed to logs or chat.
+Write an entry, submit it, get a verdict as a sticker, keep the sticker as an item, collect a set, unlock advancements — and along the way learn why the entry passed or failed, rule by rule. Then come back and edit an approved article, and watch the reviewer see exactly what you changed.
 
 ## Requirements
 
 Minecraft 1.20.1 · Forge 47.x · Java 17.
-Works on a single player world with no setup; on a server, refine the reviewer roster with `/meow reviewers`.
+Single-player works out of the box; on servers, manage reviewers with `/meow reviewers`.
+
+*This is a fan project. MCMOD and Meow Machine (the person) are not affiliated with it.*
 
 ---
+
 # 喵呜机
 
-**把百科投稿做成能在 Minecraft 里玩的一套流程的模组。**
+**一个关于「把投稿送去审核」的 Minecraft 二创模组——一半教学，一半游戏。**
 
-喵呜机把「向社区百科投稿」这件事搬进了 Minecraft。玩家用投稿卷轴和内置富文本编辑器写好一条百科式条目，提交后会走一遍真正的审核流程，结论以**梗图**的形式发回来——每张梗图都配一段游戏内小故事。
+喵呜机是**中国 Minecraft 百科平台 MCMOD（mcmod.cn）的站长「喵呜机」**的同人二创模组。它不是去复刻那个网站，而是把 MCMOD 最有辨识度的东西——它的编辑规范——做成了一套真的能玩、也真的能学的东西。
 
-## 三路审核，一个结论
+## 这是什么类型的模组
 
-一条条目可能被三种方式判：
+**半教学、半游戏性。**
 
-* **确定性规则** —— 13 条本地检查立刻拦下机械性错误：句末缺标点、标点堆叠、凑字数、从网页粘贴带进来的 Markdown、被压平的表格与列表、标题层级错乱、整段重复。
-* **AI 审核** —— 接 OpenAI 兼容接口（默认 DeepSeek），按完整的 35 条编辑规范读稿，写一句人话附言，还能顺手挑一张贴合情绪的梗图。
-* **人工审核** —— 名册里的审核员打开队列，正文、AI 意见、本地预检并排看，最后用「通过 / 协改 / 打回」拍板。
+* **教学那一半**：MCMOD 的公共编辑规范是一套带编号的条款。在这个模组里，这些条款是**真的会生效的检查**——能用代码判的条款由本地规则判，语义类的交给 AI 模型。写一篇稿子、看到自己违反了第几条，这就是教学。
+* **游戏那一半**：稿子写在游戏内的卷轴上，进队列，由指定的玩家审核，结论以梗图、物品和成就的形式回来。「写得好」不只是为了合规，而是有实际回报。
 
-服务器可以自己决定重心：有审核员在线就等人判；开了「AI 接管」就由模型直接裁决；一个人都没有时，本地规则与 AI 会依次兜底。AI 永远不阻塞流程，AI 失败也绝不会被当成通过。
+## 模组里有什么
 
-## 写得像百科，而不是像聊天记录
+**真正的编辑器，不是聊天框。** 投稿卷轴上带一个富文本编辑器：粗体、斜体、无序列表、有序列表、表格都是**真结构**，用工具栏插入，导出的 HTML 与站点自己用的一致。标题则保持手打的 `[hN=...]` 标记，因为编辑者现实中就是这么写的。表格可以自选行列，还能开关首行表头。
 
-编辑器不是纯文本框：粗体、斜体、无序列表、有序列表、表格都是**真结构**，用工具栏插入，导出的 HTML 与站点自己用的一致。标题则是照编辑习惯手打的 `[hN=...]` 标记。表格可以自选行列，还能开关首行表头。
+**三路审核，一个结论。** 一条投稿可能被三种方式判：本地确定性规则、接任意 OpenAI 兼容接口的 AI 审核（默认 DeepSeek）、服务器名册里的人工审核员。服务器自己决定重心：等人判、交给 AI 接管、或者一个人都没有时由规则与 AI 依次兜底。AI 永远不阻塞流程，AI 失败也绝不会被当成通过。
 
-## 反馈是梗图，不是错误码
+**结论以梗图送达。** 共 23 张梗图，每张配一段游戏内小故事和一件对应物品。通过、协改、打回、内容重复、机翻痕迹、被压平的表格——每种情况都有对应的表情。集齐 8 种解锁隐藏成就。梗图由数据包定义，整合包可以自己加。
 
-结论以梗图送达：共 23 张，每张配一段游戏内小故事和一件对应物品。审完一篇有、干净短稿有、排版崩到离谱也有。集齐 8 种会解锁一个隐藏成就。梗图本身由数据包定义，整合包加图不用改代码。
+**已通过的条目还能改。** 通过不等于冻结：任何人都能打开已通过列表，读正文，再提交一次修改重新走审核，**原作者署名保留**。审核员能看到字数变化与被删的行；把条目改残的编辑会被标成「越改越倒退」，而不是悄悄放行。
 
-## 已通过的条目是活的
+**串起这一切的小系统。** 10+ 个成就覆盖写作、审核与收集；一条神秘合成配方把「已通过的梗图 + 任意物品」变成当前世界里本来就能合成的随机物品；身份系统让 OP、审核员、助理拥有真正不同的权限；AI 配置按存档保存，从不下发客户端。
 
-通过不等于冻结。任何玩家都能打开已通过列表、读正文、再提交一次修改重新走审核，**原作者署名会保留**。审核员能看到字数变化与被删的行；把条目改残的编辑会被标成「越改越倒退」，而不是悄悄过审。
+## 玩法循环
 
-## 其它
-
-* **10+ 个成就**，覆盖投稿、裁决、修改与梗图收集。
-* **神秘合成**：用一张「已通过」系列梗图加任意物品，抽出当前世界配方表里已有的随机物品；概率偏向原版物品，结果在你打开之前保持未知。
-* **身份真的有用**：OP、审核员、助理权限各不相同；助理只能看与写意见，**即使是 OP 也不能终裁**。
-* **AI 配置按存档保存**：密钥、接口、模型、超时都存在世界存档里，从不下发客户端，也不会出现在日志或聊天栏。
+写一篇稿子 → 提交 → 拿到一张梗图结论 → 梗图变成物品 → 收集 → 解锁成就——同时在这个过程中一条条弄清楚它为什么过、为什么不过。之后再回头去改一篇已经通过的条目，看审核员清楚地看到你改了哪里。
 
 ## 环境要求
 
 Minecraft 1.20.1 · Forge 47.x · Java 17。
 单人存档开箱即用；服务器上用 `/meow reviewers` 维护审核名册。
+
+*本项目为同人作品，与 MCMOD 及站长本人无隶属关系。*
