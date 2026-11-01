@@ -486,6 +486,16 @@ public class SubmissionScreen extends Screen {
         return super.mouseDragged(mx, my, button, dx, dy);
     }
 
+    @Override
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        if (inBody(mx, my) && contentHeight > bodyH) {
+            scrollY -= (int) Math.signum(delta) * LINE_H * 2;
+            clampScroll();
+            return true;
+        }
+        return super.mouseScrolled(mx, my, delta);
+    }
+
     private boolean inBody(double mx, double my) {
         return mx >= panelLeft && mx <= panelLeft + PANEL_W
                 && my >= bodyTop && my <= bodyTop + bodyH;
@@ -537,8 +547,7 @@ public class SubmissionScreen extends Screen {
                     pushUndo();
                     String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
                     if (clip != null && !clip.isEmpty()) {
-                        editor.typeText(RichHtml.stripTags(clip)
-                                .replace("\r\n", "\n").replace('\r', '\n'));
+                        editor.insertPlainText(RichHtml.stripTags(clip));
                     }
                     layout();
                     scrollToCaret();

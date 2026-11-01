@@ -316,6 +316,16 @@ public final class SelfTest {
         e7.enter();
         check("段落回车拆成两段", RichHtml.toHtml(e7.doc()).equals("<p>甲</p><p>乙</p>"));
 
+        RichEditor paste = RichEditor.empty();
+        paste.insertPlainText("甲段文字\n乙段文字");
+        check("粘贴多行拆成多个段落",
+                RichHtml.toHtml(paste.doc()).equals("<p>甲段文字</p><p>乙段文字</p>"));
+
+        RichEditor legacy = new RichEditor(new RichDoc(List.of(
+                new RichDoc.Para(List.of(RichDoc.Run.plain("旧稿第一行\n旧稿第二行"))))));
+        check("旧草稿里夹换行的段落被拆开",
+                legacy.blockCount() == 2);
+
         RichEditor e8 = RichEditor.empty();
         e8.typeText("甲");
         e8.enter();

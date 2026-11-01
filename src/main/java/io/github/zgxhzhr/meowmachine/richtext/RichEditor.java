@@ -72,9 +72,12 @@ public final class RichEditor {
     private void load(RichDoc doc) {
         for (RichDoc.Block b : doc.blocks()) {
             if (b instanceof RichDoc.Para p) {
-                Block2 mb = new Block2(Kind.PARA);
-                mb.cells.add(new ArrayList<>(p.runs()));
-                blocks.add(mb);
+                // 兼容旧草稿：段落里如果夹着换行（以前粘贴/输入留下的），拆成多个段落
+                for (List<RichDoc.Run> seg : splitOnNewlines(p.runs())) {
+                    Block2 mb = new Block2(Kind.PARA);
+                    mb.cells.add(new ArrayList<>(seg));
+                    blocks.add(mb);
+                }
             } else if (b instanceof RichDoc.BulletList l) {
                 Block2 mb = new Block2(Kind.UL);
                 for (List<RichDoc.Run> item : l.items()) {
@@ -106,6 +109,33 @@ public final class RichEditor {
         }
         caret = new Pos(0, 0, 0);
         anchor = caret;
+    }
+
+    /** 把一行内片段按换行切成多段（保留样式） */
+    private static List<List<RichDoc.Run>> splitOnNewlines(List<RichDoc.Run> runs) {
+        List<List<RichDoc.Run>> out = new ArrayList<>();
+        List<RichDoc.Run> cur = new ArrayList<>();
+        for (RichDoc.Run r : runs) {
+            StringBuilder buf = new StringBuilder();
+            for (int i = 0; i < r.text().length(); i++) {
+                char c = r.text().charAt(i);
+                if (c == '\n') {
+                    if (buf.length() > 0) {
+                        cur.add(new RichDoc.Run(buf.toString(), r.bold(), r.italic()));
+                        buf.setLength(0);
+                    }
+                    out.add(cur);
+                    cur = new ArrayList<>();
+                } else {
+                    buf.append(c);
+                }
+            }
+            if (buf.length() > 0) {
+                cur.add(new RichDoc.Run(buf.toString(), r.bold(), r.italic()));
+            }
+        }
+        out.add(cur);
+        return out;
     }
 
     public RichDoc doc() {
@@ -391,6 +421,28 @@ public final class RichEditor {
         blk.cells.set(p.cell(), merge(out));
         caret = new Pos(p.block(), p.cell(), p.offset() + text.length());
         anchor = caret;
+    }
+
+    /**
+     * 粘贴纯文本：**按行拆成段落**。
+     *
+     * <p>与原生编辑器一致：粘贴多行文本是一堆段落，不是「一段里塞换行」。
+     * 不拆的话，整篇会变成同一个块——点列表按钮就只有一条，正是实测踩到的坑。
+     */
+    public void insertPlainText(String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        String[] lines = normalized.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                enter();
+            }
+            if (!lines[i].isEmpty()) {
+                typeText(lines[i]);
+            }
+        }
     }
 
     /** 退格：删一个字符；段首则与上一单元合并（列表首项退回段落） */

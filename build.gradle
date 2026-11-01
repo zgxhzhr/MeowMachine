@@ -2,7 +2,7 @@ plugins {
     id 'net.neoforged.moddev.legacyforge' version '2.0.77'
 }
 
-version = '0.10.2'
+version = '0.10.3'
 group = 'io.github.zgxhzhr.meowmachine'
 base { archivesName = 'meow_machine' }
 
