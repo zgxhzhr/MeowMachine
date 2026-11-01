@@ -45,6 +45,34 @@ public record EditMySubmissionPacket(String fullId) {
         Submission draft = DraftStore.load(player);
         String id = msg.fullId == null ? "" : msg.fullId.trim();
 
+        // 已通过条目优先处理：当前草稿很可能就是那份已通过的稿子（状态 APPROVED → 客户端只读），
+        // 直接打开会表现为「点编辑没反应」。这里先把它转成可编辑的再编辑草稿。
+        if (!id.isBlank()) {
+            UUID approvedId = null;
+            try {
+                approvedId = UUID.fromString(id);
+            } catch (IllegalArgumentException ignored) {
+                // 不是完整 id，走后面的常规流程
+            }
+            if (approvedId != null) {
+                var approved = io.github.zgxhzhr.meowmachine.review.ApprovedIndex.find(approvedId);
+                if (approved.isPresent()) {
+                    Submission reEdit = new Submission(approvedId, player.getUUID(),
+                            player.getName().getString(), approved.get().title(),
+                            approved.get().body(), SubmissionState.DRAFT,
+                            approved.get().revision() + 1, true);
+                    DraftStore.save(player, reEdit);
+                    Network.CHANNEL.sendTo(
+                            new OpenEditorPacket(reEdit.title(), reEdit.body(), "draft"),
+                            player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                    MeowMachine.LOG.info("[喵呜机] 基于已通过条目发起编辑 id={} player={}",
+                            approvedId, player.getName().getString());
+                    c.setPacketHandled(true);
+                    return;
+                }
+            }
+        }
+
         Submission target;
         if (draft.id().toString().equals(id)) {
             target = draft;
