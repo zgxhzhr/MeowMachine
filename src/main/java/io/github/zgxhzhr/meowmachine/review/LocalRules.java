@@ -193,8 +193,11 @@ public final class LocalRules {
             out.add(new ReviewFinding(18, b.strip(), "正文太短，像在凑字数"));
         }
 
-        // 第 22 条 Markdown 残留（全文样式异常）
+        // 第 22 条 Markdown 残留 / 粘贴压平（全文样式异常）
         checkMarkdownResidue(all, out);
+        if (out.stream().noneMatch(f -> f.ruleId() != null && f.ruleId() == 22)) {
+            checkFlattenedTable(b, out);
+        }
 
         // 第 10 条 重复内容（逐句比对；AI 容易把「结构相似」臆断成整段重复，所以本地兜一条确定性的）
         checkDuplicates(b, out);
@@ -203,6 +206,43 @@ public final class LocalRules {
         checkTitleStructure(all, b, out);
 
         return out;
+    }
+
+    /** 短行判定：多少字以内算「表格/列表被压平后的碎片」 */
+    private static final int FLAT_LINE_CHARS = 12;
+    /** 至少多少条这种碎片行才判（正常散文不会连续出现这么多短行） */
+    private static final int FLAT_LINE_MIN = 6;
+
+    /**
+     * 从网页复制粘贴会把表格压成一行行词组（「渠道 / 地址 / 源码」这种），列表也会变成普通行。
+     *
+     * <p>这类稿子读起来断断续续，但根因是格式：应使用编辑器自带的表格与列表重新排版。
+     * 判定放在本地：连续出现足够多的「短、无标点」行才算，避免误伤正常文章里的短句。
+     */
+    private static void checkFlattenedTable(String body, List<ReviewFinding> out) {
+        int flat = 0;
+        String sample = null;
+        for (String raw : body.split("\n")) {
+            String line = raw.strip();
+            if (line.isEmpty()) {
+                continue;
+            }
+            boolean bareUrl = line.startsWith("http://") || line.startsWith("https://");
+            boolean shortToken = line.length() <= FLAT_LINE_CHARS
+                    && !ENDS_WITH_PUNCT.matcher(line).find()
+                    && line.indexOf('。') < 0;
+            if (bareUrl || shortToken) {
+                flat++;
+                if (sample == null) {
+                    sample = line;
+                }
+            }
+        }
+        if (flat >= FLAT_LINE_MIN) {
+            out.add(new ReviewFinding(22, sample,
+                    "正文里有一串被压平的短词组行，像是表格/列表直接粘贴丢了格式；"
+                            + "请用编辑器自带的表格与无序/有序列表重新排版"));
+        }
     }
 
     /** Markdown 语法残留检查（第 22 条） */

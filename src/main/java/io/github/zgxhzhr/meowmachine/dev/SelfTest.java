@@ -60,6 +60,7 @@ public final class SelfTest {
         testTitleStructure();
         testDuplicates();
         testMarkdownResidue();
+        testFlattenedTable();
         testHeadingStructure();
         testRichText();
         testRichEditor();
@@ -112,6 +113,22 @@ public final class SelfTest {
                 "推进顺序是固定的：先找到星尘矿石，用原版熔炉烧出第一批星尘锭。",
                 "· 星尘矿石生成在地下 Y −16 至 Y 48 之间。");
         check("正常的 [hN=] 与编辑器列表不判第 22 条", !hasRule("", ok, 22));
+    }
+
+    /** 第 22 条：粘贴把表格压成短词组行 */
+    private static void testFlattenedTable() {
+        String flattened = String.join("\n",
+                "渠道", "地址", "源码",
+                "https://github.com/x/y", "问题反馈",
+                "https://github.com/x/y/issues", "CurseForge",
+                "https://www.curseforge.com/x");
+        check("粘贴压平的表格判第 22 条", hasRule("", flattened, 22));
+
+        String prose = String.join("\n",
+                "这个模组可以把女仆导出成一个文件，方便在不同版本之间转移。",
+                "导出的文件是自包含的，直接复制或重命名都不会影响导入。",
+                "如果女仆不小心消失了，可以用备份管理把它救回来。");
+        check("正常散文不判粘贴压平", !hasRule("", prose, 22));
     }
 
     /**
