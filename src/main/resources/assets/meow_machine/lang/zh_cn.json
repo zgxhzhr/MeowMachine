@@ -219,5 +219,6 @@
   "gui.meow_machine.approved_view_title": "已通过条目",
   "gui.meow_machine.approved_empty": "还没有已通过的条目",
   "chat.meow_machine.mystery_empty": "这次什么都没抽到，再试一次吧",
-  "chat.meow_machine.mystery_revealed": "揭晓：%s"
+  "chat.meow_machine.mystery_revealed": "揭晓：%s",
+  "item.meow_machine.mystery_result.use": "右键揭晓"
 }

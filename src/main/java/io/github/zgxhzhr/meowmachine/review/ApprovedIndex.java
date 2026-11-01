@@ -18,6 +18,32 @@ public final class ApprovedIndex {
 
     public static void attach(MinecraftServer server) {
         store = ApprovedSavedData.get(server);
+        backfillFromHistory();
+    }
+
+    /**
+     * 用「投稿历史」里已通过的记录回填索引。
+     *
+     * <p>索引是 0.26 才加的；之前的通过记录只存在历史里，不回填的话
+     * 「已通过条目」列表对老存档永远是空的（实测）。
+     */
+    private static void backfillFromHistory() {
+        if (store == null) {
+            return;
+        }
+        int added = 0;
+        for (SubmissionHistory.Record r : SubmissionHistory.allRecords()) {
+            if (!"approved".equals(r.state()) || store.entries().containsKey(r.id())) {
+                continue;
+            }
+            store.put(new ApprovedSavedData.Entry(r.id(), r.title(), "", r.body(),
+                    r.revision(), r.time()));
+            added++;
+        }
+        if (added > 0) {
+            io.github.zgxhzhr.meowmachine.MeowMachine.LOG.info(
+                    "[喵呜机] 已通过索引回填 {} 条（来自投稿历史）", added);
+        }
     }
 
     public static void detach() {

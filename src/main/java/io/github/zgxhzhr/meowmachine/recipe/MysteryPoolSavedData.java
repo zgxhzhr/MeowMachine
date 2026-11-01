@@ -88,9 +88,10 @@ public final class MysteryPoolSavedData extends SavedData {
             return "";
         }
         Set<String> pool = new LinkedHashSet<>();
+        var access = server.registryAccess();
         for (var recipe : server.getRecipeManager().getAllRecipesFor(
                 net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
-            ItemStackView view = new ItemStackView(recipe);
+            ItemStackView view = new ItemStackView(recipe, access);
             String id = view.itemId();
             if (id == null || id.isBlank()) {
                 continue;
@@ -99,11 +100,17 @@ public final class MysteryPoolSavedData extends SavedData {
             if (id.startsWith(MeowMachine.MOD_ID + ":")) {
                 continue;
             }
+            // 空气、屏障等「有配方但拿不到正常物品」的结果要排除
+            if (id.equals("minecraft:air") || id.equals("minecraft:barrier")
+                    || id.equals("minecraft:light") || id.equals("minecraft:structure_void")) {
+                continue;
+            }
             pool.add(id);
         }
         if (pool.isEmpty()) {
             return "";
         }
+        MeowMachine.LOG.info("[喵呜机] 神秘合成候选池 {} 条", pool.size());
         MysteryPoolSavedData data = get(server);
         if (data == null) {
             return "";
@@ -114,15 +121,27 @@ public final class MysteryPoolSavedData extends SavedData {
     }
 
     /** 小包装：避免在循环里写泛型 */
-    private record ItemStackView(net.minecraft.world.item.crafting.CraftingRecipe recipe) {
+    private record ItemStackView(net.minecraft.world.item.crafting.CraftingRecipe recipe,
+                                 net.minecraft.core.RegistryAccess access) {
         String itemId() {
             try {
-                var stack = recipe.getResultItem(null);
+                var stack = recipe.getResultItem(access);
                 if (stack == null || stack.isEmpty()) {
                     return "";
                 }
+                if (stack.getItem() == net.minecraft.world.item.Items.AIR) {
+                    return "";
+                }
                 var key = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem());
-                return key == null ? "" : key.toString();
+                if (key == null) {
+                    return "";
+                }
+                String id = key.toString();
+                // 再挡一次空气/占位
+                if (id.equals("minecraft:air")) {
+                    return "";
+                }
+                return id;
             } catch (RuntimeException e) {
                 return "";
             }

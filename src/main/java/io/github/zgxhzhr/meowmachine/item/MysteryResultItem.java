@@ -25,13 +25,25 @@ public class MysteryResultItem extends Item {
     }
 
     @Override
+    public void appendHoverText(ItemStack stack, Level level,
+                                java.util.List<net.minecraft.network.chat.Component> tooltip,
+                                net.minecraft.world.item.TooltipFlag flag) {
+        tooltip.add(net.minecraft.network.chat.Component.translatable(
+                "item.meow_machine.mystery_result.desc")
+                .withStyle(net.minecraft.ChatFormatting.GRAY));
+        tooltip.add(net.minecraft.network.chat.Component.translatable(
+                "item.meow_machine.mystery_result.use")
+                .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+    }
+
+    @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             String id = MysteryPoolSavedData.roll(sp.getServer());
             var rl = id == null || id.isBlank() ? null : ResourceLocation.tryParse(id);
             var item = rl == null ? null : ForgeRegistries.ITEMS.getValue(rl);
-            if (item == null) {
+            if (item == null || item == net.minecraft.world.item.Items.AIR) {
                 sp.sendSystemMessage(Component.translatable("chat.meow_machine.mystery_empty"));
                 return InteractionResultHolder.success(stack);
             }

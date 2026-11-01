@@ -74,6 +74,13 @@ public final class SubmissionHistory {
         }
     }
 
+    /** 全部历史记录（回填已通过索引用） */
+    public static List<Record> allRecords() {
+        List<Record> out = new ArrayList<>();
+        BY_AUTHOR.values().forEach(out::addAll);
+        return out;
+    }
+
     /** 某个作者的历史（新的在前） */
     public static List<Record> byAuthor(UUID author) {
         if (author == null) {

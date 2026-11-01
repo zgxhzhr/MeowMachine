@@ -219,5 +219,6 @@
   "gui.meow_machine.approved_view_title": "Approved entry",
   "gui.meow_machine.approved_empty": "No approved entries yet",
   "chat.meow_machine.mystery_empty": "Nothing this time, try again",
-  "chat.meow_machine.mystery_revealed": "Revealed: %s"
+  "chat.meow_machine.mystery_revealed": "Revealed: %s",
+  "item.meow_machine.mystery_result.use": "Right-click to reveal"
 }
