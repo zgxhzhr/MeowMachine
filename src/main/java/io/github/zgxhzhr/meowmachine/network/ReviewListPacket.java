@@ -30,6 +30,8 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
 
     /** 正文在列表包里的长度上限：够审核判断即可，避免列表包过大 */
     private static final int MAX_BODY = 4096;
+    /** 富文本正文上限：审核详情要按真结构渲染表格 */
+    private static final int MAX_BODY_HTML = 6000;
 
     /**
      * 一条待审。
@@ -38,7 +40,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
      */
     public record Entry(String fullId, String shortId, String author, String title, String body,
                         List<String> notes, List<String> aiOpinions,
-                        List<String> diffLines, List<String> localRules) {
+                        List<String> diffLines, List<String> localRules, String bodyHtml) {
 
         public static Entry of(Submission s, boolean withDiff) {
             String full = s.id().toString();
@@ -80,9 +82,13 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
                     break;
                 }
             }
+            String html = s.body() == null ? "" : s.body();
+            if (html.length() > MAX_BODY_HTML) {
+                html = html.substring(0, MAX_BODY_HTML);
+            }
             return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain,
                     ReviewNotes.of(s.id()), AiOpinions.of(s.id()), List.copyOf(diff),
-                    List.copyOf(precheck));
+                    List.copyOf(precheck), html);
         }
     }
 
@@ -156,6 +162,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             for (String n : e.localRules()) {
                 buf.writeUtf(n, 240);
             }
+            buf.writeUtf(e.bodyHtml() == null ? "" : e.bodyHtml(), MAX_BODY_HTML);
         }
     }
 
@@ -215,7 +222,8 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
                 pre.add(buf.readUtf(240));
             }
             list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes),
-                    List.copyOf(ai), List.copyOf(diff), List.copyOf(pre)));
+                    List.copyOf(ai), List.copyOf(diff), List.copyOf(pre),
+                    buf.readUtf(MAX_BODY_HTML)));
         }
         return new ReviewListPacket(list, canFinalize, assistant, List.copyOf(approved));
     }
