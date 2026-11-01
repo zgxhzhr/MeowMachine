@@ -19,7 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class Network {
 
     /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6 加入「我的投稿」） */
-    private static final String PROTOCOL = "19";
+    private static final String PROTOCOL = "20";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -88,6 +88,19 @@ public final class Network {
                 .encoder(ReviewResultPacket::encode)
                 .decoder(ReviewResultPacket::decode)
                 .consumerMainThread(ReviewResultPacket::handle)
+                .add();
+
+        // 客户端 → 服务端：请求已通过条目列表（所有人）
+        CHANNEL.messageBuilder(ApprovedListRequestPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ApprovedListRequestPacket::encode)
+                .decoder(ApprovedListRequestPacket::decode)
+                .consumerMainThread(ApprovedListRequestPacket::handle)
+                .add();
+        // 服务端 → 客户端：已通过条目列表
+        CHANNEL.messageBuilder(ApprovedListPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ApprovedListPacket::encode)
+                .decoder(ApprovedListPacket::decode)
+                .consumerMainThread(ApprovedListPacket::handle)
                 .add();
 
         // 客户端 → 服务端：界面按钮打开完整审核后台（OP）

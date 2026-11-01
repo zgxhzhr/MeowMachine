@@ -36,9 +36,14 @@ public class StickerMysteryRecipe extends CustomRecipe {
                 continue;
             }
             total++;
-            if (stack.getItem() instanceof StickerItem) {
+            if (stack.getItem() instanceof StickerItem si) {
                 if (sticker) {
                     return false; // 只允许一张梗图
+                }
+                // 只有「已通过」系列的梗图能用来抽奖（全梗图输入太超模）
+                String id = "meow_machine:" + si.stickerId();
+                if (!"approved".equals(io.github.zgxhzhr.meowmachine.sticker.StickerRegistry.stateOf(id))) {
+                    return false;
                 }
                 sticker = true;
             } else {
@@ -57,20 +62,10 @@ public class StickerMysteryRecipe extends CustomRecipe {
         return new ItemStack(ModItems.MYSTERY_RESULT.get());
     }
 
+    /** 合成只给「未揭晓」占位；右键占位才抽出真结果（输出框不会提前暴露） */
     @Override
     public ItemStack assemble(CraftingContainer container, RegistryAccess access) {
-        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
-        if (server == null) {
-            return ItemStack.EMPTY;
-        }
-        String id = MysteryPoolSavedData.roll(server);
-        if (id.isBlank()) {
-            return ItemStack.EMPTY;
-        }
-        var rl = ResourceLocation.tryParse(id);
-        var item = rl == null ? null
-                : net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(rl);
-        return item == null ? ItemStack.EMPTY : new ItemStack(item);
+        return new ItemStack(ModItems.MYSTERY_RESULT.get());
     }
 
     @Override

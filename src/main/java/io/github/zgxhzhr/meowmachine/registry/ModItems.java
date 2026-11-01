@@ -77,11 +77,12 @@ public final class ModItems {
      */
     public static final RegistryObject<Item> MEOW_ICON =
             ITEMS.register("meow_icon",
-                    () -> new Item(new Item.Properties()));
+                    () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties()));
 
     /** 神秘合成的输出占位（合成前只显示它） */
     public static final RegistryObject<Item> MYSTERY_RESULT =
-            ITEMS.register("mystery_result", () -> new Item(new Item.Properties()));
+            ITEMS.register("mystery_result",
+                    () -> new io.github.zgxhzhr.meowmachine.item.MysteryResultItem(new Item.Properties()));
 
     public static final RegistryObject<CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()

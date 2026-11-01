@@ -214,5 +214,10 @@
   "item.meow_machine.sticker_vague_words.story": "喵呜机数了数：这段里有七个「我觉得」、两个「应该」、一个「大概」。祂想找依据在哪，环顾四周只有这篇稿子。于是祂在备注里写：请把「我觉得」换成「实测」。",
   "item.meow_machine.sticker_punct_storm.story": "喵呜机读到那串问号时眨了眨眼。祂数不清稿子里到底问了几个问题，只确定自己一个也答不上来。祂把光标停在第一个问号上看了三秒，决定整段跳过。",
   "item.meow_machine.mystery_result": "未揭晓的合成结果",
-  "item.meow_machine.mystery_result.desc": "把一张梗图和任意物品放在一起试试"
+  "item.meow_machine.mystery_result.desc": "把一张梗图和任意物品放在一起试试",
+  "gui.meow_machine.approved_title": "已通过条目",
+  "gui.meow_machine.approved_view_title": "已通过条目",
+  "gui.meow_machine.approved_empty": "还没有已通过的条目",
+  "chat.meow_machine.mystery_empty": "这次什么都没抽到，再试一次吧",
+  "chat.meow_machine.mystery_revealed": "揭晓：%s"
 }

@@ -214,5 +214,10 @@
   "item.meow_machine.sticker_vague_words.story": "MeowMachine counts: seven \"I think\", two \"should be\", one \"probably\" in a single paragraph. He looks around for evidence and finds only the entry. So he writes in the note: please replace \"I think\" with \"measured\".",
   "item.meow_machine.sticker_punct_storm.story": "MeowMachine blinks at the string of question marks. He cannot count how many questions were asked, only that he can answer none of them. He parks the cursor on the first question mark, stares for three seconds, and skips the whole paragraph.",
   "item.meow_machine.mystery_result": "Unrevealed result",
-  "item.meow_machine.mystery_result.desc": "Combine a sticker with any item to find out"
+  "item.meow_machine.mystery_result.desc": "Combine a sticker with any item to find out",
+  "gui.meow_machine.approved_title": "Approved entries",
+  "gui.meow_machine.approved_view_title": "Approved entry",
+  "gui.meow_machine.approved_empty": "No approved entries yet",
+  "chat.meow_machine.mystery_empty": "Nothing this time, try again",
+  "chat.meow_machine.mystery_revealed": "Revealed: %s"
 }
