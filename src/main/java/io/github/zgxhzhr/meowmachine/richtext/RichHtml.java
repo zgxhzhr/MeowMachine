@@ -323,7 +323,13 @@ public final class RichHtml {
         if (html == null) {
             return "";
         }
-        return unescape(html.replaceAll("(?i)<br\\s*/?>", "\n").replaceAll("<[^>]+>", ""));
+        String withBreaks = html
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</p\\s*>", "\n")
+                .replaceAll("(?i)</li\\s*>", "\n")
+                .replaceAll("(?i)</tr\\s*>", "\n")
+                .replaceAll("(?i)</h[1-6]\\s*>", "\n");
+        return unescape(withBreaks.replaceAll("<[^>]+>", ""));
     }
 
     private static String unescape(String s) {

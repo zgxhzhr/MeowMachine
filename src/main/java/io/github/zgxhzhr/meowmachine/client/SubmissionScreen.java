@@ -316,21 +316,27 @@ public class SubmissionScreen extends Screen {
         int py = (int) my + scrollY;
         // 先看落在哪个单元矩形里（空单元格、空段落也能点中）
         for (CellRect r : cellRects) {
-            if (mx >= r.x() && mx <= r.x() + r.w()
-                    && py >= r.y() && py < r.y() + r.h()) {
-                int offset = 0;
-                for (CharBox b : boxes) {
-                    if (b.block() != r.block() || b.cell() != r.cell() || b.offset() < 0) {
-                        continue;
-                    }
-                    offset = b.offset();
-                    if (mx < b.x() + b.w() / 2.0) {
-                        return new RichEditor.Pos(r.block(), r.cell(), b.offset());
-                    }
-                    offset = b.offset() + 1;
-                }
-                return new RichEditor.Pos(r.block(), r.cell(), offset);
+            if (mx < r.x() || mx > r.x() + r.w() || py < r.y() || py >= r.y() + r.h()) {
+                continue;
             }
+            // 关键：只在**被点中的那一行**里算偏移，否则点下面一行会按上一行的字算
+            int lineY = r.y() + Math.max(0, (py - r.y()) / LINE_H) * LINE_H;
+            int offset = 0;
+            boolean any = false;
+            for (CharBox b : boxes) {
+                if (b.block() != r.block() || b.cell() != r.cell() || b.offset() < 0) {
+                    continue;
+                }
+                if (b.y() != lineY) {
+                    continue;
+                }
+                any = true;
+                if (mx < b.x() + b.w() / 2.0) {
+                    return new RichEditor.Pos(r.block(), r.cell(), b.offset());
+                }
+                offset = b.offset() + 1;
+            }
+            return new RichEditor.Pos(r.block(), r.cell(), any ? offset : 0);
         }
         // 兜底：就近吸附
         CharBox best = null;

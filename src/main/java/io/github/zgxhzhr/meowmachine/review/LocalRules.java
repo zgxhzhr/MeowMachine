@@ -188,19 +188,23 @@ public final class LocalRules {
         return out;
     }
 
-    /** 重复内容的最小句长：太短的句子重复很常见（「注意安全。」），不判 */
-    private static final int MIN_DUP_SENTENCE = 12;
+    /** 重复内容的最小段落长度（太短的段落重复很常见，不判） */
+    private static final int MIN_DUP_PARA = 20;
+    /** 重复段落里至少要有多少个汉字（挡住标记行、符号行） */
+    private static final int MIN_DUP_CJK = 6;
 
     /**
-     * 第 10 条里的「重复内容」：同一句话在正文里出现两次以上。
+     * 第 10 条里的「重复内容」：**整段**逐字相同时才报。
      *
-     * <p>只在**逐字相同**且句子够长时才报，避免把「结构相似」「同主题」当成重复。
+     * <p>踩过的坑：早先按句切分，而 {@code stripTags} 又把段落边界删掉了，
+     * 结果跨段拼接出来的片段被误判成重复——一篇正常文章被打回。
+     * 现在要求整段相同、长度 ≥ 20 字、且含 ≥ 6 个汉字。
      */
     private static void checkDuplicates(String body, List<ReviewFinding> out) {
         Map<String, Integer> seen = new HashMap<>();
-        for (String raw : body.split("[。！？!?\n]")) {
+        for (String raw : body.split("\n")) {
             String norm = raw.replaceAll("\\s", "").trim();
-            if (norm.length() < MIN_DUP_SENTENCE) {
+            if (norm.length() < MIN_DUP_PARA || countCjk(norm) < MIN_DUP_CJK) {
                 continue;
             }
             int n = seen.merge(norm, 1, Integer::sum);
@@ -210,6 +214,17 @@ public final class LocalRules {
                 return;
             }
         }
+    }
+
+    private static int countCjk(String s) {
+        int n = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c >= 0x4E00 && c <= 0x9FFF) {
+                n++;
+            }
+        }
+        return n;
     }
 
     /** 取开头一小段，用于审核意见引用 */
