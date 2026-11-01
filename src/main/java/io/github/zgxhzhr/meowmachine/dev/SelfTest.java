@@ -58,9 +58,27 @@ public final class SelfTest {
         testVerdictMapping();
         testNewSubmissionIds();
         testTitleStructure();
+        testDuplicates();
         testRichText();
         testRichEditor();
         testRuleTables();
+    }
+
+    /**
+     * 第 10 条「重复内容」：必须逐字相同才报。
+     *
+     * <p>这条是本地兜的：AI 曾把一篇正常百科正文（带 [h1=] 标记）臆断成「整段重复」，
+     * 所以重复判定要有确定性依据。
+     */
+    private static void testDuplicates() {
+        String twice = "这是一段足够长的正常介绍文字。这是另一句不同的内容。这是一段足够长的正常介绍文字。";
+        check("同一句出现两次判第 10 条", hasRule("", twice, 10));
+
+        String normal = "星尘熔炉是一个围绕矿物的加工类模组。模组只新增一种矿物和两类机器，其余配方由数据包定义。";
+        check("正常介绍不判第 10 条", !hasRule("", normal, 10));
+
+        String markers = "[h1=概述]\n[h2=核心玩法]\n[h2=版本与兼容]\n正文内容写在这里，足够十来个字。";
+        check("结构标记不算重复", !hasRule("", markers, 10));
     }
 
     /**

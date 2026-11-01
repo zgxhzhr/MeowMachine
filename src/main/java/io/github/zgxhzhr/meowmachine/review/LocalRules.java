@@ -2,6 +2,8 @@ package io.github.zgxhzhr.meowmachine.review;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -177,10 +179,43 @@ public final class LocalRules {
             out.add(new ReviewFinding(18, b.strip(), "正文太短，像在凑字数"));
         }
 
+        // 第 10 条 重复内容（逐句比对；AI 容易把「结构相似」臆断成整段重复，所以本地兜一条确定性的）
+        checkDuplicates(b, out);
+
         // 第 26 条 标题结构（只在真的用了标题标记时才判，纯文本投稿不涉及）
         checkTitleStructure(all, out);
 
         return out;
+    }
+
+    /** 重复内容的最小句长：太短的句子重复很常见（「注意安全。」），不判 */
+    private static final int MIN_DUP_SENTENCE = 12;
+
+    /**
+     * 第 10 条里的「重复内容」：同一句话在正文里出现两次以上。
+     *
+     * <p>只在**逐字相同**且句子够长时才报，避免把「结构相似」「同主题」当成重复。
+     */
+    private static void checkDuplicates(String body, List<ReviewFinding> out) {
+        Map<String, Integer> seen = new HashMap<>();
+        for (String raw : body.split("[。！？!?\n]")) {
+            String norm = raw.replaceAll("\\s", "").trim();
+            if (norm.length() < MIN_DUP_SENTENCE) {
+                continue;
+            }
+            int n = seen.merge(norm, 1, Integer::sum);
+            if (n >= 2) {
+                out.add(new ReviewFinding(10, head(norm),
+                        "同一段内容在正文里出现了两次以上"));
+                return;
+            }
+        }
+    }
+
+    /** 取开头一小段，用于审核意见引用 */
+    private static String head(String s) {
+        int n = Math.min(24, s.length());
+        return s.substring(0, n);
     }
 
     /**
