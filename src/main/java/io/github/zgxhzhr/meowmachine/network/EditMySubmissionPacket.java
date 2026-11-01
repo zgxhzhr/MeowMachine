@@ -75,6 +75,22 @@ public record EditMySubmissionPacket(String fullId) {
                     c.setPacketHandled(true);
                     return;
                 }
+                // 已通过条目：允许基于它提交编辑（同 id 重新走审核，配合修改对比）
+                var approved = io.github.zgxhzhr.meowmachine.review.ApprovedIndex.find(uuid);
+                if (approved.isPresent()) {
+                    Submission restore = new Submission(uuid, player.getUUID(),
+                            player.getName().getString(), approved.get().title(),
+                            approved.get().body(), SubmissionState.DRAFT,
+                            approved.get().revision() + 1);
+                    DraftStore.save(player, restore);
+                    Network.CHANNEL.sendTo(
+                            new OpenEditorPacket(restore.title(), restore.body(), "draft"),
+                            player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                    MeowMachine.LOG.info("[喵呜机] 基于已通过条目发起编辑 id={} player={}",
+                            uuid, player.getName().getString());
+                    c.setPacketHandled(true);
+                    return;
+                }
                 Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.cannot_edit"),
                         player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
                 c.setPacketHandled(true);

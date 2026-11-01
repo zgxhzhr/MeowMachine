@@ -49,11 +49,14 @@ public class MysteryResultItem extends Item {
             }
             stack.shrink(1);
             ItemStack got = new ItemStack(item);
-            if (!sp.getInventory().add(got)) {
+            boolean added = sp.getInventory().add(got);
+            if (!added) {
                 sp.drop(got, false);
             }
-            sp.sendSystemMessage(Component.translatable(
-                    "chat.meow_machine.mystery_revealed", got.getHoverName()));
+            // 不报具体是什么：东西直接进背包，玩家自己翻
+            sp.sendSystemMessage(Component.translatable(added
+                    ? "chat.meow_machine.mystery_revealed"
+                    : "chat.meow_machine.mystery_dropped"));
         }
         return InteractionResultHolder.success(stack);
     }
