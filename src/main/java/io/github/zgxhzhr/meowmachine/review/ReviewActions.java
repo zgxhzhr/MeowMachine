@@ -95,6 +95,7 @@ public final class ReviewActions {
         ReviewResult result = ReviewResult.of(verdict, findings,
                 reviewer == null ? "console" : reviewer.getName().getString(), sticker);
 
+        SubmissionHistory.record(sub.apply(result));
         deliver(serverOf(reviewer), sub, result);
         return Outcome.OK;
     }

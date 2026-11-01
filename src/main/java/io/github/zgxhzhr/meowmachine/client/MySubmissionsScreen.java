@@ -44,6 +44,9 @@ public class MySubmissionsScreen extends Screen {
 
         for (int i = 0; i < shown; i++) {
             MySubmissionsPacket.Entry e = rows.get(i);
+            if (!e.editable()) {
+                continue; // 已通过的稿子只读
+            }
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.btn.edit"),
                             b -> Network.CHANNEL.sendToServer(

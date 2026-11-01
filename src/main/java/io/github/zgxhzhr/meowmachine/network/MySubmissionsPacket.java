@@ -2,6 +2,7 @@ package io.github.zgxhzhr.meowmachine.network;
 
 import io.github.zgxhzhr.meowmachine.client.MySubmissionsScreenOpener;
 import io.github.zgxhzhr.meowmachine.review.Submission;
+import io.github.zgxhzhr.meowmachine.review.SubmissionHistory;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import io.github.zgxhzhr.meowmachine.review.SubmissionState;
 import io.netty.handler.codec.DecoderException;
@@ -34,9 +35,11 @@ public record MySubmissionsPacket(List<Entry> rows) {
      * @param shortId 8 位短 id（显示用）
      * @param title   标题
      * @param state   状态（小写：draft / submitted / approved / returned）
-     * @param pending 是否在人工队列里
+     * @param pending  是否在人工队列里
+     * @param editable 能否点「编辑」（已通过的不行）
      */
-    public record Entry(String id, String shortId, String title, String state, boolean pending) {
+    public record Entry(String id, String shortId, String title, String state,
+                        boolean pending, boolean editable) {
     }
 
     /** 组装：当前草稿打头，后面接队列里属于该玩家的条目（按 id 去重） */
@@ -54,13 +57,23 @@ public record MySubmissionsPacket(List<Entry> rows) {
                     rows.add(entryOf(s, true));
                 }
             }
+            // 已出结论的稿子不在队列里了，靠历史补上——否则通过后就「查无此人」
+            for (SubmissionHistory.Record r : SubmissionHistory.byAuthor(player.getUUID())) {
+                if (seen.add(r.id().toString())) {
+                    rows.add(new Entry(r.id().toString(), r.id().toString().substring(0, 8),
+                            r.title(), r.state(), false,
+                            !"approved".equals(r.state())));
+                }
+            }
         }
         return new MySubmissionsPacket(List.copyOf(rows));
     }
 
     private static Entry entryOf(Submission s, boolean pending) {
         String id = s.id().toString();
-        return new Entry(id, id.substring(0, 8), s.title(), s.state().name().toLowerCase(), pending);
+        String state = s.state().name().toLowerCase();
+        return new Entry(id, id.substring(0, 8), s.title(), state, pending,
+                !"approved".equals(state));
     }
 
     public static void encode(MySubmissionsPacket msg, FriendlyByteBuf buf) {
@@ -71,6 +84,7 @@ public record MySubmissionsPacket(List<Entry> rows) {
             buf.writeUtf(e.title(), Network.MAX_TITLE_LEN);
             buf.writeUtf(e.state(), 16);
             buf.writeBoolean(e.pending());
+            buf.writeBoolean(e.editable());
         }
     }
 
@@ -82,7 +96,8 @@ public record MySubmissionsPacket(List<Entry> rows) {
         List<Entry> rows = new ArrayList<>(Math.min(n, 16));
         for (int i = 0; i < n; i++) {
             rows.add(new Entry(buf.readUtf(40), buf.readUtf(12),
-                    buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(16), buf.readBoolean()));
+                    buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(16),
+                    buf.readBoolean(), buf.readBoolean()));
         }
         return new MySubmissionsPacket(rows);
     }

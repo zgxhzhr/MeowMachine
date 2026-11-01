@@ -3,6 +3,7 @@ package io.github.zgxhzhr.meowmachine;
 import io.github.zgxhzhr.meowmachine.command.MeowCommands;
 import io.github.zgxhzhr.meowmachine.review.ResultInbox;
 import io.github.zgxhzhr.meowmachine.review.ReviewActions;
+import io.github.zgxhzhr.meowmachine.review.SubmissionHistory;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
 import net.minecraft.server.level.ServerPlayer;
@@ -46,6 +47,7 @@ public final class MeowMachineEvents {
     public static void onServerStarted(ServerStartedEvent event) {
         SubmissionQueue.attach(event.getServer());
         ResultInbox.attach(event.getServer());
+        SubmissionHistory.attach(event.getServer());
     }
 
     /** 服务端停止：解绑，避免关服过程中继续往存档写 */
@@ -53,6 +55,7 @@ public final class MeowMachineEvents {
     public static void onServerStopping(ServerStoppingEvent event) {
         SubmissionQueue.detach();
         ResultInbox.detach();
+        SubmissionHistory.detach();
     }
 
     /**

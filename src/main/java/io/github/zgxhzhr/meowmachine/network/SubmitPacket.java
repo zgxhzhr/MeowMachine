@@ -91,6 +91,7 @@ public record SubmitPacket(String title, String body) {
                         Submission updated = sub.apply(result);
                         if (updated.state() != sub.state()) {
                             DraftStore.save(player, updated);
+                io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated);
                         }
                         Network.CHANNEL.sendTo(ReviewResultPacket.from(result),
                                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);

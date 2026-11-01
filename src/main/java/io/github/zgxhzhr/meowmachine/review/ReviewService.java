@@ -68,10 +68,18 @@ public final class ReviewService {
                     }
                     return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
                 }
-                MeowMachine.LOG.info("[喵呜机] AI 接管裁决 author={} 本地线索 {} 条 / AI 违规 {} 条",
-                        author.getName().getString(), localFindings.size(), ai.findings().size());
+                // 确定性格式类（22 全文样式 / 26 标题结构）不交给模型自由裁量：
+                // 实测 AI 会把「## 核心玩法 / - 列表」判成「格式没有明显问题」放行。
+                List<ReviewFinding> hardFormat = localFindings.stream()
+                        .filter(f -> f.ruleId() != null
+                                && (f.ruleId() == 22 || f.ruleId() == 26))
+                        .toList();
+                MeowMachine.LOG.info(
+                        "[喵呜机] AI 接管裁决 author={} 本地线索 {} 条（其中格式 {} 条）/ AI 违规 {} 条",
+                        author.getName().getString(), localFindings.size(),
+                        hardFormat.size(), ai.findings().size());
                 String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
-                boolean pass = ai.findings().isEmpty();
+                boolean pass = ai.findings().isEmpty() && hardFormat.isEmpty();
                 if (aiSticker != null && pass
                         && !"approved".equals(StickerRegistry.stateOf(aiSticker))) {
                     aiSticker = null;
@@ -86,6 +94,7 @@ public final class ReviewService {
                     return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
                 }
                 List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
+                findings.addAll(hardFormat);
                 if (ai.note() != null && !ai.note().isBlank()) {
                     findings.add(ReviewFinding.unexplained(ai.note().trim()));
                 }

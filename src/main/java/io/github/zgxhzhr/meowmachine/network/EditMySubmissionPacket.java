@@ -2,6 +2,8 @@ package io.github.zgxhzhr.meowmachine.network;
 
 import io.github.zgxhzhr.meowmachine.MeowMachine;
 import io.github.zgxhzhr.meowmachine.review.DraftStore;
+import io.github.zgxhzhr.meowmachine.review.SubmissionHistory;
+import io.github.zgxhzhr.meowmachine.review.SubmissionState;
 import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import net.minecraft.network.FriendlyByteBuf;
@@ -59,6 +61,20 @@ public record EditMySubmissionPacket(String fullId) {
                     .filter(s -> s.id().equals(uuid))
                     .findFirst();
             if (queued.isEmpty()) {
+                // 不在队列里 → 也许是历史里「被打回」的稿子，允许拉回来改
+                Optional<SubmissionHistory.Record> hist =
+                        SubmissionHistory.find(player.getUUID(), uuid);
+                if (hist.isPresent() && !"approved".equals(hist.get().state())) {
+                    Submission restore = new Submission(uuid, player.getUUID(),
+                            player.getName().getString(), hist.get().title(),
+                            hist.get().body(), SubmissionState.DRAFT, hist.get().revision() + 1);
+                    DraftStore.save(player, restore);
+                    Network.CHANNEL.sendTo(
+                            new OpenEditorPacket(restore.title(), restore.body(), "draft"),
+                            player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                    c.setPacketHandled(true);
+                    return;
+                }
                 Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.cannot_edit"),
                         player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
                 c.setPacketHandled(true);
