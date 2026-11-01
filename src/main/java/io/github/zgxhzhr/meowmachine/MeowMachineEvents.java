@@ -63,9 +63,10 @@ public final class MeowMachineEvents {
     }
 
     /**
-     * 玩家上线：给有审核权限的人发一个审核终端（每人只发一次）。
+     * 玩家上线：**每人**首次进入世界发一个审核终端（只发一次）。
      *
-     * <p>没权限的人给了也用不了，所以不发；后来被任命的人下次登录会补发。
+     * <p>能不能用由权限决定（右键时服务端校验）：没权限的人会看到「无权限」提示。
+     * 按需求：物品人人都有，权限另算。
      */
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
@@ -74,10 +75,6 @@ public final class MeowMachineEvents {
         }
         net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
         if (data.getBoolean("meow_machine_terminal_granted")) {
-            return;
-        }
-        boolean reviewer = sp.hasPermissions(2) || ReviewerRoster.canAnnotate(sp);
-        if (!reviewer) {
             return;
         }
         data.putBoolean("meow_machine_terminal_granted", true);
