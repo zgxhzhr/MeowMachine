@@ -44,11 +44,40 @@ public class StickerItem extends Item {
         return InteractionResultHolder.success(stack);
     }
 
+    /**
+     * 把长故事折成每行不超过 {@code maxChars} 个字（中文按字数近似即可）。
+     *
+     * <p>悬浮提示不会自动折行，长句子会直接超出屏幕，所以在这里手动切。
+     */
+    public static java.util.List<String> wrap(String text, int maxChars) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (text == null || text.isBlank()) {
+            return out;
+        }
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            cur.append(ch);
+            boolean atPunct = "，。；！？、".indexOf(ch) >= 0;
+            if (cur.length() >= maxChars || (atPunct && cur.length() >= maxChars - 6)) {
+                out.add(cur.toString());
+                cur.setLength(0);
+            }
+        }
+        if (cur.length() > 0) {
+            out.add(cur.toString());
+        }
+        return out;
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, Level level,
                                 List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("item.meow_machine.sticker_" + stickerId + ".story")
-                .withStyle(ChatFormatting.GRAY));
+        String story = Component.translatable(
+                "item.meow_machine.sticker_" + stickerId + ".story").getString();
+        for (String line : wrap(story, 26)) {
+            tooltip.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
+        }
         super.appendHoverText(stack, level, tooltip, flag);
     }
 }
