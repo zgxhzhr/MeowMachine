@@ -70,7 +70,8 @@ public class ApprovedListScreen extends Screen {
         for (int i = 0; i < shown; i++) {
             ApprovedListPacket.Entry e = entries.get(i);
             int y = top + i * ROW_H;
-            g.drawString(this.font, Component.literal(e.shortId() + "  " + e.author()),
+            g.drawString(this.font, Component.literal(e.shortId() + "  " + e.author()
+                            + "  第 " + (e.revision() + 1) + " 版"),
                     left, y + 3, 0xFFFF80, false);
             g.drawString(this.font, Component.literal(trim(e.title(), PANEL_W - 160)),
                     left, y + 13, 0xDDDDDD, false);

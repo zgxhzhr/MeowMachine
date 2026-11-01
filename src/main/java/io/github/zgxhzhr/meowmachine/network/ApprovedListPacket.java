@@ -18,7 +18,8 @@ public record ApprovedListPacket(List<Entry> entries) {
     private static final int MAX_ENTRIES = 200;
     private static final int MAX_BODY = 2000;
 
-    public record Entry(String id, String shortId, String title, String author, String body) {
+    public record Entry(String id, String shortId, String title, String author, String body,
+                        int revision) {
     }
 
     public static ApprovedListPacket of() {
@@ -32,7 +33,7 @@ public record ApprovedListPacket(List<Entry> entries) {
                 body = body.substring(0, MAX_BODY);
             }
             String id = e.id().toString();
-            list.add(new Entry(id, id.substring(0, 8), e.title(), e.author(), body));
+            list.add(new Entry(id, id.substring(0, 8), e.title(), e.author(), body, e.revision()));
         }
         return new ApprovedListPacket(List.copyOf(list));
     }
@@ -45,6 +46,7 @@ public record ApprovedListPacket(List<Entry> entries) {
             buf.writeUtf(e.title(), Network.MAX_TITLE_LEN);
             buf.writeUtf(e.author(), 40);
             buf.writeUtf(e.body(), MAX_BODY);
+            buf.writeVarInt(e.revision());
         }
     }
 
@@ -56,7 +58,7 @@ public record ApprovedListPacket(List<Entry> entries) {
         List<Entry> list = new ArrayList<>(Math.min(n, 32));
         for (int i = 0; i < n; i++) {
             list.add(new Entry(buf.readUtf(40), buf.readUtf(12), buf.readUtf(Network.MAX_TITLE_LEN),
-                    buf.readUtf(40), buf.readUtf(MAX_BODY)));
+                    buf.readUtf(40), buf.readUtf(MAX_BODY), buf.readVarInt()));
         }
         return new ApprovedListPacket(list);
     }

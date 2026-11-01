@@ -55,79 +55,17 @@ public final class ReviewService {
         String plainBody = io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(sub.body());
         List<ReviewFinding> localFindings =
                 new java.util.ArrayList<>(LocalRules.check(sub.title(), plainBody, sub.body()));
-        // AI 看结构化文本：列表/表格保留结构，否则它会以为作者没建列表
         String aiText = io.github.zgxhzhr.meowmachine.richtext.RichHtml.toAiText(sub.body());
 
-        // 「AI 接管」：AI 的判断**优于本地规则**，本地命中的条款只当线索交给它，
-        // 它可以确认、纠正或忽略，并写附言——这是纯规则判定做不到的。
-        boolean aiTakesOver = cfg.usable() && cfg.takeover();
-        if (aiTakesOver) {
-            return AiReviewer.review(cfg, sub.title(), aiText, localFindings)
-                    .thenApplyAsync(ai -> {
-                if (!ai.available()) {
-                    // AI 不可用：退回本地规则（有命中就按本地打回，否则兜底）
-                    if (!localFindings.isEmpty()) {
-                        return ReviewResult.of(Verdict.RETURN, localFindings, "local-rules",
-                                pickSticker(Verdict.RETURN, localFindings));
-                    }
-                    return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
-                }
-                // 确定性格式类（22 全文样式 / 26 标题结构）不交给模型自由裁量：
-                // 实测 AI 会把「## 核心玩法 / - 列表」判成「格式没有明显问题」放行。
-                List<ReviewFinding> hardFormat = localFindings.stream()
-                        .filter(f -> f.ruleId() != null
-                                && (f.ruleId() == 10 || f.ruleId() == 22
-                                        || f.ruleId() == 26 || f.ruleId() == 29))
-                        .toList();
-                AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
-                MeowMachine.LOG.info(
-                        "[喵呜机] AI 接管裁决 author={} 本地线索 {} 条（其中格式 {} 条）/ AI 违规 {} 条",
-                        author.getName().getString(), localFindings.size(),
-                        hardFormat.size(), ai.findings().size());
-                String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
-                boolean pass = ai.findings().isEmpty() && hardFormat.isEmpty();
-                if (aiSticker != null) {
-                    // 结论与梗图必须一致：打回不能配「已通过」的图，反之亦然
-                    boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));
-                    if (pass != approvedSticker) {
-                        aiSticker = null;
-                    }
-                }
-                if (pass) {
-                    String sticker = aiSticker != null ? aiSticker
-                            : StickerRegistry.forState("approved")
-                                    .map(s -> s.id().toString()).orElse("");
-                    // 附言：通过时也可能写一句（作为「说一说」挂在结果上）
-                    List<ReviewFinding> note = (ai.note() == null || ai.note().isBlank())
-                            ? List.of() : List.of(ReviewFinding.unexplained(ai.note().trim()));
-                    return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
-                }
-                List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
-                findings.addAll(hardFormat);
-                // AI 判「没问题」而被确定性格式拦下时，它的夸奖附言与结论矛盾，不要显示
-                boolean aiSaidOk = ai.findings().isEmpty();
-                if (!aiSaidOk && ai.note() != null && !ai.note().isBlank()) {
-                    findings.add(ReviewFinding.unexplained(ai.note().trim()));
-                }
-                String sticker = aiSticker != null ? aiSticker
-                        : pickSticker(Verdict.RETURN, findings);
-                return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
-            }, server).exceptionally(ex -> {
-                MeowMachine.LOG.error("[喵呜机] AI 接管裁决异常，退回本地规则", ex);
-                return localFindings.isEmpty()
-                        ? fallbackReturn("AI 审核异常，无法确认内容，先按打回处理")
-                        : ReviewResult.of(Verdict.RETURN, localFindings, "local-rules",
-                                pickSticker(Verdict.RETURN, localFindings));
-            });
-        }
-
-        // ①.0 修改已通过条目：对比上一版，删得比加得多/字数缩水 → 本地第 29 条（越改越倒退）
+        // ①.0 已通过条目的再编辑：先算改动对比（硬闸 + 交给 AI 判断改动是否有意义）
         var prevApproved = ApprovedIndex.find(sub.id());
+        String diffNote = "";
+        boolean trivialEdit = false;
         if (prevApproved.isPresent()) {
             var diff = EditDiffs.of(prevApproved.get().body(), sub.body());
-            boolean trivialEdit = false;
-            if (diff.trivial()) {
-                trivialEdit = true;
+            diffNote = String.join("\n", diff.summaryLines());
+            trivialEdit = diff.trivial();
+            if (trivialEdit) {
                 localFindings.add(0, new ReviewFinding(10,
                         "只改动了 " + Math.abs(diff.newChars() - diff.oldChars()) + " 字（新增 "
                                 + diff.added() + " 行 / 删除 " + diff.removed() + " 行）",
@@ -139,12 +77,7 @@ public final class ReviewService {
                         "越改越倒退：这次删得比加得多，或总字数明显缩水"));
             }
         }
-
-        // 改动过小的再编辑：直接打回，不进人工队列（原稿本来就合规，AI 也会判通过）
-        boolean truncated = localFindings.stream()
-                .anyMatch(f -> f.ruleId() != null && f.ruleId() == 10
-                        && f.reason() != null && f.reason().contains("实质未修改"));
-        if (truncated) {
+        if (trivialEdit) {
             String sticker = pickSticker(Verdict.RETURN, localFindings);
             MeowMachine.LOG.info("[喵呜机] 再编辑改动过小，直接打回 author={}",
                     author.getName().getString());
@@ -152,19 +85,69 @@ public final class ReviewService {
                     ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
-        // ① 有能终审的人、且没开「AI 接管」→ 入人工队列。
-        //    注意顺序：**人工优先于本地规则**。本地规则命中也要交给审核员，
-        //    它只是确定性预检，不能替人拍板（审核详情页会把预检结果列给审核员看）。
+        // ② AI 接管：AI 判断优于本地规则（格式类 10/22/26/29 除外）
+        boolean aiTakesOver = cfg.usable() && cfg.takeover();
+        if (aiTakesOver) {
+            return AiReviewer.review(cfg, sub.title(), aiText, localFindings, diffNote)
+                    .thenApplyAsync(ai -> {
+                        if (!ai.available()) {
+                            if (!localFindings.isEmpty()) {
+                                return ReviewResult.of(Verdict.RETURN, localFindings, "local-rules",
+                                        pickSticker(Verdict.RETURN, localFindings));
+                            }
+                            return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
+                        }
+                        List<ReviewFinding> hardFormat = localFindings.stream()
+                                .filter(f -> f.ruleId() != null
+                                        && (f.ruleId() == 10 || f.ruleId() == 22
+                                                || f.ruleId() == 26 || f.ruleId() == 29))
+                                .toList();
+                        AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
+                        MeowMachine.LOG.info(
+                                "[喵呜机] AI 接管裁决 author={} 本地线索 {} 条（其中确定性 {} 条）/ AI 违规 {} 条",
+                                author.getName().getString(), localFindings.size(),
+                                hardFormat.size(), ai.findings().size());
+                        String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
+                        boolean pass = ai.findings().isEmpty() && hardFormat.isEmpty();
+                        if (aiSticker != null) {
+                            boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));
+                            if (pass != approvedSticker) {
+                                aiSticker = null;
+                            }
+                        }
+                        if (pass) {
+                            String sticker = aiSticker != null ? aiSticker
+                                    : StickerRegistry.forState("approved")
+                                            .map(s -> s.id().toString()).orElse("");
+                            List<ReviewFinding> note = (ai.note() == null || ai.note().isBlank())
+                                    ? List.of() : List.of(ReviewFinding.unexplained(ai.note().trim()));
+                            return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
+                        }
+                        List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
+                        findings.addAll(hardFormat);
+                        boolean aiSaidOk = ai.findings().isEmpty();
+                        if (!aiSaidOk && ai.note() != null && !ai.note().isBlank()) {
+                            findings.add(ReviewFinding.unexplained(ai.note().trim()));
+                        }
+                        String sticker = aiSticker != null ? aiSticker
+                                : pickSticker(Verdict.RETURN, findings);
+                        return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
+                    }, server).exceptionally(ex -> {
+                        MeowMachine.LOG.error("[喵呜机] AI 接管裁决异常，退回本地规则", ex);
+                        return localFindings.isEmpty()
+                                ? fallbackReturn("AI 审核异常，无法确认内容，先按打回处理")
+                                : ReviewResult.of(Verdict.RETURN, localFindings, "local-rules",
+                                        pickSticker(Verdict.RETURN, localFindings));
+                    });
+        }
+
+        // ③ 有人能终审 → 入人工队列（先入队，AI 意见异步补）
         if (hasHumanFinalizer(server)) {
             ReviewResult pending = ReviewResult.of(Verdict.PENDING, List.of(), "pending-human",
                     StickerRegistry.forState("submitted").map(s -> s.id().toString()).orElse(""));
-            // **先入队再问 AI**：AI 有 20s 超时窗口，旧写法把入队放在回调里，
-            // 窗口期内稿件不在任何持久化结构里，停服就永久丢（审查 P0-7）。
             SubmissionQueue.enqueue(sub, System.currentTimeMillis());
             if (cfg.usable()) {
-                // 开 AI 但不接管：AI 跑一遍，发现存成「AI 意见」交给人工，不作为结论；
-                // 回调切回服务端主线程再写存档（审查 P0-6）。
-                AiReviewer.review(cfg, sub.title(), aiText, localFindings)
+                AiReviewer.review(cfg, sub.title(), aiText, localFindings, diffNote)
                         .thenApplyAsync(ai -> {
                             if (ai.available()) {
                                 AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
@@ -179,7 +162,7 @@ public final class ReviewService {
             return CompletableFuture.completedFuture(pending);
         }
 
-        // ② 没人能终审 → 本地规则先判（不花 token，判得准的部分直接出结论）
+        // ④ 没人能终审 → 本地规则先判
         if (!localFindings.isEmpty()) {
             String sticker = pickSticker(Verdict.RETURN, localFindings);
             MeowMachine.LOG.info("[喵呜机] 无人工可审，本地规则命中 {} 条，自动打回 author={}",
@@ -188,44 +171,44 @@ public final class ReviewService {
                     ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
-        // ③ 没人审 → AI
+        // ⑤ 没人审 → AI
         if (cfg.usable()) {
-            return AiReviewer.review(cfg, sub.title(), aiText)
+            return AiReviewer.review(cfg, sub.title(), aiText, java.util.List.of(), diffNote)
                     .thenApplyAsync(ai -> {
-                if (!ai.available()) {
-                    return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
-                }
-                AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
-                String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
-                if (aiSticker != null) {
-                    boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));
-                    boolean pass = ai.findings().isEmpty();
-                    if (pass != approvedSticker) {
-                        aiSticker = null;
-                    }
-                }
-                if (ai.findings().isEmpty()) {
-                    String sticker = aiSticker != null ? aiSticker
-                            : StickerRegistry.forState("approved")
-                                    .map(s -> s.id().toString()).orElse("");
-                    List<ReviewFinding> note = (ai.note() == null || ai.note().isBlank())
-                            ? List.of() : List.of(ReviewFinding.unexplained(ai.note().trim()));
-                    return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
-                }
-                List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
-                if (ai.note() != null && !ai.note().isBlank()) {
-                    findings.add(ReviewFinding.unexplained(ai.note().trim()));
-                }
-                String sticker = aiSticker != null ? aiSticker
-                        : pickSticker(Verdict.RETURN, ai.findings());
-                return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
-            }, server).exceptionally(ex -> {
-                MeowMachine.LOG.error("[喵呜机] 自动审核异常，按兜底打回处理", ex);
-                return fallbackReturn("审核异常，无法确认内容，先按打回处理");
-            });
+                        if (!ai.available()) {
+                            return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
+                        }
+                        AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
+                        String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
+                        boolean pass = ai.findings().isEmpty();
+                        if (aiSticker != null) {
+                            boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));
+                            if (pass != approvedSticker) {
+                                aiSticker = null;
+                            }
+                        }
+                        if (pass) {
+                            String sticker = aiSticker != null ? aiSticker
+                                    : StickerRegistry.forState("approved")
+                                            .map(s -> s.id().toString()).orElse("");
+                            List<ReviewFinding> note = (ai.note() == null || ai.note().isBlank())
+                                    ? List.of() : List.of(ReviewFinding.unexplained(ai.note().trim()));
+                            return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
+                        }
+                        List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
+                        if (ai.note() != null && !ai.note().isBlank()) {
+                            findings.add(ReviewFinding.unexplained(ai.note().trim()));
+                        }
+                        String sticker = aiSticker != null ? aiSticker
+                                : pickSticker(Verdict.RETURN, ai.findings());
+                        return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
+                    }, server).exceptionally(ex -> {
+                        MeowMachine.LOG.error("[喵呜机] 自动审核异常，按兜底打回处理", ex);
+                        return fallbackReturn("审核异常，无法确认内容，先按打回处理");
+                    });
         }
 
-        // ④ 既没人也没 AI → 兜底打回
+        // ⑥ 既没人也没 AI → 兜底打回
         return CompletableFuture.completedFuture(fallbackReturn("没人审，也没查出具体问题"));
     }
 
