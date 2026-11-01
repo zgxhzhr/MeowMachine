@@ -7,6 +7,22 @@ import java.util.List;
 public final class EditDiffs {
 
     public record Diff(int added, int removed, int oldChars, int newChars, List<String> removedSample) {
+        /**
+         * 改动是否小到「实质等于没改」。
+         *
+         * <p>用于已通过条目的再编辑：原稿本来合规，只加一个字 AI 也会判通过，
+         * 但这类编辑没有审核价值。判定看字数变化与变动行数，取绝对值和比例两条线。
+         */
+        public boolean trivial() {
+            int delta = Math.abs(newChars - oldChars);
+            // 改动一行会同时记一次 added 和一次 removed，这里按「变了多少行」算
+            int changedLines = Math.max(added, removed);
+            if (oldChars >= 400) {
+                return delta <= Math.max(8, oldChars / 50) && changedLines <= 2;
+            }
+            return delta <= 4 && changedLines <= 1;
+        }
+
         public boolean regressed() {
             // 删得比加得多、或总字数缩水三成以上：视为倒退
             return removed > added || (oldChars > 120 && newChars < oldChars * 0.7);

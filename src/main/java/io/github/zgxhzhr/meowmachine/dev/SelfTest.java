@@ -68,6 +68,7 @@ public final class SelfTest {
         testStructuredBody();
         testParseTolerance();
         testReviewDomain();
+        testTrivialEdit();
         testRuleTables();
     }
 
@@ -333,6 +334,18 @@ public final class SelfTest {
     }
 
     /** 编辑器内核：悬挂样式、选区样式、列表、表格、回车/退格 */
+    /** 已通过条目的「几乎没改」应被判为实质未修改 */
+    private static void testTrivialEdit() {
+        String oldBody = "<p>" + "这是一段原本就合规的正文内容。".repeat(12) + "</p>";
+        String tiny = "<p>" + "这是一段原本就合规的正文内容。".repeat(12) + "补。</p>";
+        check("只加几个字 → 判改动过小",
+                io.github.zgxhzhr.meowmachine.review.EditDiffs.of(oldBody, tiny).trivial());
+        String big = "<p>" + "这是一段原本就合规的正文内容。".repeat(12)
+                + "</p><p>这里补充了一整段新的说明，长度明显超过阈值。</p>";
+        check("补一整段 → 不算改动过小",
+                !io.github.zgxhzhr.meowmachine.review.EditDiffs.of(oldBody, big).trivial());
+    }
+
     /** 审核域：状态流转、倒退判定、已通过索引往返（原来 92 条断言完全没覆盖 review 域） */
     private static void testReviewDomain() {
         var sub = io.github.zgxhzhr.meowmachine.review.Submission.draft(

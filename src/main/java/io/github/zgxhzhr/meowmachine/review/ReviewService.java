@@ -76,7 +76,8 @@ public final class ReviewService {
                 // 实测 AI 会把「## 核心玩法 / - 列表」判成「格式没有明显问题」放行。
                 List<ReviewFinding> hardFormat = localFindings.stream()
                         .filter(f -> f.ruleId() != null
-                                && (f.ruleId() == 22 || f.ruleId() == 26 || f.ruleId() == 29))
+                                && (f.ruleId() == 10 || f.ruleId() == 22
+                                        || f.ruleId() == 26 || f.ruleId() == 29))
                         .toList();
                 AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
                 MeowMachine.LOG.info(
@@ -124,6 +125,12 @@ public final class ReviewService {
         var prevApproved = ApprovedIndex.find(sub.id());
         if (prevApproved.isPresent()) {
             var diff = EditDiffs.of(prevApproved.get().body(), sub.body());
+            if (diff.trivial()) {
+                localFindings.add(0, new ReviewFinding(10,
+                        "只改动了 " + Math.abs(diff.newChars() - diff.oldChars()) + " 字（新增 "
+                                + diff.added() + " 行 / 删除 " + diff.removed() + " 行）",
+                        "与上一版几乎相同，实质未修改；请做出有意义的补充或修正后再提交"));
+            }
             if (diff.regressed()) {
                 localFindings.add(0, new ReviewFinding(29,
                         "删除 " + diff.removed() + " 行 / 新增 " + diff.added() + " 行",
