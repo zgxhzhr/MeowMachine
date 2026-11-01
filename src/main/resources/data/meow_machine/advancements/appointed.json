@@ -1,0 +1,23 @@
+{
+  "display": {
+    "icon": {
+      "item": "minecraft:golden_helmet"
+    },
+    "title": {
+      "translate": "advancements.meow_machine.appointed.title"
+    },
+    "description": {
+      "translate": "advancements.meow_machine.appointed.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "code": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "parent": "meow_machine:root"
+}

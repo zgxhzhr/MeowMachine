@@ -52,6 +52,10 @@ public record AnnotatePacket(String fullId, String note) {
         boolean ok = SubmissionQueue.snapshot().stream()
                 .anyMatch(e -> e.submission().id().equals(id))
                 && ReviewNotes.add(id, player.getName().getString(), msg.note());
+        if (ok) {
+            io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                    player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_NOTE);
+        }
         MeowMachine.LOG.info("[喵呜机] 审核意见 {} by={} ok={}",
                 id, player.getName().getString(), ok);
         Network.CHANNEL.sendTo(

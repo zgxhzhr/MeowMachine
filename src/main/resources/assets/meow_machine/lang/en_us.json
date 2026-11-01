@@ -118,5 +118,21 @@
   "gui.meow_machine.roster.no_online": "No other players online",
   "gui.meow_machine.btn.preview": "View",
   "gui.meow_machine.view_title": "View submission",
-  "gui.meow_machine.view_empty": "(no body)"
+  "gui.meow_machine.view_empty": "(no body)",
+  "advancements.meow_machine.root.title": "MeowMachine",
+  "advancements.meow_machine.root.description": "Get a submission scroll and start writing",
+  "advancements.meow_machine.first_submit.title": "First Submission",
+  "advancements.meow_machine.first_submit.description": "Submit your first entry",
+  "advancements.meow_machine.first_approved.title": "Approved",
+  "advancements.meow_machine.first_approved.description": "Your submission passed review for the first time",
+  "advancements.meow_machine.first_returned.title": "Returned",
+  "advancements.meow_machine.first_returned.description": "Get rejected for the first time",
+  "advancements.meow_machine.revised_approved.title": "Forged in Fire",
+  "advancements.meow_machine.revised_approved.description": "Get a returned submission approved after rework",
+  "advancements.meow_machine.first_decision.title": "Sharp Eyes",
+  "advancements.meow_machine.first_decision.description": "Finalize a review for the first time",
+  "advancements.meow_machine.first_note.title": "Mentor",
+  "advancements.meow_machine.first_note.description": "Write your first review note",
+  "advancements.meow_machine.appointed.title": "Reviewer Appointed",
+  "advancements.meow_machine.appointed.description": "Appointed as reviewer or assistant"
 }

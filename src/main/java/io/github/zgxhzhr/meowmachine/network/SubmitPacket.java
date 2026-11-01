@@ -62,6 +62,8 @@ public record SubmitPacket(String title, String body) {
             SubmissionQueue.drop(existing.id());
         }
 
+        boolean wasReturned = existing.state()
+                == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED;
         Submission candidate = existing.withContent(title, body);
         if (candidate.isEmpty()) {
             Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.empty_submission"),
@@ -71,6 +73,8 @@ public record SubmitPacket(String title, String body) {
         }
         Submission sub = candidate.submit();
         DraftStore.save(player, sub);
+        io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_SUBMIT);
 
         // 走审核流水线：本地规则 → 人工 → AI → 兜底。可能异步完成（AI 路径）。
         // 配置走内存缓存：以前每条投稿都在主线程同步读一次磁盘。
@@ -91,7 +95,19 @@ public record SubmitPacket(String title, String body) {
                         Submission updated = sub.apply(result);
                         if (updated.state() != sub.state()) {
                             DraftStore.save(player, updated);
-                io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated);
+                            io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated);
+                            if (updated.state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.APPROVED) {
+                                io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                                        player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_APPROVED);
+                                if (wasReturned) {
+                                    io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                                            player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.REVISED_APPROVED);
+                                }
+                            } else if (updated.state()
+                                    == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED) {
+                                io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                                        player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_RETURNED);
+                            }
                         }
                         Network.CHANNEL.sendTo(ReviewResultPacket.from(result),
                                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);

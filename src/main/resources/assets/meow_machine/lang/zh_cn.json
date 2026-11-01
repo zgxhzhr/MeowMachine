@@ -118,5 +118,21 @@
   "gui.meow_machine.roster.no_online": "没有其他在线玩家",
   "gui.meow_machine.btn.preview": "查看",
   "gui.meow_machine.view_title": "查看投稿",
-  "gui.meow_machine.view_empty": "（这篇没有正文）"
+  "gui.meow_machine.view_empty": "（这篇没有正文）",
+  "advancements.meow_machine.root.title": "喵呜机",
+  "advancements.meow_machine.root.description": "拿到投稿卷轴，开始百科投稿",
+  "advancements.meow_machine.first_submit.title": "初次投稿",
+  "advancements.meow_machine.first_submit.description": "提交第一篇投稿",
+  "advancements.meow_machine.first_approved.title": "过审了",
+  "advancements.meow_machine.first_approved.description": "你的投稿第一次通过审核",
+  "advancements.meow_machine.first_returned.title": "打回也是一种成长",
+  "advancements.meow_machine.first_returned.description": "第一次被打回",
+  "advancements.meow_machine.revised_approved.title": "百炼成钢",
+  "advancements.meow_machine.revised_approved.description": "被打回后改到通过",
+  "advancements.meow_machine.first_decision.title": "火眼金睛",
+  "advancements.meow_machine.first_decision.description": "第一次终裁别人的投稿",
+  "advancements.meow_machine.first_note.title": "好为人师",
+  "advancements.meow_machine.first_note.description": "写下第一条审核意见",
+  "advancements.meow_machine.appointed.title": "审核员上任",
+  "advancements.meow_machine.appointed.description": "被任命为审核员或助理"
 }

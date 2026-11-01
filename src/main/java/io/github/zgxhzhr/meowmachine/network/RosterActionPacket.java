@@ -83,6 +83,9 @@ public record RosterActionPacket(Action action, String target, String role) {
                         ReviewerRole role = parseRole(msg.role);
                         ReviewerRoster.grant(target.getUUID(),
                                 target.getName().getString(), role);
+                        io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                                target,
+                                io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.APPOINTED);
                         MeowMachine.LOG.info("[喵呜机] 后台任命 {} 为 {}（操作者 {}）",
                                 target.getName().getString(), role,
                                 player.getName().getString());

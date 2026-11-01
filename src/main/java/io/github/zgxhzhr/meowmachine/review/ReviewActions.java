@@ -104,6 +104,11 @@ public final class ReviewActions {
                 reviewer == null ? "console" : reviewer.getName().getString(), sticker);
 
         SubmissionHistory.record(sub.apply(result));
+        if (reviewer != null) {
+            io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                    reviewer,
+                    io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_DECISION);
+        }
         deliver(serverOf(reviewer), sub, result);
         return Outcome.OK;
     }
