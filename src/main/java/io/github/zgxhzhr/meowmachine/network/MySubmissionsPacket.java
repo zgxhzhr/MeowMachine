@@ -40,7 +40,8 @@ public record MySubmissionsPacket(List<Entry> rows) {
      * @param body     正文（剥标签纯文本，够「查看」看内容）
      */
     public record Entry(String id, String shortId, String title, String state,
-                        boolean pending, boolean editable, String body) {
+                        boolean pending, boolean editable, String body,
+                        List<String> reasons, String stickerId) {
     }
 
     /** 组装：当前草稿打头，后面接队列里属于该玩家的条目（按 id 去重） */
@@ -48,14 +49,14 @@ public record MySubmissionsPacket(List<Entry> rows) {
         List<Entry> rows = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
         if (draft != null) {
-            rows.add(entryOf(draft, draft.state() == SubmissionState.SUBMITTED));
+            rows.add(entryOf(draft, draft.state() == SubmissionState.SUBMITTED, List.of(), ""));
             seen.add(draft.id().toString());
         }
         if (player != null) {
             for (SubmissionQueue.Entry e : SubmissionQueue.byAuthor(player.getUUID())) {
                 Submission s = e.submission();
                 if (seen.add(s.id().toString())) {
-                    rows.add(entryOf(s, true));
+                    rows.add(entryOf(s, true, List.of(), ""));
                 }
             }
             // 已出结论的稿子不在队列里了，靠历史补上——否则通过后就「查无此人」
@@ -63,18 +64,19 @@ public record MySubmissionsPacket(List<Entry> rows) {
                 if (seen.add(r.id().toString())) {
                     rows.add(new Entry(r.id().toString(), r.id().toString().substring(0, 8),
                             r.title(), r.state(), false,
-                            !"approved".equals(r.state()), plainBody(r.body())));
+                            !"approved".equals(r.state()), plainBody(r.body()),
+                            r.reasons(), r.stickerId()));
                 }
             }
         }
         return new MySubmissionsPacket(List.copyOf(rows));
     }
 
-    private static Entry entryOf(Submission s, boolean pending) {
+    private static Entry entryOf(Submission s, boolean pending, List<String> reasons, String sticker) {
         String id = s.id().toString();
         String state = s.state().name().toLowerCase();
         return new Entry(id, id.substring(0, 8), s.title(), state, pending,
-                !"approved".equals(state), plainBody(s.body()));
+                !"approved".equals(state), plainBody(s.body()), reasons, sticker);
     }
 
     /** 正文在列表包里的长度上限 */
@@ -95,6 +97,13 @@ public record MySubmissionsPacket(List<Entry> rows) {
             buf.writeBoolean(e.pending());
             buf.writeBoolean(e.editable());
             buf.writeUtf(e.body() == null ? "" : e.body(), MAX_BODY);
+            buf.writeVarInt(e.reasons() == null ? 0 : e.reasons().size());
+            if (e.reasons() != null) {
+                for (String r : e.reasons()) {
+                    buf.writeUtf(r, 400);
+                }
+            }
+            buf.writeUtf(e.stickerId() == null ? "" : e.stickerId(), 64);
         }
     }
 
@@ -105,9 +114,24 @@ public record MySubmissionsPacket(List<Entry> rows) {
         }
         List<Entry> rows = new ArrayList<>(Math.min(n, 16));
         for (int i = 0; i < n; i++) {
-            rows.add(new Entry(buf.readUtf(40), buf.readUtf(12),
-                    buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(16),
-                    buf.readBoolean(), buf.readBoolean(), buf.readUtf(MAX_BODY)));
+            String rid = buf.readUtf(40);
+            String rshort = buf.readUtf(12);
+            String rtitle = buf.readUtf(Network.MAX_TITLE_LEN);
+            String rstate = buf.readUtf(16);
+            boolean rpending = buf.readBoolean();
+            boolean reditable = buf.readBoolean();
+            String rbody = buf.readUtf(MAX_BODY);
+            int rc = buf.readVarInt();
+            if (rc < 0 || rc > 32) {
+                throw new DecoderException("喵呜机：原因条数非法: " + rc);
+            }
+            List<String> rreasons = new ArrayList<>(rc);
+            for (int k = 0; k < rc; k++) {
+                rreasons.add(buf.readUtf(400));
+            }
+            String rstick = buf.readUtf(64);
+            rows.add(new Entry(rid, rshort, rtitle, rstate, rpending, reditable, rbody,
+                    List.copyOf(rreasons), rstick));
         }
         return new MySubmissionsPacket(rows);
     }

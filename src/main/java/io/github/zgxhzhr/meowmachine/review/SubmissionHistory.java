@@ -24,7 +24,8 @@ public final class SubmissionHistory {
      *
      * @param state 小写状态：approved / returned
      */
-    public record Record(UUID id, String title, String state, String body, int revision, long time) {
+    public record Record(UUID id, String title, String state, String body, int revision, long time,
+                         List<String> reasons, String stickerId) {
     }
 
     /** 每人保留多少条（够翻旧账，又不至于把存档撑大） */
@@ -55,6 +56,11 @@ public final class SubmissionHistory {
      * <p>同一 id 再记录会覆盖旧条目（例如先打回、改完再通过，列表里只留最新一条）。
      */
     public static void record(Submission sub) {
+        record(sub, null);
+    }
+
+    /** 带结论详情的历史记录：原因与梗图都要留下来，作者之后随时能翻看 */
+    public static void record(Submission sub, ReviewResult result) {
         if (sub == null || sub.authorUuid() == null) {
             return;
         }
@@ -65,8 +71,24 @@ public final class SubmissionHistory {
         }
         List<Record> list = BY_AUTHOR.computeIfAbsent(sub.authorUuid(), k -> new ArrayList<>());
         list.removeIf(r -> r.id().equals(sub.id()));
-        list.add(0, new Record(sub.id(), sub.title(),
-                st.name().toLowerCase(), sub.body(), sub.revision(), System.currentTimeMillis()));
+        List<String> reasons = new ArrayList<>();
+        String sticker = result == null ? "" : result.stickerId();
+        if (result != null) {
+            for (ReviewFinding f : result.findings()) {
+                StringBuilder sb = new StringBuilder();
+                if (f.ruleId() != null && f.ruleId() > 0) {
+                    sb.append("第 ").append(f.ruleId()).append(" 条：");
+                }
+                sb.append(f.reason() == null ? "" : f.reason());
+                String text = sb.toString().strip();
+                if (!text.isEmpty()) {
+                    reasons.add(text);
+                }
+            }
+        }
+        list.add(0, new Record(sub.id(), sub.title(), st.name().toLowerCase(), sub.body(),
+                sub.revision(), System.currentTimeMillis(), List.copyOf(reasons),
+                sticker == null ? "" : sticker));
         while (list.size() > MAX_PER_PLAYER) {
             list.remove(list.size() - 1);
         }

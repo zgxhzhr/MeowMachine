@@ -228,5 +228,8 @@
   "chat.meow_machine.too_fast": "别急，10 秒后再提交（防止刷包）",
   "chat.meow_machine.queue_full": "待审队列已满，稍后再提交",
   "gui.meow_machine.state.revising": "协改中",
-  "chat.meow_machine.unchanged_submission": "正文和标题都没有改动，改完再提交（原样重投等于没改）"
+  "chat.meow_machine.unchanged_submission": "正文和标题都没有改动，改完再提交（原样重投等于没改）",
+  "gui.meow_machine.view.state": "结论：%s",
+  "gui.meow_machine.view.no_reason": "原因：无（未记录明细）",
+  "gui.meow_machine.view.sticker": "梗图：%s"
 }

@@ -61,13 +61,20 @@ public final class HistorySavedData extends SavedData {
             try {
                 UUID author = UUID.fromString(t.getString("author"));
                 UUID id = UUID.fromString(t.getString("id"));
+                List<String> reasons = new ArrayList<>();
+                ListTag rl = t.getList("reasons", Tag.TAG_STRING);
+                for (int k = 0; k < rl.size(); k++) {
+                    reasons.add(rl.getString(k));
+                }
                 SubmissionHistory.Record r = new SubmissionHistory.Record(
                         id,
                         t.getString("title"),
                         t.getString("state"),
                         t.getString("body"),
                         t.getInt("revision"),
-                        t.getLong("time"));
+                        t.getLong("time"),
+                        List.copyOf(reasons),
+                        t.getString("sticker"));
                 data.entries.computeIfAbsent(author, k -> new ArrayList<>()).add(r);
             } catch (RuntimeException e) {
                 MeowMachine.LOG.warn("[喵呜机] 投稿历史存档里有坏条目，已跳过: {}", e.toString());
@@ -89,6 +96,12 @@ public final class HistorySavedData extends SavedData {
                 t.putString("body", r.body() == null ? "" : r.body());
                 t.putInt("revision", r.revision());
                 t.putLong("time", r.time());
+                t.putString("sticker", r.stickerId() == null ? "" : r.stickerId());
+                ListTag reasons = new ListTag();
+                for (String reason : r.reasons()) {
+                    reasons.add(net.minecraft.nbt.StringTag.valueOf(reason));
+                }
+                t.put("reasons", reasons);
                 list.add(t);
             }
         });

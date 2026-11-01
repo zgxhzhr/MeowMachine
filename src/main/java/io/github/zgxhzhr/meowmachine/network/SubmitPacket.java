@@ -137,7 +137,7 @@ public record SubmitPacket(String title, String body) {
                         Submission updated = sub.apply(result);
                         if (updated.state() != sub.state()) {
                             DraftStore.save(player, updated);
-                            io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated);
+                            io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(updated, result);
                             io.github.zgxhzhr.meowmachine.review.ApprovedIndex.record(updated);
                             if (updated.state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.APPROVED) {
                                 if (updated.reEdit()) {
@@ -176,7 +176,7 @@ public record SubmitPacket(String title, String body) {
                                             "server", "");
                             Submission failed = sub.apply(fallback);
                             io.github.zgxhzhr.meowmachine.review.DraftStore.save(player, failed);
-                            io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(failed);
+                            io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(failed, fallback);
                             Network.CHANNEL.sendTo(ReviewResultPacket.from(fallback),
                                     player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
                         });

@@ -170,7 +170,7 @@ public final class ReviewActions {
                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_returned");
             }
         }
-        SubmissionHistory.record(app);
+        SubmissionHistory.record(app, result);
         ApprovedIndex.record(app);
         if (reviewer != null) {
             io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(

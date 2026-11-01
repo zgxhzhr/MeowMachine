@@ -36,6 +36,26 @@ public class SubmissionViewScreen extends Screen {
         int bottom = this.height - 34;
         this.viewHeight = bottom - TOP - 6;
         lines.clear();
+        // 结论 / 原因 / 梗图：打回后随时能翻看判了什么、为什么
+        lines.add(Component.translatable("gui.meow_machine.view.state",
+                Component.translatable("gui.meow_machine.state." + entry.state())).getString());
+        if (entry.reasons() == null || entry.reasons().isEmpty()) {
+            lines.add(Component.translatable("gui.meow_machine.view.no_reason").getString());
+        } else {
+            for (String reason : entry.reasons()) {
+                for (String seg : wrapText(reason, PANEL_W - 30)) {
+                    lines.add("· " + seg);
+                }
+            }
+        }
+        String sticker = entry.stickerId() == null ? "" : entry.stickerId();
+        if (!sticker.isBlank()) {
+            String path = sticker.contains(":")
+                    ? sticker.substring(sticker.indexOf(':') + 1) : sticker;
+            lines.add(Component.translatable("gui.meow_machine.view.sticker",
+                    Component.translatable("item.meow_machine.sticker_" + path)).getString());
+        }
+        lines.add("");
         String body = entry.body() == null ? "" : entry.body();
         if (body.isBlank()) {
             lines.add(Component.translatable("gui.meow_machine.view_empty").getString());
@@ -105,6 +125,27 @@ public class SubmissionViewScreen extends Screen {
         }
 
         super.render(g, mouseX, mouseY, partialTick);
+    }
+
+    private java.util.List<String> wrapText(String text, int maxWidth) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (text == null || text.isBlank()) {
+            out.add("");
+            return out;
+        }
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (this.font.width(cur.toString() + ch) > maxWidth && cur.length() > 0) {
+                out.add(cur.toString());
+                cur.setLength(0);
+            }
+            cur.append(ch);
+        }
+        if (cur.length() > 0) {
+            out.add(cur.toString());
+        }
+        return out;
     }
 
     private String trim(String s, int maxWidth) {
