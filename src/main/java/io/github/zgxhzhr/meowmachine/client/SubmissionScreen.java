@@ -231,15 +231,20 @@ public class SubmissionScreen extends Screen {
         int cursor = 0;
         int lines = 1;
 
+        boolean firstChar = true;
         for (RichDoc.Run run : runs) {
             for (int i = 0; i < run.text().length(); i++) {
                 char ch = run.text().charAt(i);
                 if (ch == '\n') {
+                    if (firstChar) {
+                        continue; // 开头的换行不该把正文挤到第二行
+                    }
                     x = textX;
                     y += LINE_H;
                     lines++;
                     continue;
                 }
+                firstChar = false;
                 int w = this.font.width(String.valueOf(ch));
                 if (x + w > right && x > textX) {
                     x = textX;

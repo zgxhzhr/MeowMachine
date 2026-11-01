@@ -287,6 +287,35 @@ public final class RichEditor {
         return nextCharEnd(p);
     }
 
+    /** 去掉行内片段首尾的换行（保留中间换行） */
+    private static List<RichDoc.Run> trimNewlines(List<RichDoc.Run> runs) {
+        List<RichDoc.Run> out = new ArrayList<>(runs);
+        int start = 0;
+        int end = out.size();
+        while (start < end) {
+            RichDoc.Run r = out.get(start);
+            String t = r.text().replaceFirst("^\\n+", "");
+            if (!t.isEmpty()) {
+                out.set(start, new RichDoc.Run(t, r.bold(), r.italic()));
+                break;
+            }
+            start++;
+        }
+        if (start >= end) {
+            return merge(List.of(RichDoc.Run.plain("")));
+        }
+        while (end > start) {
+            RichDoc.Run r = out.get(end - 1);
+            String t = r.text().replaceFirst("\\n+$", "");
+            if (!t.isEmpty()) {
+                out.set(end - 1, new RichDoc.Run(t, r.bold(), r.italic()));
+                break;
+            }
+            end--;
+        }
+        return merge(out.subList(start, end));
+    }
+
     /** 从 p 开始的一个字符之后的位置（跨单元时跳到下一单元起点） */
     private Pos nextCharEnd(Pos p) {
         Block2 blk = blocks.get(p.block());
@@ -720,10 +749,10 @@ public final class RichEditor {
                 if (blk.kind == Kind.TABLE) {
                     continue;
                 }
-                if (blk.kind == Kind.PARA) {
-                    blk.kind = target;
-                } else {
-                    blk.kind = target;
+                blk.kind = target;
+                // 段落里若有首尾换行，转成列表项会把正文挤到第二行，这里去掉
+                for (int ci = 0; ci < blk.cells.size(); ci++) {
+                    blk.cells.set(ci, trimNewlines(blk.cells.get(ci)));
                 }
             }
         }
