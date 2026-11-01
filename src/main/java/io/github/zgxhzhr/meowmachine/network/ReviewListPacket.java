@@ -42,7 +42,11 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
 
         public static Entry of(Submission s, boolean withDiff) {
             String full = s.id().toString();
-            String plain = RichHtml.stripTags(s.body());
+            // 审核员要能看出结构：表格用 | a | b |、列表用 • / 1、，纯文本会把这些压成一串
+            String plain = RichHtml.toAiText(s.body());
+            if (plain.isBlank()) {
+                plain = RichHtml.stripTags(s.body());
+            }
             if (plain.length() > MAX_BODY) {
                 plain = plain.substring(0, MAX_BODY);
             }
