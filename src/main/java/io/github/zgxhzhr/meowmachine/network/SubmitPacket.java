@@ -94,6 +94,22 @@ public record SubmitPacket(String title, String body) {
             c.setPacketHandled(true);
             return;
         }
+        // 内容没改就不要再投：上一次投的已经是这份（打回/协改后再原样提交等于没改）
+        // 已通过条目的「提交编辑」也走这里，同样要求确有改动
+        var prev = io.github.zgxhzhr.meowmachine.review.SubmissionHistory
+                .find(player.getUUID(), existing.id());
+        boolean unchanged = prev.isPresent()
+                && prev.get().title().strip().equals(title.strip())
+                && io.github.zgxhzhr.meowmachine.richtext.RichHtml
+                        .stripTags(prev.get().body()).strip()
+                        .equals(io.github.zgxhzhr.meowmachine.richtext.RichHtml
+                                .stripTags(body).strip());
+        if (unchanged) {
+            Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.unchanged_submission"),
+                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+            c.setPacketHandled(true);
+            return;
+        }
         if (io.github.zgxhzhr.meowmachine.review.ApprovedIndex.isApproved(existing.id())) {
             io.github.zgxhzhr.meowmachine.progress.StatsAchievements.onEditApproved(player);
         }

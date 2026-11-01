@@ -33,6 +33,8 @@ public class ReviewDetailScreen extends Screen {
     private int viewHeight;
     /** 正文框顶部（有预检行时下移） */
     private int bodyTop = TOP;
+    /** 修改对比摘要（最多 3 行） */
+    private final java.util.List<String> diffLines = new java.util.ArrayList<>();
     /** 顶部三栏摘要：AI 意见 / 本地规则 / 助理意见（正文框外） */
     private final java.util.List<String> headLines = new java.util.ArrayList<>();
 
@@ -75,7 +77,17 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
-        this.bodyTop = TOP;
+        // 修改对比直接列在标题下方（以前只在「意见」界面里，审核员看详情时看不到）
+        this.diffLines.clear();
+        for (String d : entry.diffLines()) {
+            if (this.diffLines.size() >= 3) {
+                break;
+            }
+            this.diffLines.add(d);
+        }
+        this.bodyTop = TOP + this.diffLines.size() * LINE_H + (this.diffLines.isEmpty() ? 0 : 2);
+        // bodyTop 定下来后再算正文可视高度
+        this.viewHeight = bottom - this.bodyTop - 6;
 
         int bw = 72;
         int gap = 5;
@@ -153,6 +165,12 @@ public class ReviewDetailScreen extends Screen {
                 left, 28, 0xFFFF80, false);
         g.drawString(this.font,
                 Component.literal(trim(entry.title(), PANEL_W)), left, 40, 0xDDDDDD, false);
+
+        int dy = TOP;
+        for (String d : this.diffLines) {
+            g.drawString(this.font, Component.literal(trim(d, PANEL_W)), left, dy, 0xFFAA44, false);
+            dy += LINE_H;
+        }
 
         g.fill(left - 1, bodyTop - 1, left + PANEL_W + 1, bodyTop + viewHeight + 1, 0xFF808080);
         g.fill(left, bodyTop, left + PANEL_W, bodyTop + viewHeight, 0xFF101010);

@@ -227,5 +227,6 @@
   "chat.meow_machine.roster_bad_role": "角色不合法（只能是 reviewer / assistant）",
   "chat.meow_machine.too_fast": "别急，10 秒后再提交（防止刷包）",
   "chat.meow_machine.queue_full": "待审队列已满，稍后再提交",
-  "gui.meow_machine.state.revising": "协改中"
+  "gui.meow_machine.state.revising": "协改中",
+  "chat.meow_machine.unchanged_submission": "正文和标题都没有改动，改完再提交（原样重投等于没改）"
 }
