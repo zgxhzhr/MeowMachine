@@ -75,7 +75,7 @@ public class StickerItem extends Item {
                                 List<Component> tooltip, TooltipFlag flag) {
         String story = Component.translatable(
                 "item.meow_machine.sticker_" + stickerId + ".story").getString();
-        for (String line : wrap(story, 26)) {
+        for (String line : wrap(story, 20)) {
             tooltip.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
         }
         super.appendHoverText(stack, level, tooltip, flag);
