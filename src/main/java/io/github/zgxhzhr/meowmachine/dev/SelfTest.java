@@ -67,6 +67,7 @@ public final class SelfTest {
         testAiText();
         testStructuredBody();
         testParseTolerance();
+        testReviewDomain();
         testRuleTables();
     }
 
@@ -331,6 +332,38 @@ public final class SelfTest {
     }
 
     /** 编辑器内核：悬挂样式、选区样式、列表、表格、回车/退格 */
+    /** 审核域：状态流转、倒退判定、已通过索引往返（原来 92 条断言完全没覆盖 review 域） */
+    private static void testReviewDomain() {
+        var sub = io.github.zgxhzhr.meowmachine.review.Submission.draft(
+                java.util.UUID.randomUUID(), "tester");
+        var pass = io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
+                io.github.zgxhzhr.meowmachine.review.Verdict.PASS, java.util.List.of(), "tester", "");
+        check("PASS → APPROVED",
+                sub.apply(pass).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.APPROVED);
+        var ret = io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
+                io.github.zgxhzhr.meowmachine.review.Verdict.RETURN, java.util.List.of(), "tester", "");
+        check("RETURN → RETURNED",
+                sub.apply(ret).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED);
+        var rev = io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
+                io.github.zgxhzhr.meowmachine.review.Verdict.REVISE, java.util.List.of(), "tester", "");
+        check("REVISE → RETURNED",
+                sub.apply(rev).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED);
+        var pend = io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
+                io.github.zgxhzhr.meowmachine.review.Verdict.PENDING, java.util.List.of(), "tester", "");
+        check("PENDING → SUBMITTED",
+                sub.apply(pend).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.SUBMITTED);
+
+        // 倒退判定：删得比加得多
+        var shrink = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(
+                "<p>第一段足够长足够长足够长。</p><p>第二段足够长足够长足够长。</p><p>第三段足够长足够长足够长。</p>",
+                "<p>第一段足够长足够长足够长。</p>");
+        check("删得比加得多 → 判倒退", shrink.regressed());
+        var grow = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(
+                "<p>第一段。</p>", "<p>第一段。</p><p>新加一段更长的内容。</p><p>再加一段。</p>");
+        check("只增不减 → 不判倒退", !grow.regressed());
+
+    }
+
     /** 编辑器生成的表格/列表不能被第 12/22 条误杀（审查 P0-1） */
     private static void testStructuredBody() {
         io.github.zgxhzhr.meowmachine.richtext.RichDoc.Table t =

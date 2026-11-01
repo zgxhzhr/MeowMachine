@@ -224,5 +224,7 @@
   "chat.meow_machine.mystery_dropped": "背包满了，东西掉在你脚边。",
   "chat.meow_machine.body_truncated": "正文超过长度上限，超出的部分被截掉了（考虑拆成两篇）",
   "command.meow_machine.ambiguous_id": "id 前缀太短或匹配到多份，请输入更长的前缀",
-  "chat.meow_machine.roster_bad_role": "角色不合法（只能是 reviewer / assistant）"
+  "chat.meow_machine.roster_bad_role": "角色不合法（只能是 reviewer / assistant）",
+  "chat.meow_machine.too_fast": "别急，10 秒后再提交（防止刷包）",
+  "chat.meow_machine.queue_full": "待审队列已满，稍后再提交"
 }

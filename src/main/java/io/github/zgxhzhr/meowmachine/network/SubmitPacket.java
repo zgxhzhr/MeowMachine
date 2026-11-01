@@ -37,6 +37,11 @@ public record SubmitPacket(String title, String body) {
         return new SubmitPacket(buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(Network.MAX_BODY_LEN));
     }
 
+    /** 每人投稿冷却（毫秒）与待审队列上限：防刷包放大账单/存档 */
+    private static final long COOLDOWN_MS = 10_000L;
+    private static final int QUEUE_CAP = 500;
+    private static final java.util.Map<java.util.UUID, Long> LAST_SUBMIT = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static void handle(SubmitPacket msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context c = ctx.get();
         ServerPlayer player = c.getSender();
@@ -45,6 +50,22 @@ public record SubmitPacket(String title, String body) {
             return;
         }
         // 服务端再夹一次长度：客户端限制只是体验，不能当安全边界
+        long now = System.currentTimeMillis();
+        Long last = LAST_SUBMIT.get(player.getUUID());
+        if (last != null && now - last < COOLDOWN_MS) {
+            Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.too_fast"),
+                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+            c.setPacketHandled(true);
+            return;
+        }
+        if (SubmissionQueue.snapshot().size() >= QUEUE_CAP) {
+            Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.queue_full"),
+                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+            c.setPacketHandled(true);
+            return;
+        }
+        LAST_SUBMIT.put(player.getUUID(), now);
+
         String title = clamp(msg.title, Network.MAX_TITLE_LEN);
         String body = clamp(msg.body, Network.MAX_BODY_LEN);
 

@@ -30,8 +30,9 @@ public final class ApprovedSavedData extends SavedData {
                 .computeIfAbsent(ApprovedSavedData::load, ApprovedSavedData::new, DATA_NAME);
     }
 
+    /** 只读视图（不要直接改内部 Map） */
     Map<UUID, Entry> entries() {
-        return entries;
+        return java.util.Collections.unmodifiableMap(entries);
     }
 
     void put(Entry e) {

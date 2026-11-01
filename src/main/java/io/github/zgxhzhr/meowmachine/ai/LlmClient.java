@@ -25,6 +25,25 @@ import java.util.concurrent.Executors;
  */
 public final class LlmClient {
 
+    /**
+     * 同时进行的 AI 请求上限。
+     *
+     * <p>线程池只有 2 条线程 + 无界队列时，50 个人同时投稿会排 8 分钟队，
+     * 而「AI 绝不阻塞」的承诺就成了笑话。这里用信号量**快速失败**：
+     * 拿不到许可直接按「AI 不可用」走兜底（本地规则/打回），不排队。
+     */
+    private static final java.util.concurrent.Semaphore SLOTS =
+            new java.util.concurrent.Semaphore(6);
+
+    /** 给调用方判断当前是否还有空位 */
+    public static boolean tryAcquireSlot() {
+        return SLOTS.tryAcquire();
+    }
+
+    public static void releaseSlot() {
+        SLOTS.release();
+    }
+
     private static final Gson GSON = new Gson();
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
