@@ -7,6 +7,7 @@ import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.review.SubmissionState;
 import io.github.zgxhzhr.meowmachine.review.Verdict;
 import io.github.zgxhzhr.meowmachine.richtext.RichDoc;
+import io.github.zgxhzhr.meowmachine.richtext.RichEditor;
 import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
 
 import java.util.List;
@@ -58,6 +59,7 @@ public final class SelfTest {
         testNewSubmissionIds();
         testTitleStructure();
         testRichText();
+        testRichEditor();
         testRuleTables();
     }
 
@@ -235,6 +237,62 @@ public final class SelfTest {
         check("新投稿都从第 0 版开始", first.revision() == 0 && second.revision() == 0);
         check("新投稿都是 DRAFT", first.state() == SubmissionState.DRAFT
                 && second.state() == SubmissionState.DRAFT);
+    }
+
+    /** 编辑器内核：悬挂样式、选区样式、列表、表格、回车/退格 */
+    private static void testRichEditor() {
+        RichEditor e = RichEditor.empty();
+        e.toggleBold();
+        e.typeText("粗");
+        e.toggleBold();
+        e.typeText("普");
+        check("悬挂粗体只作用于之后的输入", RichHtml.toHtml(e.doc()).contains("<strong>粗</strong>普"));
+
+        RichEditor e2 = RichEditor.empty();
+        e2.typeText("abcd");
+        e2.select(new RichEditor.Pos(0, 0, 1), new RichEditor.Pos(0, 0, 3));
+        e2.toggleBold();
+        check("选区加粗只影响选中部分",
+                RichHtml.toHtml(e2.doc()).contains("a<strong>bc</strong>d"));
+
+        RichEditor e3 = RichEditor.empty();
+        e3.typeText("第一段");
+        e3.toggleList(true);
+        check("段落转有序列表", RichHtml.toHtml(e3.doc()).startsWith("<ol><li><p>第一段"));
+
+        RichEditor e4 = RichEditor.empty();
+        e4.toggleList(true);
+        e4.typeText("甲");
+        e4.enter();
+        e4.typeText("乙");
+        String h4 = RichHtml.toHtml(e4.doc());
+        check("列表回车新建同级项", h4.contains("<p>甲</p>") && h4.contains("<p>乙</p>"));
+
+        RichEditor e5 = RichEditor.empty();
+        e5.toggleList(true);
+        e5.enter();
+        check("空列表项回车退出列表", RichHtml.toHtml(e5.doc()).startsWith("<p>"));
+
+        RichEditor e6 = RichEditor.empty();
+        e6.insertTable(2, 2);
+        check("插入 2×2 表格", e6.cellCountAt(1) == 4);
+        e6.typeText("格1");
+        check("表格内可输入", RichHtml.toHtml(e6.doc()).contains("格1"));
+        check("Tab 跳到下一格", e6.moveToNextCell());
+
+        RichEditor e7 = RichEditor.empty();
+        e7.typeText("甲乙");
+        e7.setCaret(new RichEditor.Pos(0, 0, 1));
+        e7.enter();
+        check("段落回车拆成两段", RichHtml.toHtml(e7.doc()).equals("<p>甲</p><p>乙</p>"));
+
+        RichEditor e8 = RichEditor.empty();
+        e8.typeText("甲");
+        e8.enter();
+        e8.typeText("乙");
+        e8.setCaret(new RichEditor.Pos(1, 0, 0));
+        e8.backspace();
+        check("段首退格与前一段合并", RichHtml.toHtml(e8.doc()).equals("<p>甲乙</p>"));
     }
 
     /** 规则表口径：AI 拿到全部 35 条，本地只独占 8 条纯格式 */
