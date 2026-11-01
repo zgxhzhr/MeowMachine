@@ -14,7 +14,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * 管理后台：AI 开关 / 接管 / 单人自审 + **游戏内 AI 配置** + 待审入口。
+ * 管理后台：AI 开关 / 接管 + **游戏内 AI 配置** + 待审入口。
  *
  * <p>照 TLM 的做法把 AI 配置搬进游戏内界面（它也是 GUI 里填站点与密钥），
  * 不用玩家去翻 {@code config/meow_machine_ai.json}。
@@ -71,7 +71,6 @@ public class AdminScreen extends Screen {
         return switch (action) {
             case TOGGLE_AI -> state.aiEnabled();
             case TOGGLE_TAKEOVER -> state.aiTakeover();
-            case TOGGLE_SELF_REVIEW -> state.selfReview();
             default -> false;
         };
     }
@@ -91,8 +90,6 @@ public class AdminScreen extends Screen {
         addToggle(left, y, "gui.meow_machine.admin.takeover", state.aiTakeover(),
                 AdminActionPacket.Action.TOGGLE_TAKEOVER);
         y += 20;
-        addToggle(left, y, "gui.meow_machine.admin.selfreview", state.selfReview(),
-                AdminActionPacket.Action.TOGGLE_SELF_REVIEW);
         y += 22;
 
         // ---------- AI 配置三项（标签画在框上方，前面留出 label 的高度）----------

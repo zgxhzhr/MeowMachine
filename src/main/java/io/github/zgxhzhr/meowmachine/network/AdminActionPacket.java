@@ -23,7 +23,6 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
     public enum Action {
         TOGGLE_AI,
         TOGGLE_TAKEOVER,
-        TOGGLE_SELF_REVIEW,
         OPEN_REVIEW,
         SAVE_AI_CONFIG
     }
@@ -75,8 +74,6 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
                 LlmConfig cfg = LlmConfig.cached(configDir);
                 LlmConfig.save(configDir, cfg.withSwitches(cfg.enabled(), !cfg.takeover()));
             }
-            case TOGGLE_SELF_REVIEW -> ReviewerRoster.setSelfReview(
-                    !ReviewerRoster.isSelfReviewEnabled());
             case SAVE_AI_CONFIG -> {
                 LlmConfig current = LlmConfig.cached(configDir);
                 String key = msg.apiKey == null ? "" : msg.apiKey.trim();

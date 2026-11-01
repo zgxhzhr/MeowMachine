@@ -115,7 +115,7 @@ public final class SubmissionQueue {
         return byAuthor(player.getUUID());
     }
 
-    /** 按作者查（作者想看自己有哪些在审；单人自审时也只该看到自己的） */
+    /** 按作者查（作者想看自己有哪些在审） */
     public static List<Entry> byAuthor(UUID author) {
         List<Entry> out = new ArrayList<>();
         for (Entry e : PENDING.values()) {

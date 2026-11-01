@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
  * 投稿
  *  ├─ ① 本地规则命中？  → 是：自动打回（附具体规则），梗图按规则挑
  *  └─ 否
- *      ├─ ② 有人能终审？（在线 OP / 名册里有人 / 单人自审开启）
+ *      ├─ ② 有人能终审？（在线 OP / 名册里有人）
  *      │      且没有开「AI 接管」
  *      │    → 是：入队等人工裁决，返回 PENDING（不是 REVISE！）
  *      └─ 否
@@ -212,14 +212,10 @@ public final class ReviewService {
      *
      * <p>注意不能只看名册：**任何一个在线 OP 都天然能终审**，所以这里扫在线玩家；
      * 名册成员不必在线也算「有人能终审」（人工优先的语义：名册存在即代表这批人负责审核）。
-     * 单人自审开启时作者自己也算（真正能不能拍板由 {@code ReviewerRoster#canFinalize} 判）。
      */
     private static boolean hasHumanFinalizer(MinecraftServer server) {
         if (server == null) {
             return false;
-        }
-        if (ReviewerRoster.isSelfReviewEnabled()) {
-            return true;
         }
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             if (ReviewerRoster.isOp(p)) {

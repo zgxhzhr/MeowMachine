@@ -22,7 +22,6 @@ import java.util.function.Supplier;
  *
  * @param aiEnabled  AI 审核是否启用
  * @param aiTakeover AI 是否接管全部审核
- * @param selfReview 单人自审是否开启
  * @param pending    待审稿件数
  * @param inbox      待补发的离线结论数
  * @param reviewers  名册人数
@@ -30,14 +29,14 @@ import java.util.function.Supplier;
  * @param endpoint   AI 域名
  * @param model      模型名
  */
-public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean selfReview,
+public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover,
                                int pending, int inbox, int reviewers, boolean hasKey,
                                String endpoint, String model) {
 
     public static AdminStatePacket collect() {
         LlmConfig cfg = LlmConfig.cached(FMLPaths.CONFIGDIR.get());
         return new AdminStatePacket(cfg.enabled(), cfg.takeover(),
-                ReviewerRoster.isSelfReviewEnabled(), SubmissionQueue.size(),
+                SubmissionQueue.size(),
                 ResultInbox.size(), ReviewerRoster.members().size(), !cfg.apiKey().isBlank(),
                 cfg.endpoint(), cfg.model());
     }
@@ -45,7 +44,6 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean se
     public static void encode(AdminStatePacket msg, FriendlyByteBuf buf) {
         buf.writeBoolean(msg.aiEnabled);
         buf.writeBoolean(msg.aiTakeover);
-        buf.writeBoolean(msg.selfReview);
         buf.writeVarInt(msg.pending);
         buf.writeVarInt(msg.inbox);
         buf.writeVarInt(msg.reviewers);
@@ -55,7 +53,7 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover, boolean se
     }
 
     public static AdminStatePacket decode(FriendlyByteBuf buf) {
-        return new AdminStatePacket(buf.readBoolean(), buf.readBoolean(), buf.readBoolean(),
+        return new AdminStatePacket(buf.readBoolean(), buf.readBoolean(),
                 buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
                 buf.readUtf(256), buf.readUtf(128));
     }

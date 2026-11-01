@@ -29,8 +29,7 @@ import java.util.UUID;
  * /meow reviewers grant &lt;player&gt; &lt;reviewer|assistant&gt;   OP
  * /meow reviewers revoke &lt;player&gt;                        OP
  * /meow reviewers list                                    OP（真的列出名册）
- * /meow selfreview &lt;on|off&gt;                               OP
- * /meow review list                                       审核员（单人自审时只看自己的）
+ * /meow review list                                       审核员
  * /meow review decide &lt;id前缀&gt; &lt;pass|revise|return&gt;       审核员
  * /meow review open                                       审核员（打开审核界面）
  * /meow review give                                       审核员（发卷轴）
@@ -60,15 +59,6 @@ public final class MeowCommands {
                                         .executes(MeowCommands::revoke)))
                         .then(Commands.literal("list")
                                 .executes(MeowCommands::listReviewers)))
-                .then(Commands.literal("selfreview")
-                        .requires(s -> s.hasPermission(2))
-                        .then(Commands.argument("value", StringArgumentType.word())
-                                .suggests((c, b) -> {
-                                    b.suggest("on");
-                                    b.suggest("off");
-                                    return b.buildFuture();
-                                })
-                                .executes(MeowCommands::selfReview)))
                 // ---------- 任何玩家：查自己的投稿状态 ----------
                 .then(Commands.literal("my")
                         .executes(MeowCommands::mySubmissions))
@@ -129,14 +119,11 @@ public final class MeowCommands {
     /**
      * 列名册 + 三个状态数字。
      *
-     * <p>0.1.0 这条命令叫 list 却只打 selfReview 和队列长度，一条名册都不列——
+     * <p>0.1.0 这条命令叫 list 却只打队列长度，一条名册都不列——
      * 而当时名册根本没被加载过，正好也没人发现。现在真列。
      */
     private static int listReviewers(CommandContext<CommandSourceStack> ctx) {
         List<ReviewerRoster.Member> roster = ReviewerRoster.members();
-        ctx.getSource().sendSuccess(() -> Component.translatable(
-                "command.meow_machine.selfreview_state",
-                ReviewerRoster.isSelfReviewEnabled() ? "on" : "off"), false);
         ctx.getSource().sendSuccess(() -> Component.translatable(
                 "command.meow_machine.queue_size", SubmissionQueue.size()), false);
         if (roster.isEmpty()) {
@@ -156,13 +143,6 @@ public final class MeowCommands {
         return 1;
     }
 
-    private static int selfReview(CommandContext<CommandSourceStack> ctx) {
-        boolean on = "on".equalsIgnoreCase(StringArgumentType.getString(ctx, "value"));
-        ReviewerRoster.setSelfReview(on);
-        ctx.getSource().sendSuccess(() -> Component.translatable(
-                "command.meow_machine.selfreview_set", on ? "on" : "off"), true);
-        return 1;
-    }
 
     // ---------------- 玩家自己 ----------------
 

@@ -26,12 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li><b>OP</b> 天然是审核员（{@code hasPermissions(2)}），不需要任命</li>
  *   <li>被任命的 {@link ReviewerRole#REVIEWER} 可以终审</li>
  *   <li>被任命的 {@link ReviewerRole#ASSISTANT} 只能标记，不能终审</li>
- *   <li>单人且开了 {@code selfReview} 时，作者本人可以终审自己的稿</li>
  * </ol>
  *
  * <p><b>加载时机</b>：{@code MeowMachine} 在 {@code FMLCommonSetupEvent} 里调用 {@link #load(Path)}。
  * 0.1.0 忘了调，导致 {@code file} 恒为 null → {@code save()} 直接空转、
- * 名册与 selfReview 开关从不落盘（重启全丢）。现在 {@link #file()} 还做了兜底：
+ * 名册从不落盘（重启全丢）。现在 {@link #file()} 还做了兜底：
  * 即使忘了加载，第一次写盘也会自己补上路径，不会再静默失败。
  *
  * <p>0.4.0 起名册**连玩家名一起存**，后台的「审核员管理」界面才能认人（只有 UUID 没法看）。
@@ -50,7 +49,6 @@ public final class ReviewerRoster {
     private static final Map<UUID, Member> ROSTER = new ConcurrentHashMap<>();
 
     /** 单人世界：作者是否可当自己的审核员 */
-    private static volatile boolean selfReview = false;
 
     private static volatile Path file = null;
 
@@ -80,8 +78,7 @@ public final class ReviewerRoster {
             if (root == null) {
                 return;
             }
-            selfReview = root.has("selfReview") && root.get("selfReview").getAsBoolean();
-            JsonObject reviewers = root.has("reviewers") ? root.getAsJsonObject("reviewers") : null;
+                JsonObject reviewers = root.has("reviewers") ? root.getAsJsonObject("reviewers") : null;
             if (reviewers != null) {
                 for (String key : reviewers.keySet()) {
                     try {
@@ -103,8 +100,7 @@ public final class ReviewerRoster {
                     }
                 }
             }
-            MeowMachine.LOG.info("[喵呜机] 审核员名册加载完成：{} 人（selfReview={}）",
-                    ROSTER.size(), selfReview);
+            MeowMachine.LOG.info("[喵呜机] 审核员名册加载完成：{} 人", ROSTER.size());
         } catch (IOException | RuntimeException e) {
             MeowMachine.LOG.warn("[喵呜机] 读取审核员名册失败，按空名册处理: {}", e.toString());
         }
@@ -114,8 +110,7 @@ public final class ReviewerRoster {
         Path f = file();
         try {
             JsonObject root = new JsonObject();
-            root.addProperty("selfReview", selfReview);
-            JsonObject reviewers = new JsonObject();
+                JsonObject reviewers = new JsonObject();
             ROSTER.forEach((uuid, member) -> {
                 JsonObject o = new JsonObject();
                 o.addProperty("name", member.name() == null ? "" : member.name());
@@ -143,14 +138,7 @@ public final class ReviewerRoster {
         save();
     }
 
-    public static void setSelfReview(boolean enabled) {
-        selfReview = enabled;
-        save();
-    }
 
-    public static boolean isSelfReviewEnabled() {
-        return selfReview;
-    }
 
     /** 名册成员列表（按名字排序，界面/命令用） */
     public static List<Member> members() {
@@ -181,9 +169,8 @@ public final class ReviewerRoster {
      * 能否给出最终结论。
      *
      * @param player 判定对象
-     * @param author 投稿作者（用于 selfReview 判定；可为 null）
      */
-    public static boolean canFinalize(ServerPlayer player, UUID author) {
+    public static boolean canFinalize(ServerPlayer player) {
         if (player == null) {
             return false;
         }
@@ -191,24 +178,20 @@ public final class ReviewerRoster {
             return true;
         }
         ReviewerRole role = roleOf(player.getUUID());
-        if (role != null && role.canFinalize()) {
-            return true;
-        }
-        return selfReview && author != null && author.equals(player.getUUID());
+        return role != null && role.canFinalize();
     }
 
     /**
      * 能否标记发现 / 查看待审队列（助理及以上）。
      *
-     * <p>注意这里**包含单人自审作者**：selfReview 让作者能拍板自己的稿，
-     * 那他就必须能看到自己那份待审（否则能裁决却拿不到 id，人工路径死锁）。
-     * 队列本身在命令层还会再收窄成「只看自己的」。
+     * <p>OP 与名册成员（审核员 / 助理）都能看队列、写意见；终裁权限另由
+     * {@link #canFinalize} 与角色决定。
      */
     public static boolean canAnnotate(ServerPlayer player) {
         if (player == null) {
             return false;
         }
-        return isOp(player) || isRosterMember(player.getUUID()) || selfReview;
+        return isOp(player) || isRosterMember(player.getUUID());
     }
 
     /** 当前是否**存在**任何能终审的人（决定「人工优先」是否成立） */

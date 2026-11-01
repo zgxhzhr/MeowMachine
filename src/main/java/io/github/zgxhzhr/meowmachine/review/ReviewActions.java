@@ -72,7 +72,7 @@ public final class ReviewActions {
         Submission sub = found.get().submission();
 
         // 控制台（reviewer == null）天然有权；玩家要过 canFinalize
-        if (reviewer != null && !ReviewerRoster.canFinalize(reviewer, sub.authorUuid())) {
+        if (reviewer != null && !ReviewerRoster.canFinalize(reviewer)) {
             return Outcome.CANNOT_FINALIZE;
         }
 

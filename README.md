@@ -48,7 +48,7 @@ cd 'E:\Mod\其它项目\MeowMachine'
 投稿
  ├─ ① 本地规则命中？→ 自动打回（附条号）
  └─ 否
-     ├─ ② 有人能终审（在线 OP / 名册审核员 / 单人自审）且没开「AI 接管」
+     ├─ ② 有人能终审（在线 OP / 名册审核员）且没开「AI 接管」
      │    → 入队，返回 PENDING（等人工，不是「需要协改」）
      └─ 否
          ├─ ③ AI 可用？
@@ -239,7 +239,6 @@ data/meow_machine/stickers/<id>.json
 | OP | 服务器管理员 | 天然可终审；开审核后台；任命/撤销审核员 |
 | 审核员 | OP 任命 | 可终审（PASS/REVISE/RETURN） |
 | 审核助理 | OP 任命 | 只能标记，不能终审 |
-| 单人自审 | OP 开关 | 作者可终审自己的稿（只看到自己那份待审） |
 
 名册：`config/meow_machine_reviewers.json`（开局由 `FMLCommonSetupEvent` 加载，重启不丢）
 名册条目录的是 **uuid + 玩家名 + 角色**（旧格式只存 uuid→角色的也能读，界面会显示短 uuid）。
@@ -280,7 +279,6 @@ data/meow_machine/stickers/<id>.json
 /meow reviewers grant <player> <reviewer|assistant>   OP
 /meow reviewers revoke <player>                       OP
 /meow reviewers list                                  OP（列名册 + 状态）
-/meow selfreview <on|off>                             OP
 /meow review list                                     审核员（自审玩家只看自己的）
 /meow review open                                     审核员（打开审核界面）
 /meow review decide <id前缀> <pass|revise|return>      审核员
@@ -325,7 +323,7 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 │   ├── ReviewService     流程编排（本地规则 → 人工 → AI → 兜底）
 │   ├── ReviewActions     裁决公共实现（命令与界面共用）
 │   ├── SubmissionQueue   人工队列（写穿 QueueSavedData）
-│   ├── ReviewerRoster    名册 + OP 判定 + selfReview（落盘 config/）
+│   ├── ReviewerRoster    名册 + OP 判定（落盘 config/）
 │   ├── ResultInbox       离线作者的待补发结论（写穿 InboxSavedData）
 │   ├── QueueSavedData    队列的世界存档（<世界>/data/meow_machine_queue.dat）
 │   ├── InboxSavedData    离线结论的世界存档（<世界>/data/meow_machine_inbox.dat）
