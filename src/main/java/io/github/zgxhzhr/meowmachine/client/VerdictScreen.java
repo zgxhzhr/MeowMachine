@@ -41,11 +41,30 @@ public class VerdictScreen extends Screen {
         lines.add(Component.translatable("gui.meow_machine.view.state",
                 Component.translatable("gui.meow_machine.state." + entry.state())).getString());
         lines.add("");
-        if (entry.reasons() == null || entry.reasons().isEmpty()) {
+        List<String> rules = new ArrayList<>();
+        List<String> notes = new ArrayList<>();
+        if (entry.reasons() != null) {
+            for (String r : entry.reasons()) {
+                if (r != null && r.startsWith("第 ")) {
+                    rules.add(r);
+                } else {
+                    notes.add(r);
+                }
+            }
+        }
+        if (rules.isEmpty() && notes.isEmpty()) {
             lines.add(Component.translatable("gui.meow_machine.view.no_reason").getString());
-        } else {
-            for (String reason : entry.reasons()) {
-                for (String seg : wrap(reason, PANEL_W - 28)) {
+        }
+        for (String reason : rules) {
+            for (String seg : wrap(reason, PANEL_W - 28)) {
+                lines.add("· " + seg);
+            }
+        }
+        if (!notes.isEmpty()) {
+            lines.add("");
+            lines.add(Component.translatable("gui.meow_machine.result.notes").getString());
+            for (String note : notes) {
+                for (String seg : wrap(note, PANEL_W - 28)) {
                     lines.add("· " + seg);
                 }
             }

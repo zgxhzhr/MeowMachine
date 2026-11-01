@@ -233,5 +233,7 @@
   "gui.meow_machine.view.no_reason": "原因：无（未记录明细）",
   "gui.meow_machine.view.sticker": "梗图：%s",
   "gui.meow_machine.verdict_title": "结论详情",
-  "gui.meow_machine.btn.verdict": "结论"
+  "gui.meow_machine.btn.verdict": "结论",
+  "gui.meow_machine.result.reasons": "原因：",
+  "gui.meow_machine.result.notes": "附言："
 }

@@ -25,11 +25,12 @@ import java.util.function.Supplier;
  * @param comment    给作者的一句话（取前几条发现的原因）
  */
 public record ReviewResultPacket(String verdict, List<String> ruleIds, String stickerId,
-                                 String stickerTexture, String comment) {
+                                 String stickerTexture, List<String> reasons, List<String> notes) {
 
     /** 网络包里的列表上限：审核结果不会超过这个数，超过就是坏包 */
     private static final int MAX_RULES = 256;
-    private static final int MAX_COMMENT = 400;
+    private static final int MAX_LINES = 16;
+    private static final int MAX_LINE_LEN = 300;
 
     /** 从审核结果构造：规则号、纹理路径、摘要都在这里统一算 */
     public static ReviewResultPacket from(ReviewResult result) {
@@ -40,25 +41,25 @@ public record ReviewResultPacket(String verdict, List<String> ruleIds, String st
                 .map(f -> String.valueOf(f.ruleId()))
                 .distinct()
                 .toList();
+        List<String> reasons = new ArrayList<>();
+        List<String> notes = new ArrayList<>();
+        for (ReviewFinding f : result.findings()) {
+            String text = f.reason() == null ? "" : f.reason().strip();
+            if (text.isEmpty()) {
+                continue;
+            }
+            if (f.ruleId() != null) {
+                if (reasons.size() < MAX_LINES) {
+                    reasons.add(text);
+                }
+            } else if (notes.size() < MAX_LINES) {
+                notes.add(text);
+            }
+        }
         return new ReviewResultPacket(result.verdict().name(), ruleIds,
                 result.stickerId() == null ? "" : result.stickerId(),
                 StickerRegistry.texturePath(result.stickerId()),
-                summarize(result.findings()));
-    }
-
-    private static String summarize(List<ReviewFinding> findings) {
-        if (findings == null || findings.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < Math.min(3, findings.size()); i++) {
-            if (i > 0) {
-                sb.append(" / ");
-            }
-            sb.append(findings.get(i).reason());
-        }
-        String s = sb.toString();
-        return s.length() <= MAX_COMMENT ? s : s.substring(0, MAX_COMMENT);
+                List.copyOf(reasons), List.copyOf(notes));
     }
 
     public static void encode(ReviewResultPacket msg, FriendlyByteBuf buf) {
@@ -69,7 +70,14 @@ public record ReviewResultPacket(String verdict, List<String> ruleIds, String st
         }
         buf.writeUtf(msg.stickerId, 128);
         buf.writeUtf(msg.stickerTexture, 256);
-        buf.writeUtf(msg.comment, MAX_COMMENT);
+        buf.writeVarInt(msg.reasons.size());
+        for (String r : msg.reasons) {
+            buf.writeUtf(r, MAX_LINE_LEN);
+        }
+        buf.writeVarInt(msg.notes.size());
+        for (String n : msg.notes) {
+            buf.writeUtf(n, MAX_LINE_LEN);
+        }
     }
 
     public static ReviewResultPacket decode(FriendlyByteBuf buf) {
@@ -83,8 +91,26 @@ public record ReviewResultPacket(String verdict, List<String> ruleIds, String st
         for (int i = 0; i < n; i++) {
             rules.add(buf.readUtf(8));
         }
-        return new ReviewResultPacket(verdict, rules, buf.readUtf(128),
-                buf.readUtf(256), buf.readUtf(MAX_COMMENT));
+        String stickerId = buf.readUtf(128);
+        String stickerTexture = buf.readUtf(256);
+        int rc = buf.readVarInt();
+        if (rc < 0 || rc > MAX_LINES) {
+            throw new DecoderException("喵呜机：原因条数非法: " + rc);
+        }
+        List<String> reasons = new ArrayList<>(rc);
+        for (int i = 0; i < rc; i++) {
+            reasons.add(buf.readUtf(MAX_LINE_LEN));
+        }
+        int nc = buf.readVarInt();
+        if (nc < 0 || nc > MAX_LINES) {
+            throw new DecoderException("喵呜机：附言条数非法: " + nc);
+        }
+        List<String> notes = new ArrayList<>(nc);
+        for (int i = 0; i < nc; i++) {
+            notes.add(buf.readUtf(MAX_LINE_LEN));
+        }
+        return new ReviewResultPacket(verdict, rules, stickerId, stickerTexture,
+                List.copyOf(reasons), List.copyOf(notes));
     }
 
     public static void handle(ReviewResultPacket msg, Supplier<NetworkEvent.Context> ctx) {

@@ -7,24 +7,26 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * 审核结果弹窗：显示梗图 + 结论 + 命中的规则。
+ * 审核结果弹窗：梗图 + 结论 + 命中规则 + **原因全文** + **附言**。
  *
- * <p>纹理路径**由服务端随结果包发来**（{@code ReviewResultPacket.stickerTexture}），
- * 所以数据包里自定义的 {@code texture} 会生效；包里的路径为空时退回按 id 推
- * （{@code <ns>:textures/sticker/<path>.png}）。
- *
- * <p>找不到纹理时不画紫黑方块，而是给一个占位框 + 提示：以前只有 id 非法才会走占位分支，
- * 「png 缺失」这种情况其实会画 missing-texture。
+ * <p>以前原因只截成一行、附言混在原因里看不出来；现在分开排版并支持滚轮滚动，
+ * 正文不会出现在这里（正文去「我的投稿 → 查看」）。
  */
 public class StickerScreen extends Screen {
 
-    private static final int MAX_IMG = 192;
-    /** 图下面还要画「命中规则 / 一句话说明 / 点击关闭」，给它们留的高度 */
-    private static final int RESERVED_BOTTOM = 96;
+    private static final int MAX_IMG = 160;
+    private static final int LINE_H = 10;
 
     private final ReviewResultPacket result;
     private final ResourceLocation texture;
+    private final List<String> reasonLines = new ArrayList<>();
+    private int scroll = 0;
+    private int textTop = 0;
+    private int textHeight = 0;
 
     public StickerScreen(ReviewResultPacket result) {
         super(Component.translatable("gui.meow_machine.result_title"));
@@ -32,7 +34,6 @@ public class StickerScreen extends Screen {
         this.texture = resolveTexture(result);
     }
 
-    /** 优先用服务端给的路径，其次按 sticker id 推；都不可用返回 null */
     private static ResourceLocation resolveTexture(ReviewResultPacket result) {
         String given = result.stickerTexture();
         if (given != null && !given.isBlank()) {
@@ -62,22 +63,60 @@ public class StickerScreen extends Screen {
         }
     }
 
+    private void buildLines() {
+        reasonLines.clear();
+        if (result.ruleIds() != null && !result.ruleIds().isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < result.ruleIds().size() && i < 8; i++) {
+                if (i > 0) {
+                    sb.append("、");
+                }
+                sb.append("第 ").append(result.ruleIds().get(i)).append(" 条");
+            }
+            reasonLines.add(Component.translatable(
+                    "gui.meow_machine.result.rules", sb.toString()).getString());
+            reasonLines.add("");
+        }
+        if (result.reasons() != null && !result.reasons().isEmpty()) {
+            reasonLines.add(Component.translatable("gui.meow_machine.result.reasons").getString());
+            for (String r : result.reasons()) {
+                for (String seg : wrap(r, this.width - 40)) {
+                    reasonLines.add("  " + seg);
+                }
+            }
+        }
+        if (result.notes() != null && !result.notes().isEmpty()) {
+            reasonLines.add("");
+            reasonLines.add(Component.translatable("gui.meow_machine.result.notes").getString());
+            for (String n : result.notes()) {
+                for (String seg : wrap(n, this.width - 40)) {
+                    reasonLines.add("  " + seg);
+                }
+            }
+        }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        int maxScroll = Math.max(0, reasonLines.size() - textHeight / LINE_H);
+        scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.signum(delta) * 2));
+        return true;
+    }
+
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(g);
+        buildLines();
 
         int cx = this.width / 2;
-        int top = Math.max(18, this.height / 8);
-        int y = top;
+        int y = Math.max(16, this.height / 8);
 
-        // 结论标题
         g.drawCenteredString(this.font,
                 Component.translatable("gui.meow_machine.result." + result.verdict().toLowerCase()),
                 cx, y, 0xFFFFFF);
         y += 16;
 
-        // 梗图：尺寸同时受宽、高约束，矮窗口（GUI scale 4 的逻辑高 270）也不会盖住底部文字
-        int size = Math.min(MAX_IMG, Math.min(this.width - 40, this.height - y - RESERVED_BOTTOM));
+        int size = Math.min(MAX_IMG, Math.min(this.width - 40, this.height / 3));
         size = Math.max(48, size);
         if (texture != null) {
             g.blit(texture, cx - size / 2, y, 0, 0, size, size, size, size);
@@ -89,54 +128,49 @@ public class StickerScreen extends Screen {
         }
         y += size + 8;
 
-        // 命中的规则
-        if (!result.ruleIds().isEmpty()) {
-            g.drawCenteredString(this.font,
-                    Component.translatable("gui.meow_machine.result.rules", joinRules(result.ruleIds())),
-                    cx, y, 0xFFFF80);
-            y += 12;
+        this.textTop = y;
+        this.textHeight = Math.max(LINE_H, this.height - 28 - y);
+        int visible = textHeight / LINE_H;
+        for (int i = 0; i < visible && scroll + i < reasonLines.size(); i++) {
+            g.drawString(this.font, Component.literal(reasonLines.get(scroll + i)),
+                    cx - this.width / 2 + 20, y + i * LINE_H, 0xDDDDDD, false);
         }
-
-        // 一句话说明
-        if (result.comment() != null && !result.comment().isEmpty()) {
-            g.drawCenteredString(this.font,
-                    Component.literal(trimToWidth(result.comment(), this.width - 40)), cx, y, 0xDDDDDD);
-            y += 12;
+        if (reasonLines.size() > visible) {
+            g.drawString(this.font,
+                    Component.literal((scroll + visible) + "/" + reasonLines.size()),
+                    this.width - 60, y - 10, 0x808080, false);
         }
 
         g.drawCenteredString(this.font,
                 Component.translatable("gui.meow_machine.click_to_close"),
-                cx, this.height - 24, 0x888888);
+                cx, this.height - 16, 0x888888);
 
         super.render(g, mouseX, mouseY, partialTick);
     }
 
-    private static String joinRules(java.util.List<String> ruleIds) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < ruleIds.size() && i < 5; i++) {
-            if (i > 0) {
-                sb.append("、");
+    private List<String> wrap(String text, int maxWidth) {
+        List<String> out = new ArrayList<>();
+        if (text == null || text.isBlank()) {
+            out.add("");
+            return out;
+        }
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (this.font.width(cur.toString() + ch) > maxWidth && cur.length() > 0) {
+                out.add(cur.toString());
+                cur.setLength(0);
             }
-            sb.append("第 ").append(ruleIds.get(i)).append(" 条");
+            cur.append(ch);
         }
-        return sb.toString();
-    }
-
-    private String trimToWidth(String s, int maxWidth) {
-        if (this.font.width(s) <= maxWidth) {
-            return s;
+        if (cur.length() > 0) {
+            out.add(cur.toString());
         }
-        String ellipsis = "…";
-        int i = s.length();
-        while (i > 0 && this.font.width(s.substring(0, i) + ellipsis) > maxWidth) {
-            i--;
-        }
-        return s.substring(0, i) + ellipsis;
+        return out;
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        // 点任意处关闭
         this.onClose();
         return true;
     }

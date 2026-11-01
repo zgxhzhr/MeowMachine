@@ -233,5 +233,7 @@
   "gui.meow_machine.view.no_reason": "Reason: none recorded",
   "gui.meow_machine.view.sticker": "Sticker: %s",
   "gui.meow_machine.verdict_title": "Verdict",
-  "gui.meow_machine.btn.verdict": "Verdict"
+  "gui.meow_machine.btn.verdict": "Verdict",
+  "gui.meow_machine.result.reasons": "Reasons:",
+  "gui.meow_machine.result.notes": "Note:"
 }
