@@ -173,5 +173,6 @@
   "item.meow_machine.sticker_meowmeow.story": "MeowMachine hears \"meow meow\", looks up once, and ignores it. A moment later, \"meow meow\" again. He finally looks up to find the author covering an unfinished manuscript with cuteness. MeowMachine considers for two seconds and replies: adorable, now finish chapter three.",
   "chat.meow_machine.sticker_progress": "[MeowMachine] Got sticker \"%s\" (%s/%s collected)",
   "chat.meow_machine.sticker_complete": "[MeowMachine] All %s stickers collected!",
-  "gui.meow_machine.sticker_view_title": "Sticker"
+  "gui.meow_machine.sticker_view_title": "Sticker",
+  "gui.meow_machine.detail.local_rules": "Local rule precheck"
 }

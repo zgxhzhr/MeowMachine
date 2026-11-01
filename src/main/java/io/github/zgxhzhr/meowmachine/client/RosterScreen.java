@@ -26,6 +26,7 @@ public class RosterScreen extends Screen {
 
     private List<RosterStatePacket.Entry> members;
     private List<RosterStatePacket.Online> online;
+    private net.minecraft.client.gui.components.EditBox nameBox;
     private int shownMembers;
     private int shownOnline;
 
@@ -79,6 +80,24 @@ public class RosterScreen extends Screen {
                                     RosterActionPacket.grant(p.name(), ReviewerRole.ASSISTANT)))
                     .bounds(left + PANEL_W - ONLINE_BTN_W - 6, y, ONLINE_BTN_W, 18).build());
         }
+
+        // 手填名字（离线玩家靠命令，这里给在线玩家兜个输入框；打错会有提示）
+        int inputY = this.height - 78;
+        this.nameBox = new net.minecraft.client.gui.components.EditBox(this.font, left, inputY,
+                PANEL_W, 18, Component.translatable("gui.meow_machine.roster.name_hint"));
+        this.nameBox.setMaxLength(16);
+        this.nameBox.setHint(Component.translatable("gui.meow_machine.roster.name_hint"));
+        this.addRenderableWidget(this.nameBox);
+
+        int half = (PANEL_W - 6) / 2;
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.roster.grant_reviewer"),
+                        b -> grant(io.github.zgxhzhr.meowmachine.review.ReviewerRole.REVIEWER))
+                .bounds(left, inputY + 22, half, 18).build());
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.roster.grant_assistant"),
+                        b -> grant(io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT))
+                .bounds(left + half + 6, inputY + 22, half, 18).build());
 
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.close"), b -> this.onClose())
@@ -139,6 +158,17 @@ public class RosterScreen extends Screen {
         }
 
         super.render(g, mouseX, mouseY, partialTick);
+    }
+
+    private void grant(io.github.zgxhzhr.meowmachine.review.ReviewerRole role) {
+        if (nameBox == null) {
+            return;
+        }
+        String name = nameBox.getValue().strip();
+        if (name.isEmpty()) {
+            return;
+        }
+        Network.CHANNEL.sendToServer(RosterActionPacket.grant(name, role));
     }
 
     private String trimToWidth(String s, int maxWidth) {

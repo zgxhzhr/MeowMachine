@@ -173,5 +173,6 @@
   "item.meow_machine.sticker_meowmeow.story": "喵呜机听到「喵喵喵」，抬头看了一眼，没理。过了一会儿又是一声「喵喵喵」。祂终于抬头，看见作者正用卖萌掩盖自己没写完的事实。喵呜机思考了两秒，回复：可爱，但请补完第三章。",
   "chat.meow_machine.sticker_progress": "[喵呜机] 获得梗图「%s」（收集 %s/%s）",
   "chat.meow_machine.sticker_complete": "[喵呜机] 集齐 %s 张梗图！",
-  "gui.meow_machine.sticker_view_title": "梗图"
+  "gui.meow_machine.sticker_view_title": "梗图",
+  "gui.meow_machine.detail.local_rules": "本地规则预检"
 }

@@ -66,6 +66,25 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
+        // 本地规则预检：给审核员当参考意见（确定性检查，纯客户端可跑）
+        java.util.List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
+                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(), entry.body());
+        if (!pre.isEmpty()) {
+            lines.add("");
+            lines.add("—— " + Component.translatable("gui.meow_machine.detail.local_rules").getString() + " ——");
+            for (var f : pre) {
+                String text = "第 " + (f.ruleId() == null ? "?" : f.ruleId()) + " 条：" +
+                        (f.reason() == null ? "" : f.reason());
+                if (this.font.width(text) <= PANEL_W - 16) {
+                    lines.add(text);
+                } else {
+                    for (String part : io.github.zgxhzhr.meowmachine.item.StickerItem.wrap(text, 24)) {
+                        lines.add(part);
+                    }
+                }
+            }
+        }
+
         if (!entry.notes().isEmpty()) {
             lines.add("");
             lines.add("—— " + Component.translatable("gui.meow_machine.note_section").getString() + " ——");

@@ -52,9 +52,8 @@ public record RosterStatePacket(List<Entry> members, List<Online> online) {
         List<Online> online = new ArrayList<>();
         if (viewer != null && viewer.getServer() != null) {
             for (net.minecraft.server.level.ServerPlayer p : viewer.getServer().getPlayerList().getPlayers()) {
-                if (!p.getUUID().equals(viewer.getUUID())) {
-                    online.add(new Online(p.getUUID().toString(), p.getName().getString()));
-                }
+                // 包含自己：单人测试时也要能把某人（包括自己）任命成审核员
+                online.add(new Online(p.getUUID().toString(), p.getName().getString()));
             }
         }
         return new RosterStatePacket(List.copyOf(list), List.copyOf(online));
