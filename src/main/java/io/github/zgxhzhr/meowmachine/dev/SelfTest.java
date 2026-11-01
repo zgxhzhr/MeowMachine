@@ -367,6 +367,10 @@ public final class SelfTest {
         check("旧草稿里夹换行的段落被拆开",
                 legacy.blockCount() == 2);
 
+        RichEditor legacy2 = new RichEditor(new RichDoc(List.of(
+                new RichDoc.Para(List.of(RichDoc.Run.plain("\n条目一\n\n条目二"))))));
+        check("旧稿里的空段被丢弃（不再多出空列表点）", legacy2.blockCount() == 2);
+
         RichEditor e8 = RichEditor.empty();
         e8.typeText("甲");
         e8.enter();

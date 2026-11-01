@@ -31,8 +31,8 @@ public record LlmConfig(boolean enabled, String endpoint, String apiKey, String 
 
     /** 默认服务商：DeepSeek（OpenAI 兼容，直接是 /v1/chat/completions） */
     public static final String DEFAULT_ENDPOINT = "https://api.deepseek.com/v1";
-    /** 默认模型：deepseek-chat（对话模型；推理模型是 deepseek-reasoner） */
-    public static final String DEFAULT_MODEL = "deepseek-chat";
+    /** 默认模型：deepseek-flash（DeepSeek 的快速对话模型；推理型是 deepseek-reasoner） */
+    public static final String DEFAULT_MODEL = "deepseek-flash";
 
     /**
      * 内存缓存：配置是低频变更的静态数据，没必要每份投稿都在服务端主线程读一次磁盘。

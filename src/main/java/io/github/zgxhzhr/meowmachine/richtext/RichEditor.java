@@ -115,6 +115,7 @@ public final class RichEditor {
     private static List<List<RichDoc.Run>> splitOnNewlines(List<RichDoc.Run> runs) {
         List<List<RichDoc.Run>> out = new ArrayList<>();
         List<RichDoc.Run> cur = new ArrayList<>();
+        boolean anyText = false;
         for (RichDoc.Run r : runs) {
             StringBuilder buf = new StringBuilder();
             for (int i = 0; i < r.text().length(); i++) {
@@ -123,18 +124,27 @@ public final class RichEditor {
                     if (buf.length() > 0) {
                         cur.add(new RichDoc.Run(buf.toString(), r.bold(), r.italic()));
                         buf.setLength(0);
+                        anyText = true;
                     }
-                    out.add(cur);
-                    cur = new ArrayList<>();
+                    // 空的切段直接丢弃：旧稿里「空段+正文」会变成两个段落，
+                    // 转成列表后多出一个空点（实测 4 行变 7 个点）
+                    if (anyText) {
+                        out.add(cur);
+                        cur = new ArrayList<>();
+                        anyText = false;
+                    }
                 } else {
                     buf.append(c);
                 }
             }
             if (buf.length() > 0) {
                 cur.add(new RichDoc.Run(buf.toString(), r.bold(), r.italic()));
+                anyText = true;
             }
         }
-        out.add(cur);
+        if (anyText || out.isEmpty()) {
+            out.add(cur);
+        }
         return out;
     }
 
