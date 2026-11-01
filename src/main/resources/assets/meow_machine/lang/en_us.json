@@ -231,5 +231,7 @@
   "chat.meow_machine.unchanged_submission": "Nothing changed - edit the text before resubmitting",
   "gui.meow_machine.view.state": "Verdict: %s",
   "gui.meow_machine.view.no_reason": "Reason: none recorded",
-  "gui.meow_machine.view.sticker": "Sticker: %s"
+  "gui.meow_machine.view.sticker": "Sticker: %s",
+  "gui.meow_machine.verdict_title": "Verdict",
+  "gui.meow_machine.btn.verdict": "Verdict"
 }

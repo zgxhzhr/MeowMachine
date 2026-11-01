@@ -231,5 +231,7 @@
   "chat.meow_machine.unchanged_submission": "正文和标题都没有改动，改完再提交（原样重投等于没改）",
   "gui.meow_machine.view.state": "结论：%s",
   "gui.meow_machine.view.no_reason": "原因：无（未记录明细）",
-  "gui.meow_machine.view.sticker": "梗图：%s"
+  "gui.meow_machine.view.sticker": "梗图：%s",
+  "gui.meow_machine.verdict_title": "结论详情",
+  "gui.meow_machine.btn.verdict": "结论"
 }

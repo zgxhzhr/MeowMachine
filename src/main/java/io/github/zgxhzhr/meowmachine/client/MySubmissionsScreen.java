@@ -13,22 +13,25 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * 我的投稿：当前草稿 + 人工队列里自己的稿子。
+ * 我的投稿：当前草稿 + 队列里的稿子 + 已出结论的历史。
  *
- * <p>每行有「编辑」：当前草稿直接打开；还在队列里的会**撤回**后再打开
- * （以前这个界面只能看，进得来出不去，是个死角）。
+ * <p>支持翻页（历史一多就看不全），每行有「结论 / 查看 / 编辑」。
  */
 public class MySubmissionsScreen extends Screen {
 
     private static final int PANEL_W = 340;
     private static final int ROW_H = 24;
     private static final int MAX_ROWS = 8;
-    private static final int ROW_BTN_W = 48;
-    private static final int PREVIEW_BTN_W = 42;
-    private static final int TEXT_W = PANEL_W - ROW_BTN_W - 12;
+    private static final int BTN_H = 18;
+    private static final int VERDICT_W = 42;
+    private static final int PREVIEW_W = 42;
+    private static final int EDIT_W = 44;
+    private static final int ROW_BTNS = VERDICT_W + PREVIEW_W + EDIT_W + 8;
 
     private final List<MySubmissionsPacket.Entry> rows;
-    private int shown;
+    private int perPage = MAX_ROWS;
+    private int page = 0;
+    private int pageCount = 1;
 
     public MySubmissionsScreen(MySubmissionsPacket packet) {
         super(Component.translatable("gui.meow_machine.my_title"));
@@ -40,14 +43,29 @@ public class MySubmissionsScreen extends Screen {
         int cx = this.width / 2;
         int left = cx - PANEL_W / 2;
         int top = 40;
+        int fit = Math.max(1, (this.height - 120) / ROW_H);
+        this.perPage = Math.max(1, Math.min(MAX_ROWS, fit));
+        this.pageCount = Math.max(1, (rows.size() + perPage - 1) / perPage);
+        this.page = Math.max(0, Math.min(page, pageCount - 1));
 
-        int fit = Math.max(1, (this.height - 110) / ROW_H);
-        this.shown = Math.min(rows.size(), Math.min(MAX_ROWS, fit));
-
-        for (int i = 0; i < shown; i++) {
+        int from = page * perPage;
+        int to = Math.min(rows.size(), from + perPage);
+        for (int i = from; i < to; i++) {
             MySubmissionsPacket.Entry e = rows.get(i);
-            int y = top + i * ROW_H + 2;
-            // 查看：任何状态都能读内容（通过后只读，也得能看）
+            int y = top + (i - from) * ROW_H + 2;
+            int x = left + PANEL_W - ROW_BTNS + 4;
+            boolean hasVerdict = "returned".equals(e.state()) || "revising".equals(e.state())
+                    || "approved".equals(e.state());
+            if (hasVerdict) {
+                addRenderableWidget(Button.builder(
+                                Component.translatable("gui.meow_machine.btn.verdict"),
+                                b -> {
+                                    if (this.minecraft != null) {
+                                        this.minecraft.setScreen(new VerdictScreen(this, e));
+                                    }
+                                })
+                        .bounds(x, y, VERDICT_W, BTN_H).build());
+            }
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.btn.preview"),
                             b -> {
@@ -55,31 +73,56 @@ public class MySubmissionsScreen extends Screen {
                                     this.minecraft.setScreen(new SubmissionViewScreen(e));
                                 }
                             })
-                    .bounds(left + PANEL_W - ROW_BTN_W - PREVIEW_BTN_W - 4, y,
-                            PREVIEW_BTN_W, 18).build());
-            if (!e.editable()) {
-                continue; // 已通过的稿子只读，没有编辑按钮
+                    .bounds(x + VERDICT_W + 4, y, PREVIEW_W, BTN_H).build());
+            if (e.editable()) {
+                addRenderableWidget(Button.builder(
+                                Component.translatable("gui.meow_machine.btn.edit"),
+                                b -> Network.CHANNEL.sendToServer(new EditMySubmissionPacket(e.id())))
+                        .bounds(x + VERDICT_W + PREVIEW_W + 8, y, EDIT_W, BTN_H).build());
             }
-            addRenderableWidget(Button.builder(
-                            Component.translatable("gui.meow_machine.btn.edit"),
-                            b -> Network.CHANNEL.sendToServer(
-                                    new EditMySubmissionPacket(e.id())))
-                    .bounds(left + PANEL_W - ROW_BTN_W, y, ROW_BTN_W, 18).build());
         }
 
-        int y = this.height - 28;
+        int by = this.height - 28;
+        if (pageCount > 1) {
+            addRenderableWidget(Button.builder(Component.literal("<"),
+                            b -> {
+                                this.page = Math.max(0, page - 1);
+                                this.rebuildWidgets();
+                            })
+                    .bounds(cx - 206, by, 22, 20).build());
+            addRenderableWidget(Button.builder(Component.literal(">"),
+                            b -> {
+                                this.page = Math.min(pageCount - 1, page + 1);
+                                this.rebuildWidgets();
+                            })
+                    .bounds(cx + 184, by, 22, 20).build());
+        }
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.my_review_list"),
                         b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
-                .bounds(cx - 158, y, 100, 20).build());
+                .bounds(cx - 152, by, 96, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.my_admin"),
                         b -> Network.CHANNEL.sendToServer(new OpenAdminRequestPacket()))
-                .bounds(cx - 50, y, 100, 20).build());
+                .bounds(cx - 52, by, 96, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.close"),
                         b -> this.onClose())
-                .bounds(cx + 58, y, 100, 20).build());
+                .bounds(cx + 48, by, 96, 20).build());
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        if (pageCount <= 1) {
+            return super.mouseScrolled(mx, my, delta);
+        }
+        int next = delta > 0 ? page - 1 : page + 1;
+        next = Math.max(0, Math.min(pageCount - 1, next));
+        if (next != page) {
+            this.page = next;
+            this.rebuildWidgets();
+        }
+        return true;
     }
 
     @Override
@@ -90,28 +133,28 @@ public class MySubmissionsScreen extends Screen {
         int top = 40;
 
         g.drawCenteredString(this.font, this.title, cx, 20, 0xFFFFFF);
+        if (pageCount > 1) {
+            g.drawString(this.font, Component.literal((page + 1) + "/" + pageCount),
+                    cx - 178, this.height - 22, 0xAAAAAA, false);
+        }
 
-        if (shown == 0) {
+        if (rows.isEmpty()) {
             g.drawCenteredString(this.font,
                     Component.translatable("gui.meow_machine.my_empty"), cx, this.height / 2, 0xAAAAAA);
         }
 
-        for (int i = 0; i < shown; i++) {
+        int from = page * perPage;
+        int to = Math.min(rows.size(), from + perPage);
+        for (int i = from; i < to; i++) {
             MySubmissionsPacket.Entry e = rows.get(i);
-            int y = top + i * ROW_H;
+            int y = top + (i - from) * ROW_H;
             g.drawString(this.font, Component.literal(e.shortId()), left, y + 2, 0xFFFF80, false);
             Component state = Component.translatable("gui.meow_machine.state." + e.state());
             g.drawString(this.font, state, left + 62, y + 2,
                     e.pending() ? 0xFFAA44 : 0xAAAAAA, false);
             g.drawString(this.font,
-                    Component.literal(trimToWidth(e.title(), TEXT_W)),
+                    Component.literal(trimToWidth(e.title(), PANEL_W - ROW_BTNS - 12)),
                     left, y + 13, 0xDDDDDD, false);
-        }
-
-        if (rows.size() > shown) {
-            g.drawCenteredString(this.font,
-                    Component.translatable("gui.meow_machine.my_more", rows.size() - shown),
-                    cx, this.height - 44, 0xFF8080);
         }
 
         super.render(g, mouseX, mouseY, partialTick);
@@ -124,12 +167,11 @@ public class MySubmissionsScreen extends Screen {
         if (this.font.width(s) <= maxWidth) {
             return s;
         }
-        String ellipsis = "…";
         int i = s.length();
-        while (i > 0 && this.font.width(s.substring(0, i) + ellipsis) > maxWidth) {
+        while (i > 0 && this.font.width(s.substring(0, i) + "…") > maxWidth) {
             i--;
         }
-        return s.substring(0, i) + ellipsis;
+        return s.substring(0, i) + "…";
     }
 
     @Override
