@@ -338,7 +338,7 @@ public final class SelfTest {
     private static void testTrivialEdit() {
         String oldBody = "<p>" + "这是一段原本就合规的正文内容。".repeat(12) + "</p>";
         String tiny = "<p>" + "这是一段原本就合规的正文内容。".repeat(12) + "补。</p>";
-        check("只加几个字 → 判改动过小",
+        check("只加一两个字 → 判改动过小",
                 io.github.zgxhzhr.meowmachine.review.EditDiffs.of(oldBody, tiny).trivial());
         String big = "<p>" + "这是一段原本就合规的正文内容。".repeat(12)
                 + "</p><p>这里补充了一整段新的说明，长度明显超过阈值。</p>";
@@ -369,9 +369,15 @@ public final class SelfTest {
 
         // 倒退判定：删得比加得多
         var shrink = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(
-                "<p>第一段足够长足够长足够长。</p><p>第二段足够长足够长足够长。</p><p>第三段足够长足够长足够长。</p>",
+                "<p>第一段足够长足够长足够长。</p><p>第二段足够长足够长足够长。</p>"
+                        + "<p>第三段足够长足够长足够长。</p><p>第四段足够长足够长足够长。</p>",
                 "<p>第一段足够长足够长足够长。</p>");
-        check("删得比加得多 → 判倒退", shrink.regressed());
+        check("删掉多段 → 判倒退", shrink.regressed());
+        var headingTrim = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(
+                "<p>[h1=余烬熔炉]</p><p>[h2=概述]</p><p>正文内容在这里，写清楚功能与获取方式。</p>",
+                "<p>[h1=概述]</p><p>正文内容在这里，写清楚功能与获取方式。</p>");
+        check("按意见缩写标题不算倒退", !headingTrim.regressed());
+        check("按意见缩写标题不算改动过小", !headingTrim.trivial());
         var grow = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(
                 "<p>第一段。</p>", "<p>第一段。</p><p>新加一段更长的内容。</p><p>再加一段。</p>");
         check("只增不减 → 不判倒退", !grow.regressed());

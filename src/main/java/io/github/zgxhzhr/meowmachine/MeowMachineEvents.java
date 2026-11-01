@@ -99,6 +99,11 @@ public final class MeowMachineEvents {
     }
 
     /** 首次进入世界发一个「喵喵喵」图标物品（条目册入口，后续扩展） */
+    /** 首次通过审核（或首次进入世界）时补发「喵喵喵」：右键打开已通过列表 */
+    public static void grantMeowIconIfNeeded(ServerPlayer sp) {
+        grantIconOnce(sp);
+    }
+
     private static void grantIconOnce(ServerPlayer sp) {
         net.minecraft.nbt.CompoundTag data =
                 io.github.zgxhzhr.meowmachine.util.PlayerData.persisted(sp);

@@ -17,15 +17,19 @@ public final class EditDiffs {
             int delta = Math.abs(newChars - oldChars);
             // 改动一行会同时记一次 added 和一次 removed，这里按「变了多少行」算
             int changedLines = Math.max(added, removed);
-            if (oldChars >= 400) {
-                return delta <= Math.max(8, oldChars / 50) && changedLines <= 2;
-            }
-            return delta <= 4 && changedLines <= 1;
+            // 只把「几乎没动」算过小：改一两个字。像按审核意见缩写标题（删掉一层标题）
+            // 这类有效微调不能算，否则作者照着意见改反而被打回。
+            return delta <= 2 && changedLines <= 2;
         }
 
         public boolean regressed() {
-            // 删得比加得多、或总字数缩水三成以上：视为倒退
-            return removed > added || (oldChars > 120 && newChars < oldChars * 0.7);
+            // 倒退要看「删得明显」：删掉 3 行以上、或字数缩水 20% 以上、或净删 30 字以上。
+            // 单纯删掉一层标题、改几个词之类的微调不算倒退（真实案例：按审核意见
+            // 把 [h1=条目名][h2=概述] 缩成 [h1=概述]，曾被打回）。
+            int removedChars = Math.max(0, oldChars - newChars);
+            return (removed - added) >= 3
+                    || (oldChars >= 200 && newChars < oldChars * 0.8)
+                    || (removedChars >= 30 && newChars < oldChars);
         }
 
         public List<String> summaryLines() {

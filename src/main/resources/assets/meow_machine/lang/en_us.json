@@ -235,5 +235,7 @@
   "gui.meow_machine.verdict_title": "Verdict",
   "gui.meow_machine.btn.verdict": "Verdict",
   "gui.meow_machine.result.reasons": "Reasons:",
-  "gui.meow_machine.result.notes": "Note:"
+  "gui.meow_machine.result.notes": "Note:",
+  "item.meow_machine.meow_icon.desc": "Right-click to open the approved entries list",
+  "item.meow_machine.meow_icon.how": "Given once on first approval (or first join)"
 }

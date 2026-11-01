@@ -147,6 +147,8 @@ public record SubmitPacket(String title, String body) {
                                 }
                                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                                         player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_APPROVED);
+                                io.github.zgxhzhr.meowmachine.MeowMachineEvents
+                                        .grantMeowIconIfNeeded(player);
                                 if (wasReturned) {
                                     io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                                             player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.REVISED_APPROVED);

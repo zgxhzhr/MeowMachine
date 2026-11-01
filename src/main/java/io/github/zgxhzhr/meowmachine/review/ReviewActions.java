@@ -161,6 +161,7 @@ public final class ReviewActions {
                     io.github.zgxhzhr.meowmachine.progress.StatsAchievements.onEditApproved(author);
                 }
                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_approved");
+                io.github.zgxhzhr.meowmachine.MeowMachineEvents.grantMeowIconIfNeeded(author);
                 if (sub.state() == SubmissionState.RETURNED
                     || sub.state() == SubmissionState.REVISING) {
                     io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "revised_approved");

@@ -235,5 +235,7 @@
   "gui.meow_machine.verdict_title": "结论详情",
   "gui.meow_machine.btn.verdict": "结论",
   "gui.meow_machine.result.reasons": "原因：",
-  "gui.meow_machine.result.notes": "附言："
+  "gui.meow_machine.result.notes": "附言：",
+  "item.meow_machine.meow_icon.desc": "右键打开「已通过条目」列表：可查看正文、提交修改",
+  "item.meow_machine.meow_icon.how": "首次通过审核（或首次进入世界）时自动获得"
 }
