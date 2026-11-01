@@ -49,7 +49,8 @@ public record Submission(UUID id, UUID authorUuid, String authorName,
         SubmissionState next = switch (v == null ? Verdict.PENDING : v) {
             case PASS -> SubmissionState.APPROVED;
             case PENDING -> SubmissionState.SUBMITTED;
-            case REVISE, RETURN -> SubmissionState.RETURNED;
+            case REVISE -> SubmissionState.REVISING;
+            case RETURN -> SubmissionState.RETURNED;
         };
         return new Submission(id, authorUuid, authorName, title, body, next, revision);
     }

@@ -59,7 +59,8 @@ public final class SubmissionHistory {
             return;
         }
         SubmissionState st = sub.state();
-        if (st != SubmissionState.APPROVED && st != SubmissionState.RETURNED) {
+        if (st != SubmissionState.APPROVED && st != SubmissionState.RETURNED
+                && st != SubmissionState.REVISING) {
             return;
         }
         List<Record> list = BY_AUTHOR.computeIfAbsent(sub.authorUuid(), k -> new ArrayList<>());

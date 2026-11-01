@@ -2,7 +2,7 @@ plugins {
     id 'net.neoforged.moddev.legacyforge' version '2.0.77'
 }
 
-version = '0.34.0'
+version = '0.35.0'
 group = 'io.github.zgxhzhr.meowmachine'
 base { archivesName = 'meow_machine' }
 
@@ -38,8 +38,6 @@ legacyForge {
         }
     }
 }
-
-sourceSets.main.resources.srcDir 'src/generated/resources'
 
 repositories {
     maven { name = 'AliyunPublic'; url = 'https://maven.aliyun.com/repository/public' }

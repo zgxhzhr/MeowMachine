@@ -84,7 +84,9 @@ public record SubmitPacket(String title, String body) {
         }
 
         boolean wasReturned = existing.state()
-                == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED;
+                == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED
+                || existing.state()
+                == io.github.zgxhzhr.meowmachine.review.SubmissionState.REVISING;
         Submission candidate = existing.withContent(title, body);
         if (candidate.isEmpty()) {
             Network.CHANNEL.sendTo(NoticePacket.of("chat.meow_machine.empty_submission"),

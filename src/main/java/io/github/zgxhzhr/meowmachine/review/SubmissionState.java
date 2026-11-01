@@ -17,10 +17,12 @@ public enum SubmissionState {
     /** 通过 */
     APPROVED,
     /** 打回：作者可修改后重新提交 */
-    RETURNED;
+    RETURNED,
+    /** 协改：要求修改但不至于打回（与 RETURNED 分开记，历史里能看出区别） */
+    REVISING;
 
     /** 作者能不能改这份稿件 */
     public boolean editableByAuthor() {
-        return this == DRAFT || this == SUBMITTED || this == RETURNED;
+        return this == DRAFT || this == SUBMITTED || this == RETURNED || this == REVISING;
     }
 }

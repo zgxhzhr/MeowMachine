@@ -226,5 +226,6 @@
   "command.meow_machine.ambiguous_id": "id prefix too short or ambiguous; use a longer prefix",
   "chat.meow_machine.roster_bad_role": "Invalid role (reviewer / assistant only)",
   "chat.meow_machine.too_fast": "Slow down - wait 10s before submitting again",
-  "chat.meow_machine.queue_full": "Review queue is full, try again later"
+  "chat.meow_machine.queue_full": "Review queue is full, try again later",
+  "gui.meow_machine.state.revising": "needs revision"
 }

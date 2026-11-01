@@ -158,10 +158,12 @@ public final class ReviewActions {
             var author = serverPlayerOf(app.authorUuid());
             if (verdict == Verdict.PASS) {
                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_approved");
-                if (sub.state() == SubmissionState.RETURNED) {
+                if (sub.state() == SubmissionState.RETURNED
+                    || sub.state() == SubmissionState.REVISING) {
                     io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "revised_approved");
                 }
-            } else {
+            } else if (verdict == Verdict.RETURN) {
+                // 只有真正「打回」才发；「协改」不算
                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_returned");
             }
         }

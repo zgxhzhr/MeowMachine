@@ -287,9 +287,10 @@ public final class SelfTest {
         check("提交后 SUBMITTED", submitted.state() == SubmissionState.SUBMITTED);
         check("提交不改版本号", submitted.revision() == edited.revision());
 
-        check("三种状态都可编辑", SubmissionState.DRAFT.editableByAuthor()
+        check("四种状态都可编辑", SubmissionState.DRAFT.editableByAuthor()
                 && SubmissionState.SUBMITTED.editableByAuthor()
-                && SubmissionState.RETURNED.editableByAuthor());
+                && SubmissionState.RETURNED.editableByAuthor()
+                && SubmissionState.REVISING.editableByAuthor());
         check("APPROVED 不可编辑", !SubmissionState.APPROVED.editableByAuthor());
     }
 
@@ -309,7 +310,7 @@ public final class SelfTest {
 
         Submission revised = submitted.apply(
                 ReviewResult.of(Verdict.REVISE, List.of(), "op", "revising"));
-        check("REVISE 之后是 RETURNED", revised.state() == SubmissionState.RETURNED);
+        check("REVISE 之后是 REVISING", revised.state() == SubmissionState.REVISING);
 
         Submission returned = submitted.apply(
                 ReviewResult.of(Verdict.RETURN, List.of(), "op", "returned"));
@@ -346,8 +347,8 @@ public final class SelfTest {
                 sub.apply(ret).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED);
         var rev = io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
                 io.github.zgxhzhr.meowmachine.review.Verdict.REVISE, java.util.List.of(), "tester", "");
-        check("REVISE → RETURNED",
-                sub.apply(rev).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.RETURNED);
+        check("REVISE → REVISING",
+                sub.apply(rev).state() == io.github.zgxhzhr.meowmachine.review.SubmissionState.REVISING);
         var pend = io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
                 io.github.zgxhzhr.meowmachine.review.Verdict.PENDING, java.util.List.of(), "tester", "");
         check("PENDING → SUBMITTED",
