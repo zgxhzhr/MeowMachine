@@ -190,5 +190,8 @@
   "gui.meow_machine.my_admin": "Admin",
   "gui.meow_machine.detail.none": "none",
   "gui.meow_machine.table_rows_label": "Rows",
-  "gui.meow_machine.table_cols_label": "Cols"
+  "gui.meow_machine.table_cols_label": "Cols",
+  "gui.meow_machine.pass_reason_hint": "Reason for approval (optional, shown to author)",
+  "gui.meow_machine.pass_sticker_title": "Pick a sticker for approval",
+  "gui.meow_machine.pass_sticker_default": "Random"
 }

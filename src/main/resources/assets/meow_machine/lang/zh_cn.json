@@ -190,5 +190,8 @@
   "gui.meow_machine.my_admin": "审核后台",
   "gui.meow_machine.detail.none": "无",
   "gui.meow_machine.table_rows_label": "行数",
-  "gui.meow_machine.table_cols_label": "列数"
+  "gui.meow_machine.table_cols_label": "列数",
+  "gui.meow_machine.pass_reason_hint": "通过理由（可选，会显示给作者）",
+  "gui.meow_machine.pass_sticker_title": "通过用哪张梗图",
+  "gui.meow_machine.pass_sticker_default": "默认随机"
 }

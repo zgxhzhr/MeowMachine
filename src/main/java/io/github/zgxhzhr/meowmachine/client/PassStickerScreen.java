@@ -25,6 +25,7 @@ public class PassStickerScreen extends Screen {
     private final Screen parent;
     private final ReviewListPacket.Entry entry;
     private final List<String> approved;
+    private net.minecraft.client.gui.components.EditBox reasonBox;
 
     public PassStickerScreen(Screen parent, ReviewListPacket.Entry entry, List<String> approved) {
         super(Component.translatable("gui.meow_machine.pass_sticker_title"));
@@ -51,6 +52,16 @@ public class PassStickerScreen extends Screen {
 
         int rows = (approved.size() + 1) / 2;
         int y = top + rows * (BTN_H + GAP) + 6;
+
+        // 通过没有「条款」可引用，这里可以写一句允许通过的理由（会显示给作者）
+        this.reasonBox = new net.minecraft.client.gui.components.EditBox(this.font,
+                left, y, PANEL_W, 20,
+                Component.translatable("gui.meow_machine.pass_reason_hint"));
+        this.reasonBox.setMaxLength(120);
+        this.reasonBox.setHint(Component.translatable("gui.meow_machine.pass_reason_hint"));
+        this.addRenderableWidget(this.reasonBox);
+        y += 26;
+
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.pass_sticker_default"),
                         b -> passWith(""))
@@ -71,8 +82,9 @@ public class PassStickerScreen extends Screen {
     }
 
     private void passWith(String stickerId) {
+        String reason = reasonBox == null ? "" : reasonBox.getValue().strip();
         Network.CHANNEL.sendToServer(
-                new DecidePacket(entry.fullId(), "PASS", -1, "", stickerId));
+                new DecidePacket(entry.fullId(), "PASS", -1, reason, stickerId));
         if (this.minecraft != null) {
             this.minecraft.setScreen(null);
         }
