@@ -59,6 +59,10 @@ public final class MeowCommands {
                                         .executes(MeowCommands::revoke)))
                         .then(Commands.literal("list")
                                 .executes(MeowCommands::listReviewers)))
+                // ---------- OP：直接打开完整审核后台 ----------
+                .then(Commands.literal("admin")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(MeowCommands::openAdmin))
                 // ---------- 任何玩家：查自己的投稿状态 ----------
                 .then(Commands.literal("my")
                         .executes(MeowCommands::mySubmissions))
@@ -246,6 +250,18 @@ public final class MeowCommands {
                 == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT;
         Network.CHANNEL.sendTo(new ReviewListPacket(list, canFinalize, assistant), self.connection.connection,
                 NetworkDirection.PLAY_TO_CLIENT);
+        return 1;
+    }
+
+    /** 打开完整审核后台（等价于右键审核终端），仅 OP 可用 */
+    private static int openAdmin(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer self = ctx.getSource().getPlayer();
+        if (self == null) {
+            return 0;
+        }
+        Network.CHANNEL.sendTo(
+                io.github.zgxhzhr.meowmachine.network.AdminStatePacket.collect(self),
+                self.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
         return 1;
     }
 
