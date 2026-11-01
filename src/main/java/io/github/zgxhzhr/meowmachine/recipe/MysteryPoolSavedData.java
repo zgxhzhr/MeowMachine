@@ -4,25 +4,25 @@ import io.github.zgxhzhr.meowmachine.MeowMachine;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 神秘合成的结果池：{@code <世界>/data/meow_machine_mystery.dat}。
  *
- * <p>规则：候选 = 当前世界里**有合成配方的物品**；每合一次从洗好的队列里取一个，
- * 保证每次结果不同；队列耗尽后重新洗牌（仍然避免连续两次相同）。
+ * <p>**假随机**：一轮 = 按配置权重配好的 10 张牌（默认 9 张原版 + 1 张模组），
+ * 洗好后逐张发；发完才重配。抽完一轮你能拿到配置里承诺的比例，
+ * 不会出现「连抽十几次全是模组物品」这种真随机的尾巴。
  */
 public final class MysteryPoolSavedData extends SavedData {
 
     public static final String DATA_NAME = "meow_machine_mystery";
+    /** 一轮牌堆大小 */
+    private static final int DECK = 10;
 
     private final List<String> remaining = new ArrayList<>();
     private String last = "";
@@ -36,19 +36,27 @@ public final class MysteryPoolSavedData extends SavedData {
     }
 
     /**
-     * 取下一个结果。
+     * 按权重取下一个结果。
      *
-     * @param candidates 候选物品 id（调用方已过滤）
+     * @param vanilla        原版候选（{@code minecraft:}）
+     * @param modded         模组候选
+     * @param vanillaWeight  一轮 10 张里放几张原版（0~10）
+     * @param moddedEnabled  false = 只抽原版
      */
-    public String takeNext(List<String> candidates) {
-        if (candidates.isEmpty()) {
+    public String takeNext(List<String> vanilla, List<String> modded,
+                           int vanillaWeight, boolean moddedEnabled) {
+        int vWeight = moddedEnabled ? Math.max(0, Math.min(DECK, vanillaWeight)) : DECK;
+        int mWeight = DECK - vWeight;
+        if (vanilla.isEmpty() && modded.isEmpty()) {
             return "";
         }
-        remaining.removeIf(id -> !candidates.contains(id));
+        // 牌堆里的东西如果已经不在这个世界了（删了模组），只清理不合法的
+        remaining.removeIf(id -> !vanilla.contains(id) && !modded.contains(id));
         if (remaining.isEmpty()) {
-            remaining.addAll(candidates);
-            Collections.shuffle(remaining);
-            // 上一张还在队首就换一个，避免连续两次相同
+            remaining.addAll(buildDeck(vanilla, modded, vWeight, mWeight));
+            if (remaining.isEmpty()) {
+                return "";
+            }
             if (remaining.size() > 1 && remaining.get(0).equals(last)) {
                 Collections.swap(remaining, 0, 1);
             }
@@ -57,6 +65,30 @@ public final class MysteryPoolSavedData extends SavedData {
         last = next;
         setDirty();
         return next;
+    }
+
+    /** 配一轮：按权重抓原版/模组各若干张，混在一起打乱 */
+    private List<String> buildDeck(List<String> vanilla, List<String> modded,
+                                   int vWeight, int mWeight) {
+        List<String> deck = new ArrayList<>(DECK);
+        List<String> v = new ArrayList<>(vanilla);
+        List<String> m = new ArrayList<>(modded);
+        Collections.shuffle(v);
+        Collections.shuffle(m);
+        if (v.isEmpty()) {
+            deck.addAll(m.subList(0, Math.min(m.size(), DECK)));
+        } else if (m.isEmpty() || mWeight <= 0) {
+            deck.addAll(v.subList(0, Math.min(v.size(), DECK)));
+        } else {
+            for (int i = 0; i < vWeight && i < v.size(); i++) {
+                deck.add(v.get(i));
+            }
+            for (int i = 0; i < mWeight && i < m.size(); i++) {
+                deck.add(m.get(i));
+            }
+        }
+        Collections.shuffle(deck);
+        return deck;
     }
 
     // ---------------- 序列化 ----------------
@@ -87,21 +119,15 @@ public final class MysteryPoolSavedData extends SavedData {
         if (server == null) {
             return "";
         }
-        Set<String> vanilla = new LinkedHashSet<>();
-        Set<String> modded = new LinkedHashSet<>();
+        List<String> vanilla = new ArrayList<>();
+        List<String> modded = new ArrayList<>();
         var access = server.registryAccess();
         for (var recipe : server.getRecipeManager().getAllRecipesFor(
                 net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
-            ItemStackView view = new ItemStackView(recipe, access);
-            String id = view.itemId();
-            if (id == null || id.isBlank()) {
+            String id = new ItemStackView(recipe, access).itemId();
+            if (id == null || id.isBlank() || id.startsWith(MeowMachine.MOD_ID + ":")) {
                 continue;
             }
-            // 排除本模组物品（避免产出梗图/终端之类，也避免和神秘配方本身互相嵌套）
-            if (id.startsWith(MeowMachine.MOD_ID + ":")) {
-                continue;
-            }
-            // 空气、屏障等「有配方但拿不到正常物品」的结果要排除
             if (id.equals("minecraft:air") || id.equals("minecraft:barrier")
                     || id.equals("minecraft:light") || id.equals("minecraft:structure_void")) {
                 continue;
@@ -121,12 +147,8 @@ public final class MysteryPoolSavedData extends SavedData {
         if (data == null) {
             return "";
         }
-        // 原版物品优先：模组物品只占 10%，避免动不动抽出破坏平衡的东西
-        boolean useVanilla = !vanilla.isEmpty()
-                && (modded.isEmpty()
-                        || java.util.concurrent.ThreadLocalRandom.current().nextInt(10) != 0);
-        java.util.List<String> candidates = new ArrayList<>(useVanilla ? vanilla : modded);
-        String picked = data.takeNext(candidates);
+        String picked = data.takeNext(List.copyOf(vanilla), List.copyOf(modded),
+                MysteryConfig.vanillaWeight(), MysteryConfig.moddedEnabled());
         MeowMachine.LOG.debug("[喵呜机] 神秘合成结果 {}", picked);
         return picked;
     }
@@ -148,11 +170,7 @@ public final class MysteryPoolSavedData extends SavedData {
                     return "";
                 }
                 String id = key.toString();
-                // 再挡一次空气/占位
-                if (id.equals("minecraft:air")) {
-                    return "";
-                }
-                return id;
+                return id.equals("minecraft:air") ? "" : id;
             } catch (RuntimeException e) {
                 return "";
             }
