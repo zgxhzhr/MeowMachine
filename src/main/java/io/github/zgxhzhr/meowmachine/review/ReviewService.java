@@ -80,9 +80,12 @@ public final class ReviewService {
                         hardFormat.size(), ai.findings().size());
                 String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
                 boolean pass = ai.findings().isEmpty() && hardFormat.isEmpty();
-                if (aiSticker != null && pass
-                        && !"approved".equals(StickerRegistry.stateOf(aiSticker))) {
-                    aiSticker = null;
+                if (aiSticker != null) {
+                    // 结论与梗图必须一致：打回不能配「已通过」的图，反之亦然
+                    boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));
+                    if (pass != approvedSticker) {
+                        aiSticker = null;
+                    }
                 }
                 if (pass) {
                     String sticker = aiSticker != null ? aiSticker
@@ -95,11 +98,13 @@ public final class ReviewService {
                 }
                 List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
                 findings.addAll(hardFormat);
-                if (ai.note() != null && !ai.note().isBlank()) {
+                // AI 判「没问题」而被确定性格式拦下时，它的夸奖附言与结论矛盾，不要显示
+                boolean aiSaidOk = ai.findings().isEmpty();
+                if (!aiSaidOk && ai.note() != null && !ai.note().isBlank()) {
                     findings.add(ReviewFinding.unexplained(ai.note().trim()));
                 }
                 String sticker = aiSticker != null ? aiSticker
-                        : pickSticker(Verdict.RETURN, ai.findings());
+                        : pickSticker(Verdict.RETURN, findings);
                 return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
             });
         }
@@ -128,9 +133,12 @@ public final class ReviewService {
                     return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
                 }
                 String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
-                if (aiSticker != null && ai.findings().isEmpty()
-                        && !"approved".equals(StickerRegistry.stateOf(aiSticker))) {
-                    aiSticker = null;
+                if (aiSticker != null) {
+                    boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(aiSticker));
+                    boolean pass = ai.findings().isEmpty();
+                    if (pass != approvedSticker) {
+                        aiSticker = null;
+                    }
                 }
                 if (ai.findings().isEmpty()) {
                     String sticker = aiSticker != null ? aiSticker

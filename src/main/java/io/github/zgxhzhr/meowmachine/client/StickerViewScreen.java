@@ -34,7 +34,7 @@ public class StickerViewScreen extends Screen {
 
         java.util.List<String> story = io.github.zgxhzhr.meowmachine.item.StickerItem.wrap(
                 Component.translatable("item.meow_machine.sticker_" + stickerId + ".story").getString(), 22);
-        int textH = 30 + story.size() * 11;
+        int textH = 30 + story.size() * 12;
         int size = Math.min(MAX_IMG, Math.min(this.width - 40, this.height - textH - 40));
         size = Math.max(64, size);
         g.blit(texture, cx - size / 2, y, 0, 0, size, size, size, size);
@@ -45,7 +45,7 @@ public class StickerViewScreen extends Screen {
         y += 13;
         for (String line : story) {
             g.drawCenteredString(this.font, Component.literal(line), cx, y, 0xDDDDDD);
-            y += 11;
+            y += 12;
         }
 
         g.drawCenteredString(this.font,
