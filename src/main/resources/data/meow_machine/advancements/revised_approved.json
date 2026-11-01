@@ -1,7 +1,7 @@
 {
   "display": {
     "icon": {
-      "item": "minecraft:enchanted_book"
+      "item": "meow_machine:meow_icon"
     },
     "title": {
       "translate": "advancements.meow_machine.revised_approved.title"

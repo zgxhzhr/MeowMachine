@@ -1,0 +1,23 @@
+{
+  "display": {
+    "icon": {
+      "item": "meow_machine:sticker_meowmeow"
+    },
+    "title": {
+      "translate": "advancements.meow_machine.sticker_collector.title"
+    },
+    "description": {
+      "translate": "advancements.meow_machine.sticker_collector.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "meow_machine:root",
+  "criteria": {
+    "code": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

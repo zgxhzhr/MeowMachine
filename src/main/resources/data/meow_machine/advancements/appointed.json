@@ -1,7 +1,7 @@
 {
   "display": {
     "icon": {
-      "item": "minecraft:golden_helmet"
+      "item": "meow_machine:meow_icon"
     },
     "title": {
       "translate": "advancements.meow_machine.appointed.title"

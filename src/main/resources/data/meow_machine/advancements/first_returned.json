@@ -1,7 +1,7 @@
 {
   "display": {
     "icon": {
-      "item": "minecraft:barrier"
+      "item": "meow_machine:meow_icon"
     },
     "title": {
       "translate": "advancements.meow_machine.first_returned.title"

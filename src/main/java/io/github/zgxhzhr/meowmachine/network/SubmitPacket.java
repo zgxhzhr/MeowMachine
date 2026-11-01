@@ -109,6 +109,7 @@ public record SubmitPacket(String title, String body) {
                                         player, io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.FIRST_RETURNED);
                             }
                         }
+                        io.github.zgxhzhr.meowmachine.progress.StickerAlbum.grant(player, result.stickerId());
                         Network.CHANNEL.sendTo(ReviewResultPacket.from(result),
                                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
                     });

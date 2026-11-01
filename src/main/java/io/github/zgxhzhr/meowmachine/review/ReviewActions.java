@@ -150,6 +150,7 @@ public final class ReviewActions {
             MeowMachine.LOG.info("[喵呜机] 作者当前草稿与被裁决稿件不一致，只通知不改草稿 author={}",
                     author.getName().getString());
         }
+        io.github.zgxhzhr.meowmachine.progress.StickerAlbum.grant(author, result.stickerId());
         Network.CHANNEL.sendTo(ReviewResultPacket.from(result),
                 author.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
     }

@@ -35,6 +35,49 @@ public final class ModItems {
             ITEMS.register("admin_terminal",
                     () -> new AdminTerminalItem(new Item.Properties().stacksTo(1)));
 
+    /** 18 张梗图对应的物品 id（顺序不重要，按名字映射） */
+    public static final String[] STICKER_IDS = {
+            "under_review", "dont_want_revise", "revising", "just_return_it",
+            "water_again", "ai_slop", "mt_god", "format_broken",
+            "getting_worse", "human_wrote_this", "approved_progress", "approved_plain",
+            "approved_short", "approved_fix", "helpless", "kurushi", "laowu", "meowmeow"
+    };
+
+    /** 梗图 id → 物品 */
+    private static final java.util.Map<String, RegistryObject<Item>> STICKER_ITEMS =
+            new java.util.LinkedHashMap<>();
+
+    static {
+        for (String id : STICKER_IDS) {
+            STICKER_ITEMS.put(id, ITEMS.register("sticker_" + id,
+                    () -> new io.github.zgxhzhr.meowmachine.item.StickerItem(
+                            new Item.Properties().stacksTo(16), id)));
+        }
+    }
+
+    /** 某个梗图 id 的物品栈（未知 id 返回空栈） */
+    public static net.minecraft.world.item.ItemStack stickerStack(String stickerId) {
+        if (stickerId == null || stickerId.isBlank()) {
+            return net.minecraft.world.item.ItemStack.EMPTY;
+        }
+        String path = stickerId.contains(":")
+                ? stickerId.substring(stickerId.indexOf(':') + 1) : stickerId;
+        RegistryObject<Item> item = STICKER_ITEMS.get(path);
+        return item == null
+                ? net.minecraft.world.item.ItemStack.EMPTY
+                : new net.minecraft.world.item.ItemStack(item.get());
+    }
+
+    /**
+     * 成就图标用的物品（贴图是「喵喵喵」表情）。
+     *
+     * <p>成就有 {@code display.icon} 只能引用物品，不能直接引用贴图；
+     * 所以注册一个纯图标物品：不进创造栏、没有配方，正常游戏拿不到。
+     */
+    public static final RegistryObject<Item> MEOW_ICON =
+            ITEMS.register("meow_icon",
+                    () -> new Item(new Item.Properties()));
+
     public static final RegistryObject<CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup." + MeowMachine.MOD_ID))
