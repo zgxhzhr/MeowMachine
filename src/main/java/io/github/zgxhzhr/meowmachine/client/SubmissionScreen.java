@@ -207,11 +207,19 @@ public class SubmissionScreen extends Screen {
                 for (int r = 0; r * cols < cells.size(); r++) {
                     int rowTop = y;
                     int rowH = LINE_H + PAD;
+                    int rectFrom = cellRects.size();
                     for (int c = 0; c < cols && r * cols + c < cells.size(); c++) {
                         int cellX = left + c * cellW;
                         int consumed = layoutCell(b, r * cols + c, cells.get(r * cols + c),
                                 cellX + 3, rowTop + 2, cellW - 6, "");
                         rowH = Math.max(rowH, consumed - rowTop + 2);
+                    }
+                    // 一行里只要有单元格折行，整行都会变高；把本行各单元格的点击矩形补齐，
+                    // 否则空单元格只有 10px 高，点下半截会落到别的格子（实测问题）
+                    for (int i = rectFrom; i < cellRects.size(); i++) {
+                        CellRect old = cellRects.get(i);
+                        cellRects.set(i, new CellRect(old.block(), old.cell(), old.x(), old.y(),
+                                old.w(), Math.max(old.h(), rowH - 2), old.textX()));
                     }
                     tableFrames.add(new int[]{left, rowTop, maxW, rowH, cols});
                     y = rowTop + rowH;

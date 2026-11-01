@@ -29,6 +29,8 @@ public class RosterScreen extends Screen {
     private net.minecraft.client.gui.components.EditBox nameBox;
     private int shownMembers;
     private int shownOnline;
+    /** 名册列表的起始 y（标题和它之间留出空行） */
+    private int membersTop;
 
     public RosterScreen(RosterStatePacket packet) {
         super(Component.translatable("gui.meow_machine.roster_title"));
@@ -52,6 +54,7 @@ public class RosterScreen extends Screen {
         int avail = this.height - top - 60;
         int memberRows = Math.max(1, Math.min(6, (avail - 26) / ROW_H));
         this.shownMembers = Math.min(members.size(), memberRows);
+        this.membersTop = top + 10;
 
         for (int i = 0; i < shownMembers; i++) {
             RosterStatePacket.Entry e = members.get(i);
@@ -62,7 +65,7 @@ public class RosterScreen extends Screen {
         }
 
         // 在线玩家：一行名字 + 两个任命按钮
-        int onlineTop = top + shownMembers * ROW_H + 24;
+        int onlineTop = this.membersTop + Math.max(1, shownMembers) * ROW_H + 16;
         int room = Math.max(1, (this.height - 34 - onlineTop) / ROW_H);
         this.shownOnline = Math.min(online.size(), Math.min(5, room));
 
@@ -124,17 +127,17 @@ public class RosterScreen extends Screen {
         g.drawCenteredString(this.font, this.title, cx, 14, 0xFFFFFF);
         g.drawString(this.font,
                 Component.translatable("gui.meow_machine.roster.members_header"),
-                left, top - 12, 0xFFAA44, false);
+                left, top - 4, 0xFFAA44, false);
 
         if (shownMembers == 0) {
             g.drawString(this.font,
                     Component.translatable("gui.meow_machine.roster.empty"),
-                    left, top + 6, 0xAAAAAA, false);
+                    left, this.membersTop + 4, 0xAAAAAA, false);
         }
 
         for (int i = 0; i < shownMembers; i++) {
             RosterStatePacket.Entry e = members.get(i);
-            int y = top + i * ROW_H;
+            int y = this.membersTop + i * ROW_H;
             g.drawString(this.font,
                     Component.literal(trimToWidth(e.displayName(), 160)), left, y + 6, 0xFFFF80, false);
             g.drawString(this.font,
@@ -142,7 +145,7 @@ public class RosterScreen extends Screen {
                     left + 168, y + 6, 0xCCCCCC, false);
         }
 
-        int onlineTop = top + shownMembers * ROW_H + 24;
+        int onlineTop = this.membersTop + Math.max(1, shownMembers) * ROW_H + 16;
         g.drawString(this.font,
                 Component.translatable("gui.meow_machine.roster.online_header"),
                 left, onlineTop - 12, 0xFFAA44, false);
