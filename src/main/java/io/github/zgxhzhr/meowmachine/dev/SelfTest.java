@@ -6,6 +6,8 @@ import io.github.zgxhzhr.meowmachine.review.ReviewResult;
 import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.review.SubmissionState;
 import io.github.zgxhzhr.meowmachine.review.Verdict;
+import io.github.zgxhzhr.meowmachine.richtext.RichDoc;
+import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
 
 import java.util.List;
 import java.util.UUID;
@@ -55,7 +57,51 @@ public final class SelfTest {
         testVerdictMapping();
         testNewSubmissionIds();
         testTitleStructure();
+        testRichText();
         testRuleTables();
+    }
+
+    /**
+     * 富文本：只处理编辑者能用工具栏做出来的结构。
+     *
+     * <p>关键一条：**标题是手打的文字**（{@code [h2=…]}），不是块级元素——
+     * 模型/序列化都不能把它拆出来或丢掉。
+     */
+    private static void testRichText() {
+        List<RichDoc.Run> runs = List.of(
+                RichDoc.Run.plain("[h2=迁移边界]"),
+                RichDoc.Run.plain("普通文字，"),
+                new RichDoc.Run("加粗", true, false),
+                new RichDoc.Run("斜体", false, true));
+        RichDoc doc = new RichDoc(List.of(
+                new RichDoc.Para(runs),
+                new RichDoc.BulletList(List.of(
+                        List.of(RichDoc.Run.plain("第一项")),
+                        List.of(RichDoc.Run.plain("第二项")))),
+                new RichDoc.OrderedList(List.of(List.of(RichDoc.Run.plain("第一步")))),
+                new RichDoc.Table(List.of(
+                        List.of(List.of(RichDoc.Run.plain("表头甲")), List.of(RichDoc.Run.plain("表头乙"))),
+                        List.of(List.of(RichDoc.Run.plain("值一")), List.of(RichDoc.Run.plain("值二")))),
+                        true)));
+
+        String html = RichHtml.toHtml(doc);
+        check("手打的标题标记保持为文字", html.contains("<p>[h2=迁移边界]普通文字，"));
+        check("粗体序列化为 <strong>", html.contains("<strong>加粗</strong>"));
+        check("斜体序列化为 <em>", html.contains("<em>斜体</em>"));
+        check("无序列表 li>p", html.contains("<ul><li><p>第一项</p></li>"));
+        check("有序列表 ol>li>p", html.contains("<ol><li><p>第一步</p></li></ol>"));
+        check("表格表头用 th", html.contains("<th>表头甲</th>"));
+        check("表格单元格 td valign", html.contains("<td valign=\"top\"><p>值一</p></td>"));
+
+        check("往返一次 HTML 不变", RichHtml.toHtml(RichHtml.parse(html)).equals(html));
+        check("纯文本保留标题标记", doc.toPlainText().contains("[h2=迁移边界]"));
+
+        RichDoc pasted = RichHtml.parse(
+                "<p><span class=\"common-text-title common-text-title-2\">迁移边界</span></p>");
+        check("粘贴站点渲染形态时标签被剥掉、文字保留",
+                pasted.blocks().size() == 1
+                        && pasted.blocks().get(0) instanceof RichDoc.Para p
+                        && p.text().equals("迁移边界"));
     }
 
     /**

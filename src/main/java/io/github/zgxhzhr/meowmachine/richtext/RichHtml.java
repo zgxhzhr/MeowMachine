@@ -1,0 +1,313 @@
+package io.github.zgxhzhr.meowmachine.richtext;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * 富文本与站点正文 HTML 之间的解析 / 序列化。
+ *
+ * <p><b>只处理编辑者能用工具栏做出来的结构</b>：
+ * <pre>
+ * 段落    &lt;p&gt;…&lt;/p&gt;              （标题标记 [hN=] 只是段落里的文字）
+ * 粗体    &lt;strong&gt;…&lt;/strong&gt;
+ * 斜体    &lt;em&gt;…&lt;/em&gt;
+ * 无序表  &lt;ul&gt;&lt;li&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;
+ * 有序表  &lt;ol&gt;&lt;li&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;
+ * 表格    &lt;table&gt;&lt;tbody&gt;&lt;tr&gt;&lt;th&gt;…&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td valign="top"&gt;&lt;p&gt;…&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+ * </pre>
+ *
+ * <p>不认识的标签一律剥掉、保留文字（粘贴外部内容时的清洗），{@code <br>} 变成换行。
+ */
+public final class RichHtml {
+
+    private RichHtml() {
+    }
+
+    // ---------------- 行内 ----------------
+
+    /** 拼接行内片段的纯文本 */
+    public static String join(List<RichDoc.Run> runs) {
+        StringBuilder sb = new StringBuilder();
+        for (RichDoc.Run r : runs) {
+            sb.append(r.text());
+        }
+        return sb.toString();
+    }
+
+    private static String escape(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private static String inlineHtml(List<RichDoc.Run> runs) {
+        StringBuilder sb = new StringBuilder();
+        for (RichDoc.Run r : runs) {
+            String text = r.text();
+            if (text.isEmpty()) {
+                continue;
+            }
+            String html = escape(text).replace("\n", "<br>");
+            if (!text.isBlank()) {
+                if (r.bold()) {
+                    html = "<strong>" + html + "</strong>";
+                }
+                if (r.italic()) {
+                    html = "<em>" + html + "</em>";
+                }
+            }
+            sb.append(html);
+        }
+        return sb.toString();
+    }
+
+    // ---------------- 序列化 ----------------
+
+    public static String toHtml(RichDoc doc) {
+        StringBuilder sb = new StringBuilder();
+        for (RichDoc.Block block : doc.blocks()) {
+            if (block instanceof RichDoc.Para p) {
+                sb.append("<p>").append(inlineHtml(p.runs())).append("</p>");
+            } else if (block instanceof RichDoc.BulletList l) {
+                sb.append("<ul>");
+                for (List<RichDoc.Run> item : l.items()) {
+                    sb.append("<li><p>").append(inlineHtml(item)).append("</p></li>");
+                }
+                sb.append("</ul>");
+            } else if (block instanceof RichDoc.OrderedList l) {
+                sb.append("<ol>");
+                for (List<RichDoc.Run> item : l.items()) {
+                    sb.append("<li><p>").append(inlineHtml(item)).append("</p></li>");
+                }
+                sb.append("</ol>");
+            } else if (block instanceof RichDoc.Table t) {
+                sb.append("<table><tbody>");
+                for (int r = 0; r < t.rows().size(); r++) {
+                    sb.append("<tr>");
+                    boolean header = t.headerRow() && r == 0;
+                    for (List<RichDoc.Run> cell : t.rows().get(r)) {
+                        if (header) {
+                            sb.append("<th>").append(inlineHtml(cell)).append("</th>");
+                        } else {
+                            sb.append("<td valign=\"top\"><p>").append(inlineHtml(cell)).append("</p></td>");
+                        }
+                    }
+                    sb.append("</tr>");
+                }
+                sb.append("</tbody></table>");
+            }
+        }
+        return sb.toString();
+    }
+
+    // ---------------- 解析 ----------------
+
+    /** 解析正文 HTML；不认识的标签剥掉但保留文字 */
+    public static RichDoc parse(String html) {
+        if (html == null || html.isBlank()) {
+            return RichDoc.empty();
+        }
+        String s = html.trim();
+        List<RichDoc.Block> blocks = new ArrayList<>();
+        int i = 0;
+        while (i < s.length()) {
+            int pStart = indexOfIgnoreCase(s, "<p", i);
+            int ulStart = indexOfIgnoreCase(s, "<ul", i);
+            int olStart = indexOfIgnoreCase(s, "<ol", i);
+            int tableStart = indexOfIgnoreCase(s, "<table", i);
+            int next = minPositive(pStart, ulStart, olStart, tableStart);
+
+            if (next < 0) {
+                String rest = stripTags(s.substring(i)).trim();
+                if (!rest.isEmpty()) {
+                    blocks.add(new RichDoc.Para(List.of(RichDoc.Run.plain(rest))));
+                }
+                break;
+            }
+            if (next > i) {
+                String between = stripTags(s.substring(i, next)).trim();
+                if (!between.isEmpty()) {
+                    blocks.add(new RichDoc.Para(List.of(RichDoc.Run.plain(between))));
+                }
+            }
+            if (next == pStart) {
+                int end = closeTag(s, next, "p");
+                if (end < 0) {
+                    break;
+                }
+                blocks.add(new RichDoc.Para(parseInline(s.substring(s.indexOf('>', next) + 1, end))));
+                i = end + 4;
+            } else if (next == ulStart || next == olStart) {
+                String tag = next == ulStart ? "ul" : "ol";
+                int end = closeTag(s, next, tag);
+                if (end < 0) {
+                    break;
+                }
+                blocks.add(parseList(s.substring(s.indexOf('>', next) + 1, end), tag.equals("ol")));
+                i = end + 3 + tag.length();
+            } else {
+                int end = closeTag(s, next, "table");
+                if (end < 0) {
+                    break;
+                }
+                blocks.add(parseTable(s.substring(s.indexOf('>', next) + 1, end)));
+                i = end + 8;
+            }
+        }
+        return blocks.isEmpty() ? RichDoc.empty() : new RichDoc(blocks);
+    }
+
+    private static RichDoc.Block parseList(String inner, boolean ordered) {
+        List<List<RichDoc.Run>> items = new ArrayList<>();
+        for (String li : allInner(inner, "li")) {
+            items.add(parseInline(li));
+        }
+        if (items.isEmpty()) {
+            items.add(List.of(RichDoc.Run.plain("")));
+        }
+        return ordered ? new RichDoc.OrderedList(items) : new RichDoc.BulletList(items);
+    }
+
+    private static RichDoc.Table parseTable(String inner) {
+        List<List<List<RichDoc.Run>>> rows = new ArrayList<>();
+        boolean header = false;
+        for (String tr : allInner(inner, "tr")) {
+            List<List<RichDoc.Run>> cells = new ArrayList<>();
+            for (String th : allInner(tr, "th")) {
+                header = true;
+                cells.add(parseInline(th));
+            }
+            for (String td : allInner(tr, "td")) {
+                cells.add(parseInline(td));
+            }
+            if (!cells.isEmpty()) {
+                rows.add(cells);
+            }
+        }
+        if (rows.isEmpty()) {
+            rows.add(List.of(List.of(RichDoc.Run.plain(""))));
+        }
+        return new RichDoc.Table(rows, header);
+    }
+
+    /** 行内解析：识别 strong/b 与 em/i，其余标签剥掉但保留文字 */
+    static List<RichDoc.Run> parseInline(String html) {
+        List<RichDoc.Run> runs = new ArrayList<>();
+        StringBuilder buf = new StringBuilder();
+        boolean bold = false;
+        boolean italic = false;
+
+        int i = 0;
+        while (i < html.length()) {
+            char c = html.charAt(i);
+            if (c == '<') {
+                int end = html.indexOf('>', i);
+                if (end < 0) {
+                    break;
+                }
+                String tag = html.substring(i + 1, end).trim().toLowerCase(Locale.ROOT);
+                boolean closing = tag.startsWith("/");
+                String name = (closing ? tag.substring(1) : tag).split("\\s")[0];
+                if (!buf.isEmpty()) {
+                    runs.add(new RichDoc.Run(unescape(buf.toString()), bold, italic));
+                    buf.setLength(0);
+                }
+                switch (name) {
+                    case "strong", "b" -> bold = !closing;
+                    case "em", "i" -> italic = !closing;
+                    case "br" -> buf.append('\n');
+                    default -> {
+                        // 其它标签（a/span/p/…）剥掉，文字保留
+                    }
+                }
+                i = end + 1;
+                continue;
+            }
+            buf.append(c);
+            i++;
+        }
+        if (!buf.isEmpty()) {
+            runs.add(new RichDoc.Run(unescape(buf.toString()), bold, italic));
+        }
+        if (runs.isEmpty()) {
+            runs.add(RichDoc.Run.plain(""));
+        }
+        return runs;
+    }
+
+    // ---------------- 工具 ----------------
+
+    private static int minPositive(int... v) {
+        int best = -1;
+        for (int x : v) {
+            if (x >= 0 && (best < 0 || x < best)) {
+                best = x;
+            }
+        }
+        return best;
+    }
+
+    private static int indexOfIgnoreCase(String haystack, String needle, int from) {
+        return haystack.toLowerCase(Locale.ROOT).indexOf(needle, from);
+    }
+
+    /** 找到 {@code <tag …>} 对应闭合标签的起始下标（-1 表示没有） */
+    private static int closeTag(String s, int openIdx, String tag) {
+        String open = "<" + tag;
+        String close = "</" + tag + ">";
+        int depth = 0;
+        int i = openIdx;
+        String lower = s.toLowerCase(Locale.ROOT);
+        while (i < s.length()) {
+            int nextOpen = lower.indexOf(open, i);
+            int nextClose = lower.indexOf(close, i);
+            if (nextClose < 0) {
+                return -1;
+            }
+            if (nextOpen >= 0 && nextOpen < nextClose) {
+                depth++;
+                i = nextOpen + open.length();
+            } else {
+                depth--;
+                if (depth == 0) {
+                    return nextClose;
+                }
+                i = nextClose + close.length();
+            }
+        }
+        return -1;
+    }
+
+    /** 取出所有同名标签的内部 HTML */
+    private static List<String> allInner(String s, String tag) {
+        List<String> out = new ArrayList<>();
+        int i = 0;
+        String lower = s.toLowerCase(Locale.ROOT);
+        while (true) {
+            int open = lower.indexOf("<" + tag, i);
+            if (open < 0) {
+                break;
+            }
+            int end = closeTag(s, open, tag);
+            if (end < 0) {
+                break;
+            }
+            out.add(s.substring(s.indexOf('>', open) + 1, end));
+            i = end + tag.length() + 3;
+        }
+        return out;
+    }
+
+    /** 去掉所有标签（保留 {@code <br>} 为换行） */
+    public static String stripTags(String html) {
+        if (html == null) {
+            return "";
+        }
+        return unescape(html.replaceAll("(?i)<br\\s*/?>", "\n").replaceAll("<[^>]+>", ""));
+    }
+
+    private static String unescape(String s) {
+        return s.replace("&lt;", "<").replace("&gt;", ">")
+                .replace("&quot;", "\"").replace("&#39;", "'")
+                .replace("&nbsp;", " ").replace("&amp;", "&");
+    }
+}
