@@ -208,9 +208,9 @@
   "item.meow_machine.sticker_which_version": "Sticker: which_version",
   "item.meow_machine.sticker_vague_words": "Sticker: vague_words",
   "item.meow_machine.sticker_punct_storm": "Sticker: punct_storm",
-  "item.meow_machine.sticker_loop_again.story": "喵呜机读到第三段时停住了。这句话它半小时前刚读过，连标点都一样。它把稿子翻回第一页，确认作者真的只写了一遍。",
-  "item.meow_machine.sticker_no_period.story": "喵呜机从头翻到尾，句号始终没有出现。它在最后一行停住，替作者补了一个，又删掉——这不该是它干的活。",
-  "item.meow_machine.sticker_which_version.story": "喵呜机盯着「最新版本」四个字看了很久。它去问作者，作者说「你猜」。于是它开始占卜。",
-  "item.meow_machine.sticker_vague_words.story": "喵呜机数了数：这段里有七个「我觉得」，两个「应该」，一个「大概」。它想问依据在哪，想了想又没问。",
-  "item.meow_machine.sticker_punct_storm.story": "喵呜机读到那串问号时眨了眨眼。它数不清作者到底问了几个问题，只确定自己一个也不想回答。"
+  "item.meow_machine.sticker_loop_again.story": "MeowMachine stops at the third paragraph. He read this exact sentence half an hour ago - same punctuation and all. He flips back to page one and counts the paragraphs again: there is only one copy. And yet he has now read it twice. He writes \"duplicate\" on a sticky note and sticks it to the edge of the screen.",
+  "item.meow_machine.sticker_no_period.story": "MeowMachine goes through the entry from top to bottom; the full stop never appears. He stops on the last line, finger hovering over the keyboard to add one, then pulls back - that is not his job. In the end he only writes in the note: remember to close your sentences next time.",
+  "item.meow_machine.sticker_which_version.story": "MeowMachine stares at the words \"latest version\" for a long time. They say everything and nothing. He opens his notes to check the version number, finds not a single digit in the entry, closes the notes, and starts divining.",
+  "item.meow_machine.sticker_vague_words.story": "MeowMachine counts: seven \"I think\", two \"should be\", one \"probably\" in a single paragraph. He looks around for evidence and finds only the entry. So he writes in the note: please replace \"I think\" with \"measured\".",
+  "item.meow_machine.sticker_punct_storm.story": "MeowMachine blinks at the string of question marks. He cannot count how many questions were asked, only that he can answer none of them. He parks the cursor on the first question mark, stares for three seconds, and skips the whole paragraph."
 }
