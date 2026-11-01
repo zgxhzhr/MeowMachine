@@ -14,15 +14,16 @@ import java.util.List;
 /**
  * 神秘合成的结果池：{@code <世界>/data/meow_machine_mystery.dat}。
  *
- * <p>**假随机**：一轮 = 按配置权重配好的 10 张牌（默认 9 张原版 + 1 张模组），
- * 洗好后逐张发；发完才重配。抽完一轮你能拿到配置里承诺的比例，
- * 不会出现「连抽十几次全是模组物品」这种真随机的尾巴。
+ * <p>**假随机**：一轮 = 按配置比例配好的 20 张牌（默认 15 张原版 + 5 张模组 = 模组 25%），
+ * 模组物品均匀插在原版之间，发完一轮才重配。
  */
 public final class MysteryPoolSavedData extends SavedData {
 
     public static final String DATA_NAME = "meow_machine_mystery";
-    /** 一轮牌堆大小 */
-    private static final int DECK = 10;
+    /** 一轮牌堆大小（20 张 → 百分比可按 5% 粒度配） */
+    private static final int DECK = 20;
+    /** 牌堆格式版本：1 = 旧版全量候选洗牌，3 = 现在的加权牌堆 */
+    private static final int DECK_VERSION = 3;
 
     private final List<String> remaining = new ArrayList<>();
     private String last = "";
@@ -36,31 +37,30 @@ public final class MysteryPoolSavedData extends SavedData {
     }
 
     /**
-     * 按权重取下一个结果。
+     * 按比例取下一个结果。
      *
      * @param vanilla        原版候选（{@code minecraft:}）
      * @param modded         模组候选
-     * @param vanillaWeight  一轮 10 张里放几张原版（0~10）
+     * @param moddedPercent  模组物品百分比（0~100）
      * @param moddedEnabled  false = 只抽原版
      */
     public String takeNext(List<String> vanilla, List<String> modded,
-                           int vanillaWeight, boolean moddedEnabled) {
-        int vWeight = moddedEnabled ? Math.max(0, Math.min(DECK, vanillaWeight)) : DECK;
-        int mWeight = DECK - vWeight;
+                           int moddedPercent, boolean moddedEnabled) {
         if (vanilla.isEmpty() && modded.isEmpty()) {
             return "";
         }
-        // 牌堆里的东西如果已经不在这个世界了（删了模组），只清理不合法的
+        int mWeight = moddedEnabled
+                ? Math.max(0, Math.min(DECK, Math.round(moddedPercent / (100f / DECK))))
+                : 0;
+        int vWeight = DECK - mWeight;
+
         remaining.removeIf(id -> !vanilla.contains(id) && !modded.contains(id));
         if (remaining.size() > DECK) {
             remaining.clear();
         }
         if (remaining.isEmpty()) {
             remaining.addAll(buildDeck(vanilla, modded, vWeight, mWeight));
-            if (remaining.size() > DECK) {
-            remaining.clear();
-        }
-        if (remaining.isEmpty()) {
+            if (remaining.isEmpty()) {
                 return "";
             }
             if (remaining.size() > 1 && remaining.get(0).equals(last)) {
@@ -74,40 +74,44 @@ public final class MysteryPoolSavedData extends SavedData {
     }
 
     /**
-     * 配一轮牌：**先发满原版，最后才发模组**。
+     * 配一轮牌：模组物品**均匀插在原版之间**。
      *
-     * <p>用户要的规则是「原版 90% / 模组 10%，但原版已经出了 9 个，下一个必定是模组物品」——
-     * 所以不能把 10 张牌完全打乱（那样模组可能落在队首，随后连着 9 次都没有），
-     * 而是固定「原版块 + 模组块」：最多 9 抽就一定会见到模组物品，
-     * 一个周期内模组出现次数也正好等于配置权重。
+     * <p>25% 时大约每 4 个位置就有 1 个模组：最长连抽 4 次就能见到模组物品，
+     * 也不会出现「连着 5 个模组」的突兀感。两类内部各自洗牌，具体抽到哪件仍然随机。
      */
     private List<String> buildDeck(List<String> vanilla, List<String> modded,
                                    int vWeight, int mWeight) {
-        List<String> deck = new ArrayList<>(DECK);
         List<String> v = new ArrayList<>(vanilla);
         List<String> m = new ArrayList<>(modded);
         Collections.shuffle(v);
         Collections.shuffle(m);
-        if (v.isEmpty()) {
-            deck.addAll(m.subList(0, Math.min(m.size(), DECK)));
-        } else if (m.isEmpty() || mWeight <= 0) {
-            deck.addAll(v.subList(0, Math.min(v.size(), DECK)));
-        } else {
-            for (int i = 0; i < vWeight && i < v.size(); i++) {
-                deck.add(v.get(i));
-            }
-            for (int i = 0; i < mWeight && i < m.size(); i++) {
-                deck.add(m.get(i));
+
+        int mSlots = Math.min(mWeight, m.size());
+        int vSlots = Math.min(vWeight, v.size());
+        if (mSlots <= 0) {
+            return new ArrayList<>(v.subList(0, Math.min(vSlots, DECK)));
+        }
+        if (vSlots <= 0) {
+            return new ArrayList<>(m.subList(0, Math.min(mSlots, DECK)));
+        }
+        List<String> deck = new ArrayList<>(DECK);
+        int mi = 0;
+        int vi = 0;
+        int total = mSlots + vSlots;
+        for (int i = 0; i < total; i++) {
+            int wantModded = (int) Math.round((i + 1) * (double) mSlots / total);
+            if (mi < wantModded && mi < mSlots) {
+                deck.add(m.get(mi++));
+            } else if (vi < vSlots) {
+                deck.add(v.get(vi++));
+            } else if (mi < mSlots) {
+                deck.add(m.get(mi++));
             }
         }
-        // 注意：这里**不再整体打乱**——原版块在前、模组块在后是刻意的（见方法注释）
         return deck;
     }
 
     // ---------------- 序列化 ----------------
-
-    /** 牌堆格式版本：1 = 旧版「全量候选洗牌」，2 = 现在的「一轮 10 张加权牌堆」 */
-    private static final int DECK_VERSION = 2;
 
     public static MysteryPoolSavedData load(CompoundTag tag) {
         MysteryPoolSavedData d = new MysteryPoolSavedData();
@@ -115,8 +119,7 @@ public final class MysteryPoolSavedData extends SavedData {
         int version = tag.getInt("deck_version");
         ListTag list = tag.getList("remaining", Tag.TAG_STRING);
         if (version < DECK_VERSION || list.size() > DECK) {
-            // 旧版存档里是几百上千个候选的洗牌队列，不清掉的话要先抽完它们才轮到新牌堆
-            // （实测：22 次全是原版，模组物品一直不出现）
+            // 旧版存档存的是几百上千个候选的洗牌队列，不清掉要先抽完它们才轮到新牌堆
             MeowMachine.LOG.info("[喵呜机] 神秘合成牌堆格式升级，重置旧队列（{} 条）", list.size());
             return d;
         }
@@ -172,7 +175,7 @@ public final class MysteryPoolSavedData extends SavedData {
             return "";
         }
         String picked = data.takeNext(List.copyOf(vanilla), List.copyOf(modded),
-                MysteryConfig.vanillaWeight(), MysteryConfig.moddedEnabled());
+                MysteryConfig.moddedPercent(), MysteryConfig.moddedEnabled());
         MeowMachine.LOG.debug("[喵呜机] 神秘合成结果 {}", picked);
         return picked;
     }
