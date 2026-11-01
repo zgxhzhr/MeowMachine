@@ -46,6 +46,11 @@ public final class StickerAlbum {
             return;
         }
         ItemStack stack = ModItems.stickerStack(stickerId);
+        if (stack.isEmpty()) {
+            // 数据包新增的图没有对应物品：不产出物品，也不算进收藏（否则「集齐 8 种」永远差实物）
+            MeowMachine.LOG.debug("[喵呜机] 梗图 {} 没有注册物品，跳过收集记录", stickerId);
+            return;
+        }
         if (!stack.isEmpty()) {
             // 背包满了就掉在脚边，别悄悄吞掉
             if (!player.getInventory().add(stack)) {

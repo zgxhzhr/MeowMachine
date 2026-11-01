@@ -84,6 +84,19 @@ public final class ModItems {
             ITEMS.register("mystery_result",
                     () -> new io.github.zgxhzhr.meowmachine.item.MysteryResultItem(new Item.Properties()));
 
+    /**
+     * 按梗图 id 找对应物品；数据包新增的图**没有物品**（物品必须在编译期注册），
+     * 这种图仍然可以用于审核，但不会产出物品。
+     */
+    public static net.minecraft.world.item.Item stickerItemOrNull(String stickerId) {
+        if (stickerId == null || stickerId.isBlank()) {
+            return null;
+        }
+        String path = stickerId.contains(":") ? stickerId.substring(stickerId.indexOf(':') + 1) : stickerId;
+        var ro = STICKER_ITEMS.get(path);
+        return ro == null ? null : ro.get();
+    }
+
     public static final RegistryObject<CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup." + MeowMachine.MOD_ID))
