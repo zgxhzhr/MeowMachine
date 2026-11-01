@@ -18,17 +18,19 @@ import java.util.function.Supplier;
  * 有了规则号，梗图会优先用该规则的专属图（第 18 条 →「又是灌水」），
  * 作者也能在弹窗里看到「命中：第 N 条」和审核员写的话。
  */
-public record DecidePacket(String fullId, String verdict, int ruleId, String note) {
+public record DecidePacket(String fullId, String verdict, int ruleId, String note, String stickerId) {
 
     public static void encode(DecidePacket msg, FriendlyByteBuf buf) {
         buf.writeUtf(msg.fullId, 40);
         buf.writeUtf(msg.verdict, 16);
         buf.writeVarInt(msg.ruleId);
         buf.writeUtf(msg.note == null ? "" : msg.note, 200);
+        buf.writeUtf(msg.stickerId == null ? "" : msg.stickerId, 64);
     }
 
     public static DecidePacket decode(FriendlyByteBuf buf) {
-        return new DecidePacket(buf.readUtf(40), buf.readUtf(16), buf.readVarInt(), buf.readUtf(200));
+        return new DecidePacket(buf.readUtf(40), buf.readUtf(16), buf.readVarInt(),
+                buf.readUtf(200), buf.readUtf(64));
     }
 
     public static void handle(DecidePacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -46,7 +48,7 @@ public record DecidePacket(String fullId, String verdict, int ruleId, String not
             c.setPacketHandled(true);
             return;
         }
-        ReviewActions.Outcome outcome = ReviewActions.decide(player, msg.fullId, v, msg.ruleId, msg.note);
+        ReviewActions.Outcome outcome = ReviewActions.decide(player, msg.fullId, v, msg.ruleId, msg.note, msg.stickerId);
         MeowMachine.LOG.info("[喵呜机] 界面裁决 player={} id={} verdict={} rule={} outcome={}",
                 player.getName().getString(), msg.fullId.substring(0, Math.min(8, msg.fullId.length())),
                 v, msg.ruleId, outcome);

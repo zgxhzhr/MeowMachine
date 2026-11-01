@@ -3,6 +3,7 @@ package io.github.zgxhzhr.meowmachine.network;
 import io.github.zgxhzhr.meowmachine.client.ReviewerScreenOpener;
 import io.github.zgxhzhr.meowmachine.review.AiOpinions;
 import io.github.zgxhzhr.meowmachine.review.ReviewNotes;
+import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
 import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
@@ -21,7 +22,8 @@ import java.util.function.Supplier;
  *
  * @param entries 每条：fullId / 短 id / 作者 / 标题
  */
-public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean assistant) {
+public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean assistant,
+                               List<String> approvedStickers) {
 
     /** 一次最多下发多少条：界面本身只显示 8 条，多发的没有意义 */
     private static final int MAX_ENTRIES = 512;
@@ -65,13 +67,18 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
         for (SubmissionQueue.Entry e : queue) {
             list.add(Entry.of(e.submission()));
         }
-        return new ReviewListPacket(List.copyOf(list), canFinalize, assistant);
+        return new ReviewListPacket(List.copyOf(list), canFinalize, assistant,
+                StickerRegistry.idsForState("approved"));
     }
 
     public static void encode(ReviewListPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.entries.size());
         buf.writeBoolean(msg.canFinalize());
         buf.writeBoolean(msg.assistant());
+        buf.writeVarInt(msg.approvedStickers().size());
+        for (String id : msg.approvedStickers()) {
+            buf.writeUtf(id, 64);
+        }
         for (Entry e : msg.entries) {
             buf.writeUtf(e.fullId(), 40);
             buf.writeUtf(e.shortId(), 12);
@@ -97,6 +104,14 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
         }
         boolean canFinalize = buf.readBoolean();
         boolean assistant = buf.readBoolean();
+        int sc = buf.readVarInt();
+        if (sc < 0 || sc > 64) {
+            throw new DecoderException("喵呜机：通过梗图条数非法: " + sc);
+        }
+        List<String> approved = new ArrayList<>(sc);
+        for (int i = 0; i < sc; i++) {
+            approved.add(buf.readUtf(64));
+        }
         List<Entry> list = new ArrayList<>(Math.min(n, 16));
         for (int i = 0; i < n; i++) {
             String fullId = buf.readUtf(40);
@@ -122,7 +137,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             }
             list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes), List.copyOf(ai)));
         }
-        return new ReviewListPacket(list, canFinalize, assistant);
+        return new ReviewListPacket(list, canFinalize, assistant, List.copyOf(approved));
     }
 
     public static void handle(ReviewListPacket msg, Supplier<NetworkEvent.Context> ctx) {

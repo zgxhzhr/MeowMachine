@@ -248,7 +248,8 @@ public final class MeowCommands {
         boolean canFinalize = ReviewerRoster.canFinalize(self);
         boolean assistant = ReviewerRoster.roleOf(self.getUUID())
                 == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT;
-        Network.CHANNEL.sendTo(new ReviewListPacket(list, canFinalize, assistant), self.connection.connection,
+        Network.CHANNEL.sendTo(new ReviewListPacket(list, canFinalize, assistant,
+                io.github.zgxhzhr.meowmachine.sticker.StickerRegistry.idsForState("approved")), self.connection.connection,
                 NetworkDirection.PLAY_TO_CLIENT);
         return 1;
     }

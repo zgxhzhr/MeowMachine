@@ -57,6 +57,16 @@ public final class ReviewActions {
      */
     public static Outcome decide(ServerPlayer reviewer, String idPrefix, Verdict verdict,
                                  int ruleId, String note) {
+        return decide(reviewer, idPrefix, verdict, ruleId, note, "");
+    }
+
+    /**
+     * 带梗图选择的裁决（审核员通过时可手动挑图）。
+     *
+     * @param stickerId 指定的梗图 id；空/非法/与结论不匹配则按原规则自动挑
+     */
+    public static Outcome decide(ServerPlayer reviewer, String idPrefix, Verdict verdict,
+                                 int ruleId, String note, String stickerId) {
         if (verdict == null || !verdict.isDecidable()) {
             return Outcome.BAD_VERDICT;
         }
@@ -99,9 +109,22 @@ public final class ReviewActions {
         AiOpinions.clear(sub.id());
 
         // 「说不出依据」时用「要不直接打回算了」那张图；其它情况按规则图 → 状态图
-        String sticker = ruleId >= 0
-                ? StickerRegistry.forRule(ruleId).map(s -> s.id().toString()).orElse(stateSticker(verdict))
-                : unexplainedSticker(verdict);
+        // 审核员手动挑的图优先（通过时必须 approved 系列，其它结论不能是 approved）
+        String chosen = (stickerId == null || stickerId.isBlank()) ? null : stickerId.trim();
+        if (chosen != null && !StickerRegistry.exists(chosen)) {
+            chosen = null;
+        }
+        if (chosen != null) {
+            boolean approvedSticker = "approved".equals(StickerRegistry.stateOf(chosen));
+            if ((verdict == Verdict.PASS) != approvedSticker) {
+                chosen = null;
+            }
+        }
+        String sticker = chosen != null ? chosen
+                : (ruleId >= 0
+                        ? StickerRegistry.forRule(ruleId).map(s -> s.id().toString())
+                                .orElse(stateSticker(verdict))
+                        : unexplainedSticker(verdict));
         ReviewResult result = ReviewResult.of(verdict, findings,
                 reviewer == null ? "console" : reviewer.getName().getString(), sticker);
 

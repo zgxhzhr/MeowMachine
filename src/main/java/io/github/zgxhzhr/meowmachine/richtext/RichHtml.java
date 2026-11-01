@@ -318,6 +318,45 @@ public final class RichHtml {
         return out;
     }
 
+    /**
+     * 给 AI 看的结构化纯文本：列表和表格**保留结构**。
+     *
+     * <p>{@link #stripTags} 会把列表/表格压成一行行文字，AI 就以为作者没建列表、
+     * 甚至反过来建议「用编辑器列表重排」。这里用不会被 Markdown 检查误伤的符号：
+     * 无序列表 {@code •}、有序列表 {@code 1、}、表格 {@code | 甲 | 乙 |}。
+     */
+    public static String toAiText(String html) {
+        RichDoc doc = parse(html);
+        StringBuilder sb = new StringBuilder();
+        for (RichDoc.Block block : doc.blocks()) {
+            if (block instanceof RichDoc.Para p) {
+                sb.append(p.text()).append('\n');
+            } else if (block instanceof RichDoc.BulletList l) {
+                for (List<RichDoc.Run> item : l.items()) {
+                    sb.append("• ").append(join(item)).append('\n');
+                }
+            } else if (block instanceof RichDoc.OrderedList l) {
+                int i = 1;
+                for (List<RichDoc.Run> item : l.items()) {
+                    sb.append(i++).append("、").append(join(item)).append('\n');
+                }
+            } else if (block instanceof RichDoc.Table t) {
+                for (List<List<RichDoc.Run>> row : t.rows()) {
+                    sb.append("| ");
+                    for (int i = 0; i < row.size(); i++) {
+                        if (i > 0) {
+                            sb.append(" | ");
+                        }
+                        sb.append(join(row.get(i)));
+                    }
+                    sb.append(" |\n");
+                }
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
     /** 去掉所有标签（保留 {@code <br>} 为换行） */
     public static String stripTags(String html) {
         if (html == null) {

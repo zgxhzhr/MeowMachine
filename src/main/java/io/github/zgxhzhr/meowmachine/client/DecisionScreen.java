@@ -104,7 +104,7 @@ public class DecisionScreen extends Screen {
     private void confirm() {
         String note = noteBox == null ? "" : noteBox.getValue().trim();
         Network.CHANNEL.sendToServer(
-                new DecidePacket(entry.fullId(), verdict, selectedRule, note));
+                new DecidePacket(entry.fullId(), verdict, selectedRule, note, ""));
         this.onClose();
     }
 

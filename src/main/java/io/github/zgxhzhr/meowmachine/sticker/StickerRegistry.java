@@ -148,6 +148,21 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
         return Optional.ofNullable(FALLBACK);
     }
 
+    /** 某个状态下的全部图 id（审核员通过时挑图用） */
+    public static List<String> idsForState(String state) {
+        List<String> out = new ArrayList<>();
+        if (state == null) {
+            return out;
+        }
+        List<Sticker> list = BY_STATE.get(state.toLowerCase());
+        if (list != null) {
+            for (Sticker s : list) {
+                out.add(s.id().toString());
+            }
+        }
+        return out;
+    }
+
     /** 该 id 是否存在（AI 返回的选图要校验） */
     public static boolean exists(String stickerId) {
         if (stickerId == null || stickerId.isBlank()) {

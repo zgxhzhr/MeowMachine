@@ -64,6 +64,7 @@ public final class SelfTest {
         testHeadingStructure();
         testRichText();
         testRichEditor();
+        testAiText();
         testRuleTables();
     }
 
@@ -328,6 +329,20 @@ public final class SelfTest {
     }
 
     /** 编辑器内核：悬挂样式、选区样式、列表、表格、回车/退格 */
+    /** 给 AI 的文本必须保留列表/表格结构，否则它会以为作者没建列表 */
+    private static void testAiText() {
+        String html = "<p>说明一句。</p>"
+                + "<ul><li><p>第一条</p></li><li><p>第二条</p></li></ul>"
+                + "<ol><li><p>第一步</p></li></ol>"
+                + "<table><tbody><tr><th>甲</th><th>乙</th></tr>"
+                + "<tr><td valign=\"top\"><p>1</p></td><td valign=\"top\"><p>2</p></td></tr></tbody></table>";
+        String text = io.github.zgxhzhr.meowmachine.richtext.RichHtml.toAiText(html);
+        check("AI 文本保留无序列表", text.contains("• 第一条"));
+        check("AI 文本保留有序列表", text.contains("1、第一步"));
+        check("AI 文本保留表格", text.contains("| 甲 | 乙 |"));
+        check("AI 文本不会带 Markdown 子弹", !text.contains("- 第一条"));
+    }
+
     private static void testRichEditor() {
         RichEditor e = RichEditor.empty();
         e.toggleBold();

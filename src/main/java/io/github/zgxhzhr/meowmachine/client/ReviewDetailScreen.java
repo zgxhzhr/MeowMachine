@@ -27,6 +27,7 @@ public class ReviewDetailScreen extends Screen {
     private final ReviewListPacket.Entry entry;
     private final boolean canFinalize;
     private final boolean assistant;
+    private final java.util.List<String> approvedStickers;
     private final List<String> lines = new ArrayList<>();
     private int scroll = 0;
     private int viewHeight;
@@ -35,11 +36,13 @@ public class ReviewDetailScreen extends Screen {
     /** 顶部三栏摘要：AI 意见 / 本地规则 / 助理意见（正文框外） */
     private final java.util.List<String> headLines = new java.util.ArrayList<>();
 
-    public ReviewDetailScreen(ReviewListPacket.Entry entry, boolean canFinalize, boolean assistant) {
+    public ReviewDetailScreen(ReviewListPacket.Entry entry, boolean canFinalize, boolean assistant,
+                              java.util.List<String> approvedStickers) {
         super(Component.translatable("gui.meow_machine.detail_title"));
         this.entry = entry;
         this.canFinalize = canFinalize;
         this.assistant = assistant;
+        this.approvedStickers = approvedStickers == null ? java.util.List.of() : approvedStickers;
     }
 
     @Override
@@ -116,8 +119,9 @@ public class ReviewDetailScreen extends Screen {
 
     private void decide(String verdict) {
         if ("PASS".equals(verdict)) {
-            Network.CHANNEL.sendToServer(new DecidePacket(entry.fullId(), verdict, -1, ""));
-            this.onClose();
+            if (this.minecraft != null) {
+                this.minecraft.setScreen(new PassStickerScreen(this, entry, approvedStickers));
+            }
             return;
         }
         if (this.minecraft != null) {

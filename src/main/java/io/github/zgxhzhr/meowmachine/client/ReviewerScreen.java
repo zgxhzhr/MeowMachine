@@ -31,6 +31,7 @@ public class ReviewerScreen extends Screen {
     private final boolean canFinalize;
     /** 助理：只查看与写意见 */
     private final boolean assistant;
+    private final java.util.List<String> approvedStickers;
     private int shown;
 
     public ReviewerScreen(ReviewListPacket packet) {
@@ -38,6 +39,7 @@ public class ReviewerScreen extends Screen {
         this.entries = packet.entries();
         this.canFinalize = packet.canFinalize();
         this.assistant = packet.assistant();
+        this.approvedStickers = packet.approvedStickers();
     }
 
     @Override
@@ -85,14 +87,15 @@ public class ReviewerScreen extends Screen {
 
     private void openDetail(ReviewListPacket.Entry entry) {
         if (this.minecraft != null) {
-            this.minecraft.setScreen(new ReviewDetailScreen(entry, canFinalize, assistant));
+            this.minecraft.setScreen(new ReviewDetailScreen(entry, canFinalize, assistant, approvedStickers));
         }
     }
 
     private void decide(ReviewListPacket.Entry entry, String verdict) {
         if ("PASS".equals(verdict)) {
-            Network.CHANNEL.sendToServer(new DecidePacket(entry.fullId(), verdict, -1, ""));
-            this.onClose();
+            if (this.minecraft != null) {
+                this.minecraft.setScreen(new PassStickerScreen(this, entry, approvedStickers));
+            }
             return;
         }
         if (this.minecraft != null) {
