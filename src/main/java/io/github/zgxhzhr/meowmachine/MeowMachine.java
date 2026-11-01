@@ -27,6 +27,7 @@ public final class MeowMachine {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         ModItems.ITEMS.register(bus);
         ModItems.TABS.register(bus);
+        io.github.zgxhzhr.meowmachine.registry.ModRecipes.SERIALIZERS.register(bus);
         Network.register();
         // 名册必须在开局读一次：0.1.0 漏了这一步，导致 file 恒为 null、
         // save() 全程空转，任命重启就丢。

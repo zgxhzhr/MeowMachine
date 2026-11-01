@@ -212,5 +212,7 @@
   "item.meow_machine.sticker_no_period.story": "喵呜机从头翻到尾，句号始终没有出现。祂在最后一行停住，手指悬在键盘上想补一个，又收了回来——这不该是祂的活。最后祂只在备注里写了一句：下次记得收尾。",
   "item.meow_machine.sticker_which_version.story": "喵呜机盯着「最新版本」四个字看了很久。这四个字什么都说了，又什么都没说。祂翻开笔记想核对版本号，发现稿子里一个数字都没有，只好合上笔记，开始占卜。",
   "item.meow_machine.sticker_vague_words.story": "喵呜机数了数：这段里有七个「我觉得」、两个「应该」、一个「大概」。祂想找依据在哪，环顾四周只有这篇稿子。于是祂在备注里写：请把「我觉得」换成「实测」。",
-  "item.meow_machine.sticker_punct_storm.story": "喵呜机读到那串问号时眨了眨眼。祂数不清稿子里到底问了几个问题，只确定自己一个也答不上来。祂把光标停在第一个问号上看了三秒，决定整段跳过。"
+  "item.meow_machine.sticker_punct_storm.story": "喵呜机读到那串问号时眨了眨眼。祂数不清稿子里到底问了几个问题，只确定自己一个也答不上来。祂把光标停在第一个问号上看了三秒，决定整段跳过。",
+  "item.meow_machine.mystery_result": "未揭晓的合成结果",
+  "item.meow_machine.mystery_result.desc": "把一张梗图和任意物品放在一起试试"
 }

@@ -79,6 +79,10 @@ public final class ModItems {
             ITEMS.register("meow_icon",
                     () -> new Item(new Item.Properties()));
 
+    /** 神秘合成的输出占位（合成前只显示它） */
+    public static final RegistryObject<Item> MYSTERY_RESULT =
+            ITEMS.register("mystery_result", () -> new Item(new Item.Properties()));
+
     public static final RegistryObject<CreativeModeTab> TAB = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup." + MeowMachine.MOD_ID))
@@ -87,6 +91,7 @@ public final class ModItems {
                         output.accept(SUBMISSION_SCROLL.get());
                         output.accept(ADMIN_TERMINAL.get());
                         output.accept(MEOW_ICON.get());
+                        output.accept(MYSTERY_RESULT.get());
                         // 18 张梗图物品：创造栏里能直接翻看（正常游戏靠审核结果获得）
                         for (RegistryObject<Item> sticker : STICKER_ITEMS.values()) {
                             output.accept(sticker.get());

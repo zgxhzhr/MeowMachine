@@ -212,5 +212,7 @@
   "item.meow_machine.sticker_no_period.story": "MeowMachine goes through the entry from top to bottom; the full stop never appears. He stops on the last line, finger hovering over the keyboard to add one, then pulls back - that is not his job. In the end he only writes in the note: remember to close your sentences next time.",
   "item.meow_machine.sticker_which_version.story": "MeowMachine stares at the words \"latest version\" for a long time. They say everything and nothing. He opens his notes to check the version number, finds not a single digit in the entry, closes the notes, and starts divining.",
   "item.meow_machine.sticker_vague_words.story": "MeowMachine counts: seven \"I think\", two \"should be\", one \"probably\" in a single paragraph. He looks around for evidence and finds only the entry. So he writes in the note: please replace \"I think\" with \"measured\".",
-  "item.meow_machine.sticker_punct_storm.story": "MeowMachine blinks at the string of question marks. He cannot count how many questions were asked, only that he can answer none of them. He parks the cursor on the first question mark, stares for three seconds, and skips the whole paragraph."
+  "item.meow_machine.sticker_punct_storm.story": "MeowMachine blinks at the string of question marks. He cannot count how many questions were asked, only that he can answer none of them. He parks the cursor on the first question mark, stares for three seconds, and skips the whole paragraph.",
+  "item.meow_machine.mystery_result": "Unrevealed result",
+  "item.meow_machine.mystery_result.desc": "Combine a sticker with any item to find out"
 }
