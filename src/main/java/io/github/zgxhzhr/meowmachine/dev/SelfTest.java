@@ -362,6 +362,10 @@ public final class SelfTest {
         check("粘贴多行拆成多个段落",
                 RichHtml.toHtml(paste.doc()).equals("<p>甲段文字</p><p>乙段文字</p>"));
 
+        RichEditor pasteBlank = RichEditor.empty();
+        pasteBlank.insertPlainText("第一行\n\n\n第二行\n");
+        check("粘贴的空行不生成空段落", pasteBlank.blockCount() == 2);
+
         RichEditor legacy = new RichEditor(new RichDoc(List.of(
                 new RichDoc.Para(List.of(RichDoc.Run.plain("旧稿第一行\n旧稿第二行"))))));
         check("旧草稿里夹换行的段落被拆开",

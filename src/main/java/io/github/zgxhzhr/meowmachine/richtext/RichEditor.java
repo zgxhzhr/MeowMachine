@@ -473,14 +473,18 @@ public final class RichEditor {
             return;
         }
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        String[] lines = normalized.split("\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            if (i > 0) {
+        boolean first = true;
+        for (String raw : normalized.split("\n", -1)) {
+            // 空行跳过：网页复制会把 </p> 变成连续换行，逐行建段会多出一堆空段落，
+            // 转成列表就是一堆空圆点（实测 4 行变成 7 个点）
+            if (raw.isBlank()) {
+                continue;
+            }
+            if (!first) {
                 enter();
             }
-            if (!lines[i].isEmpty()) {
-                typeText(lines[i]);
-            }
+            typeText(raw.stripTrailing());
+            first = false;
         }
     }
 
