@@ -103,5 +103,7 @@
   "gui.meow_machine.refresh": "Refresh",
   "gui.meow_machine.back": "Back to list",
   "gui.meow_machine.detail_title": "Review detail",
-  "gui.meow_machine.detail_empty": "(no body)"
+  "gui.meow_machine.detail_empty": "(no body)",
+  "gui.meow_machine.btn.edit": "Edit",
+  "gui.meow_machine.my_review_list": "Pending list"
 }

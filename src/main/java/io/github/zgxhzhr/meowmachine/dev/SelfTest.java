@@ -59,6 +59,7 @@ public final class SelfTest {
         testNewSubmissionIds();
         testTitleStructure();
         testDuplicates();
+        testMarkdownResidue();
         testRichText();
         testRichEditor();
         testRuleTables();
@@ -91,6 +92,25 @@ public final class SelfTest {
         // stripTags 必须保留段落边界，否则重复检测会跨段拼接
         String plain = RichHtml.stripTags("<p>第一段文字。</p><p>第二段文字。</p>");
         check("剥标签保留段落换行", plain.contains("\n") && plain.startsWith("第一段文字。"));
+    }
+
+    /**
+     * 第 22 条「全文样式异常」：正文混进 Markdown 语法。
+     *
+     * <p>实测：作者手打 {@code ## 核心玩法} 和 {@code - 列表}，AI 判断为「格式没有明显问题」放行。
+     * 这类错误是确定性的，交本地规则判。
+     */
+    private static void testMarkdownResidue() {
+        check("手打 ## 标题判第 22 条", hasRule("", "## 核心玩法\n正文一句。", 22));
+        check("Markdown 粗体判第 22 条", hasRule("", "这是**重点**内容。", 22));
+        check("手打 - 列表判第 22 条", hasRule("", "说明如下：\n- 第一条\n- 第二条", 22));
+        check("Markdown 表格判第 22 条", hasRule("", "| 甲 | 乙 |\n| 1 | 2 |", 22));
+
+        String ok = String.join("\n",
+                "[h2=核心玩法]",
+                "推进顺序是固定的：先找到星尘矿石，用原版熔炉烧出第一批星尘锭。",
+                "· 星尘矿石生成在地下 Y −16 至 Y 48 之间。");
+        check("正常的 [hN=] 与编辑器列表不判第 22 条", !hasRule("", ok, 22));
     }
 
     /**

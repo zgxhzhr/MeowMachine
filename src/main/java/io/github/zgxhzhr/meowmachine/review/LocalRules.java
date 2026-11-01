@@ -83,6 +83,20 @@ public final class LocalRules {
     private static final Pattern CONCRETE_VERSION = Pattern.compile(
             "\\d+\\.\\d+|1\\.20|1\\.21|26\\.\\d");
 
+    /**
+     * 第 22 条里的「全文样式异常」：正文混进 Markdown 语法。
+     *
+     * <p>百科正文要用编辑器生成的结构（真列表、真表格）和 {@code [hN=]} 标题标记；
+     * 手打 {@code ##}、{@code **粗体**}、{@code - 列表}、{@code |表格|} 在页面里会原样显示成字符，
+     * 属于明确的格式错误，不用 AI 猜。
+     */
+    private static final Pattern MD_HEADING = Pattern.compile("(?m)^\\s*#{1,6}\\s+\\S");
+    private static final Pattern MD_BOLD = Pattern.compile("\\*\\*[^*\\n]+\\*\\*");
+    private static final Pattern MD_BULLET = Pattern.compile("(?m)^\\s*[-*+]\\s+\\S");
+    private static final Pattern MD_ORDERED = Pattern.compile("(?m)^\\s*\\d+[.)]\\s+\\S");
+    private static final Pattern MD_TABLE = Pattern.compile("(?m)^\\s*\\|.*\\|\\s*$");
+    private static final Pattern MD_FENCE = Pattern.compile("(?m)^\\s*```");
+
     // 第 18 条：灌水（正文太短；标题不算）
     private static final int MIN_BODY_CHARS = 10;
 
@@ -179,6 +193,9 @@ public final class LocalRules {
             out.add(new ReviewFinding(18, b.strip(), "正文太短，像在凑字数"));
         }
 
+        // 第 22 条 Markdown 残留（全文样式异常）
+        checkMarkdownResidue(all, out);
+
         // 第 10 条 重复内容（逐句比对；AI 容易把「结构相似」臆断成整段重复，所以本地兜一条确定性的）
         checkDuplicates(b, out);
 
@@ -186,6 +203,20 @@ public final class LocalRules {
         checkTitleStructure(all, out);
 
         return out;
+    }
+
+    /** Markdown 语法残留检查（第 22 条） */
+    private static void checkMarkdownResidue(String text, List<ReviewFinding> out) {
+        Pattern[] patterns = {MD_HEADING, MD_FENCE, MD_BOLD, MD_BULLET, MD_ORDERED, MD_TABLE};
+        for (Pattern p : patterns) {
+            Matcher m = p.matcher(text);
+            if (m.find()) {
+                String sample = m.group().strip();
+                out.add(new ReviewFinding(22, sample,
+                        "正文混进了 Markdown 语法，百科要用编辑器生成的结构（列表/表格）和 [hN=] 标题标记"));
+                return;
+            }
+        }
     }
 
     /** 重复内容的最小段落长度（太短的段落重复很常见，不判） */

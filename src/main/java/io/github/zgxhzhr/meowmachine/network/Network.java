@@ -19,7 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class Network {
 
     /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6 加入「我的投稿」） */
-    private static final String PROTOCOL = "8";
+    private static final String PROTOCOL = "9";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -62,6 +62,13 @@ public final class Network {
                 .encoder(NewSubmissionPacket::encode)
                 .decoder(NewSubmissionPacket::decode)
                 .consumerMainThread(NewSubmissionPacket::handle)
+                .add();
+
+        // 提交端：从「我的投稿」把某篇拉回来继续编辑（队列里的会先撤回）
+        CHANNEL.messageBuilder(EditMySubmissionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(EditMySubmissionPacket::encode)
+                .decoder(EditMySubmissionPacket::decode)
+                .consumerMainThread(EditMySubmissionPacket::handle)
                 .add();
 
         // 提交端：查「我的投稿」（当前草稿 + 队列里自己的待审）
