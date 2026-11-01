@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.zgxhzhr.meowmachine.MeowMachine;
 import io.github.zgxhzhr.meowmachine.review.ReviewFinding;
+import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,15 +30,19 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class AiReviewer {
 
+    /** 解析结果：违规列表 + 可选的选图 */
+    private record Parsed(List<ReviewFinding> findings, String sticker) {
+    }
+
     /** 一次 AI 审核的结果：available=false 表示「没拿到可信结论」 */
-    public record AiOutcome(boolean available, List<ReviewFinding> findings) {
+    public record AiOutcome(boolean available, List<ReviewFinding> findings, String stickerId) {
 
         public static AiOutcome unavailable() {
-            return new AiOutcome(false, List.of());
+            return new AiOutcome(false, List.of(), null);
         }
 
-        public static AiOutcome of(List<ReviewFinding> findings) {
-            return new AiOutcome(true, List.copyOf(findings));
+        public static AiOutcome of(List<ReviewFinding> findings, String stickerId) {
+            return new AiOutcome(true, List.copyOf(findings), stickerId);
         }
 
         public boolean clean() {
@@ -110,13 +115,34 @@ public final class AiReviewer {
               不属于你的判定范围，交给本地规则与人工。
             """;
 
-    private static final String SYSTEM_PROMPT = """
-            你是 Minecraft 百科站点的内容审核员。检查用户投稿是否违反下列规则。
-            """ + RULES + SYNTAX_NOTE + """
-            只输出一个 JSON 对象，不要任何解释文字，不要 markdown 代码块：
-            {"violations":[{"rule":<规则号>,"quote":"<原文片段>","reason":"<一句话原因>"}]}
-            没有违规时输出：{"violations":[]}
-            """;
+    /**
+     * 拼系统提示：规则 + 语法常识 + **梗图目录**。
+     *
+     * <p>目录是每次调用现拼的：数据包里加一张图，AI 立刻就能选它，不用改代码。
+     */
+    private static String systemPrompt() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是 Minecraft 百科站点的内容审核员。检查用户投稿是否违反下列规则。\n");
+        sb.append(RULES).append(SYNTAX_NOTE);
+        List<String> catalog = StickerRegistry.catalogLines();
+        if (!catalog.isEmpty()) {
+            sb.append("\n可选梗图（给作者看的反馈图，按语义选一张最贴切的）：\n");
+            for (String line : catalog) {
+                sb.append(line).append('\n');
+            }
+            sb.append("""
+                    输出 JSON 时可以带一个可选字段 "sticker"，值为上面目录里的某张图 id；
+                    只有确实贴切时才写，拿不准就不要写（服务端会自己按规则/状态挑）。
+                    """);
+        }
+        sb.append("""
+                只输出一个 JSON 对象，不要任何解释文字，不要 markdown 代码块：
+                {"violations":[{"rule":<规则号>,"quote":"<原文片段>","reason":"<一句话原因>"}],"sticker":"<可选，梗图 id>"}
+                没有违规时输出：{"violations":[]}
+                """);
+        return sb.toString();
+    }
+
 
     /** 单条 reason / quote 的长度上限：避免拼进网络包时超长（ReviewResultPacket 的字段是有界的） */
     private static final int MAX_REASON = 120;
@@ -138,8 +164,8 @@ public final class AiReviewer {
         }
         String user = "标题：" + (title == null ? "" : title)
                 + "\n正文：\n" + (body == null ? "" : body);
-        return LlmClient.chat(cfg, SYSTEM_PROMPT, user)
-                .thenApply(raw -> parse(raw).map(AiOutcome::of).orElseGet(() -> {
+        return LlmClient.chat(cfg, systemPrompt(), user)
+                .thenApply(raw -> parse(raw).map(p -> AiOutcome.of(p.findings(), p.sticker())).orElseGet(() -> {
                     MeowMachine.LOG.warn("[喵呜机] AI 返回内容无法解析，按「AI 不可用」处理");
                     return AiOutcome.unavailable();
                 }))
@@ -155,7 +181,7 @@ public final class AiReviewer {
      *
      * @return 解析成功时返回（可能为空的）列表；**解析失败返回 empty**，由调用方区分「不可用」
      */
-    static Optional<List<ReviewFinding>> parse(String raw) {
+    static Optional<Parsed> parse(String raw) {
         if (raw == null || raw.isBlank()) {
             return Optional.empty();
         }
@@ -184,7 +210,9 @@ public final class AiReviewer {
                     MeowMachine.LOG.debug("[喵呜机] 忽略无法解析的 AI 条目: {}", e);
                 }
             }
-            return Optional.of(List.copyOf(out));
+            String sticker = root.has("sticker") && !root.get("sticker").isJsonNull()
+                    ? root.get("sticker").getAsString().trim() : null;
+            return Optional.of(new Parsed(List.copyOf(out), sticker));
         } catch (RuntimeException ex) {
             MeowMachine.LOG.warn("[喵呜机] AI 返回内容不是可解析的 JSON: {}", head(raw));
             return Optional.empty();

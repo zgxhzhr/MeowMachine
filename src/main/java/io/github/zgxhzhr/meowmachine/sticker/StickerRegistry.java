@@ -68,8 +68,9 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
                 Integer rule = o.has("rule") ? o.get("rule").getAsInt() : null;
                 boolean fallback = o.has("fallback") && o.get("fallback").getAsBoolean();
                 int priority = o.has("priority") ? o.get("priority").getAsInt() : 0;
+                String desc = o.has("desc") ? o.get("desc").getAsString() : "";
 
-                loaded.add(new Sticker(id, texture, state, rule, fallback, priority));
+                loaded.add(new Sticker(id, texture, state, rule, fallback, priority, desc));
             } catch (Exception e) {
                 MeowMachine.LOG.warn("[喵呜机] 梗图定义解析失败 {}: {}", fileId, e.toString());
             }
@@ -145,6 +146,43 @@ public final class StickerRegistry extends SimpleJsonResourceReloadListener {
     /** 兜底图：审核者说不出具体依据时用 */
     public static Optional<Sticker> fallback() {
         return Optional.ofNullable(FALLBACK);
+    }
+
+    /** 该 id 是否存在（AI 返回的选图要校验） */
+    public static boolean exists(String stickerId) {
+        if (stickerId == null || stickerId.isBlank()) {
+            return false;
+        }
+        ResourceLocation id = ResourceLocation.tryParse(stickerId);
+        return id != null && BY_ID.containsKey(id);
+    }
+
+    /**
+     * 给 AI 的梗图目录：只列**能被选中**的图（有 state / rule / fallback 的）。
+     *
+     * <p>AI 判完可以自己挑一张最贴切的图，比本地「按规则号硬映射」更细
+     * （尤其是四张「通过」：有进步 / 普通 / 简短 / 有小瑕疵）。
+     */
+    public static List<String> catalogLines() {
+        List<String> lines = new ArrayList<>();
+        for (Sticker s : ALL) {
+            if (!s.fallback() && s.state() == null && s.rule() == null) {
+                continue;
+            }
+            StringBuilder sb = new StringBuilder("- ").append(s.id());
+            if (s.fallback()) {
+                sb.append(" | fallback");
+            } else if (s.rule() != null) {
+                sb.append(" | rule ").append(s.rule());
+            } else {
+                sb.append(" | state ").append(s.state());
+            }
+            if (s.desc() != null && !s.desc().isBlank()) {
+                sb.append(" | ").append(s.desc());
+            }
+            lines.add(sb.toString());
+        }
+        return lines;
     }
 
     /**

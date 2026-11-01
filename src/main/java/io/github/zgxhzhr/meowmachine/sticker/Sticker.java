@@ -21,9 +21,11 @@ import net.minecraft.resources.ResourceLocation;
  * @param rule     触发规则号（可空）
  * @param fallback 是否兜底图
  * @param priority 多张匹配时取最大
+ * @param desc     一句话说明（给 AI 选图用；可空）
  */
 public record Sticker(ResourceLocation id, ResourceLocation texture,
-                      String state, Integer rule, boolean fallback, int priority) {
+                      String state, Integer rule, boolean fallback, int priority,
+                      String desc) {
 
     /** 解析后的实际纹理路径 */
     public ResourceLocation resolvedTexture() {

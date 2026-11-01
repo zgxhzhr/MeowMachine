@@ -81,13 +81,17 @@ public final class ReviewService {
                     // AI 没给出可信结论 → 走兜底，**绝不能当通过**
                     return fallbackReturn("AI 审核暂时不可用，无法确认内容，先按打回处理，稍后可重新投稿");
                 }
+                // AI 自己挑的图优先（数据包里每张图有 desc，它按语义选）；
+                // 校验不过或没给，再退回本地规则
+                String aiSticker = StickerRegistry.exists(ai.stickerId()) ? ai.stickerId() : null;
                 if (ai.findings().isEmpty()) {
-                    // AI 判没问题 → 通过（用「通过」系列，同状态多张时随机）
-                    String sticker = StickerRegistry.forState("approved")
-                            .map(s -> s.id().toString()).orElse("");
+                    String sticker = aiSticker != null ? aiSticker
+                            : StickerRegistry.forState("approved")
+                                    .map(s -> s.id().toString()).orElse("");
                     return ReviewResult.pass("ai", sticker);
                 }
-                String sticker = pickSticker(Verdict.RETURN, ai.findings());
+                String sticker = aiSticker != null ? aiSticker
+                        : pickSticker(Verdict.RETURN, ai.findings());
                 return ReviewResult.of(Verdict.RETURN, ai.findings(), "ai", sticker);
             });
         }
