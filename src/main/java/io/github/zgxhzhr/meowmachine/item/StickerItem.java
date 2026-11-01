@@ -48,16 +48,34 @@ public class StickerItem extends Item {
         if (view) {
             return InteractionResultHolder.success(stack);
         }
-        if (player instanceof net.minecraft.server.level.ServerPlayer sp
+        // 走原版进食流程：按住右键 24 tick，播放进食动画/粒子/音效，结束后结算
+        player.startUsingItem(hand);
+        return InteractionResultHolder.consume(stack);
+    }
+
+    /** 进食时长（tick）：24 tick = 1.2 秒，比金苹果略快 */
+    @Override
+    public int getUseDuration(ItemStack stack) {
+        return 24;
+    }
+
+    @Override
+    public net.minecraft.world.item.UseAnim getUseAnimation(ItemStack stack) {
+        return net.minecraft.world.item.UseAnim.EAT;
+    }
+
+    @Override
+    public ItemStack finishUsingItem(ItemStack stack, Level level,
+                                     net.minecraft.world.entity.LivingEntity entity) {
+        if (entity instanceof net.minecraft.server.level.ServerPlayer sp
                 && io.github.zgxhzhr.meowmachine.sticker.StickerFood.eat(sp, stickerId)) {
             if (!sp.isCreative()) {
                 stack.shrink(1);
             }
-            sp.level().playSound(null, sp.blockPosition(),
-                    net.minecraft.sounds.SoundEvents.GENERIC_EAT,
-                    net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
+            // 原版物品冷却：20 秒（400 tick），物品栏上会显示冷却盖
+            sp.getCooldowns().addCooldown(this, 400);
         }
-        return InteractionResultHolder.success(stack);
+        return stack;
     }
 
     /**

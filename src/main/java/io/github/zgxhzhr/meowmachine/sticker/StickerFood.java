@@ -26,8 +26,6 @@ import java.util.List;
  */
 public final class StickerFood {
 
-    private static final long COOLDOWN_MS = 60_000L;
-    private static final String KEY_LAST = "meow_machine_last_eat";
     private static final String KEY_EATEN = "meow_machine_eaten_stickers";
     private static final List<String> AI_ONLY = List.of("helpless", "kurushi", "laowu", "meowmeow");
 
@@ -45,15 +43,6 @@ public final class StickerFood {
             return false;
         }
         CompoundTag data = PlayerData.persisted(player);
-        long now = System.currentTimeMillis();
-        long last = data.getLong(KEY_LAST);
-        if (now - last < COOLDOWN_MS) {
-            long left = (COOLDOWN_MS - (now - last) + 999) / 1000;
-            player.displayClientMessage(Component.translatable(
-                    "chat.meow_machine.sticker_cooldown", left), true);
-            return false;
-        }
-        data.putLong(KEY_LAST, now);
 
         // 饱食度与饱和度（各图不同）
         player.getFoodData().eat(st.hunger(), st.saturation());
