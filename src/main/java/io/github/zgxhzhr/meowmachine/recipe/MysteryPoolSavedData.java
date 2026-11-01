@@ -67,7 +67,14 @@ public final class MysteryPoolSavedData extends SavedData {
         return next;
     }
 
-    /** 配一轮：按权重抓原版/模组各若干张，混在一起打乱 */
+    /**
+     * 配一轮牌：**先发满原版，最后才发模组**。
+     *
+     * <p>用户要的规则是「原版 90% / 模组 10%，但原版已经出了 9 个，下一个必定是模组物品」——
+     * 所以不能把 10 张牌完全打乱（那样模组可能落在队首，随后连着 9 次都没有），
+     * 而是固定「原版块 + 模组块」：最多 9 抽就一定会见到模组物品，
+     * 一个周期内模组出现次数也正好等于配置权重。
+     */
     private List<String> buildDeck(List<String> vanilla, List<String> modded,
                                    int vWeight, int mWeight) {
         List<String> deck = new ArrayList<>(DECK);
@@ -87,7 +94,7 @@ public final class MysteryPoolSavedData extends SavedData {
                 deck.add(m.get(i));
             }
         }
-        Collections.shuffle(deck);
+        // 注意：这里**不再整体打乱**——原版块在前、模组块在后是刻意的（见方法注释）
         return deck;
     }
 
