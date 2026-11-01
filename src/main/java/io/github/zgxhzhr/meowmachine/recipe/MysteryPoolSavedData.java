@@ -87,7 +87,8 @@ public final class MysteryPoolSavedData extends SavedData {
         if (server == null) {
             return "";
         }
-        Set<String> pool = new LinkedHashSet<>();
+        Set<String> vanilla = new LinkedHashSet<>();
+        Set<String> modded = new LinkedHashSet<>();
         var access = server.registryAccess();
         for (var recipe : server.getRecipeManager().getAllRecipesFor(
                 net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
@@ -105,17 +106,27 @@ public final class MysteryPoolSavedData extends SavedData {
                     || id.equals("minecraft:light") || id.equals("minecraft:structure_void")) {
                 continue;
             }
-            pool.add(id);
+            if (id.startsWith("minecraft:")) {
+                vanilla.add(id);
+            } else {
+                modded.add(id);
+            }
         }
-        if (pool.isEmpty()) {
+        if (vanilla.isEmpty() && modded.isEmpty()) {
             return "";
         }
-        MeowMachine.LOG.info("[喵呜机] 神秘合成候选池 {} 条", pool.size());
+        MeowMachine.LOG.info("[喵呜机] 神秘合成候选池：原版 {} 条 / 模组 {} 条",
+                vanilla.size(), modded.size());
         MysteryPoolSavedData data = get(server);
         if (data == null) {
             return "";
         }
-        String picked = data.takeNext(new ArrayList<>(pool));
+        // 原版物品优先：模组物品只占 10%，避免动不动抽出破坏平衡的东西
+        boolean useVanilla = !vanilla.isEmpty()
+                && (modded.isEmpty()
+                        || java.util.concurrent.ThreadLocalRandom.current().nextInt(10) != 0);
+        java.util.List<String> candidates = new ArrayList<>(useVanilla ? vanilla : modded);
+        String picked = data.takeNext(candidates);
         MeowMachine.LOG.debug("[喵呜机] 神秘合成结果 {}", picked);
         return picked;
     }
