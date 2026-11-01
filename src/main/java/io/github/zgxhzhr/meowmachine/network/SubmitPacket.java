@@ -78,7 +78,7 @@ public record SubmitPacket(String title, String body) {
 
         // 走审核流水线：本地规则 → 人工 → AI → 兜底。可能异步完成（AI 路径）。
         // 配置走内存缓存：以前每条投稿都在主线程同步读一次磁盘。
-        LlmConfig cfg = LlmConfig.cached(FMLPaths.CONFIGDIR.get());
+        LlmConfig cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
 
         ReviewService.process(player.getServer(), player, sub, cfg)
                 .thenAccept(result -> {

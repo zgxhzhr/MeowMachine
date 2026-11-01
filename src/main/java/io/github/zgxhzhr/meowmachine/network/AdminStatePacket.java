@@ -33,8 +33,8 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover,
                                int pending, int inbox, int reviewers, boolean hasKey,
                                String endpoint, String model) {
 
-    public static AdminStatePacket collect() {
-        LlmConfig cfg = LlmConfig.cached(FMLPaths.CONFIGDIR.get());
+    public static AdminStatePacket collect(net.minecraft.server.level.ServerPlayer viewer) {
+        LlmConfig cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
         return new AdminStatePacket(cfg.enabled(), cfg.takeover(),
                 SubmissionQueue.size(),
                 ResultInbox.size(), ReviewerRoster.members().size(), !cfg.apiKey().isBlank(),

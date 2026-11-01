@@ -67,20 +67,20 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
         var configDir = FMLPaths.CONFIGDIR.get();
         switch (msg.action) {
             case TOGGLE_AI -> {
-                LlmConfig cfg = LlmConfig.cached(configDir);
-                LlmConfig.save(configDir, cfg.withSwitches(!cfg.enabled(), cfg.takeover()));
+                LlmConfig cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
+                io.github.zgxhzhr.meowmachine.ai.AiConfigStore.save(cfg.withSwitches(!cfg.enabled(), cfg.takeover()));
             }
             case TOGGLE_TAKEOVER -> {
-                LlmConfig cfg = LlmConfig.cached(configDir);
-                LlmConfig.save(configDir, cfg.withSwitches(cfg.enabled(), !cfg.takeover()));
+                LlmConfig cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
+                io.github.zgxhzhr.meowmachine.ai.AiConfigStore.save(cfg.withSwitches(cfg.enabled(), !cfg.takeover()));
             }
             case SAVE_AI_CONFIG -> {
-                LlmConfig current = LlmConfig.cached(configDir);
+                LlmConfig current = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
                 String key = msg.apiKey == null ? "" : msg.apiKey.trim();
                 // 客户端不回传密钥：留空就沿用旧的（这样改 endpoint/模型不用重填 key）
                 LlmConfig updated = current.withAiConfig(msg.endpoint,
                         key.isEmpty() ? current.apiKey() : key, msg.model);
-                LlmConfig.save(configDir, updated);
+                io.github.zgxhzhr.meowmachine.ai.AiConfigStore.save(updated);
                 MeowMachine.LOG.info("[喵呜机] AI 配置已保存 endpoint={} model={} key={}",
                         updated.endpoint(), updated.model(),
                         updated.apiKey().isEmpty() ? "(空)" : "(已设置)");
@@ -96,7 +96,7 @@ public record AdminActionPacket(Action action, String endpoint, String apiKey, S
             }
         }
 
-        Network.CHANNEL.sendTo(AdminStatePacket.collect(), player.connection.connection,
+        Network.CHANNEL.sendTo(AdminStatePacket.collect(player), player.connection.connection,
                 NetworkDirection.PLAY_TO_CLIENT);
         c.setPacketHandled(true);
     }

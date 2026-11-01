@@ -37,7 +37,7 @@ public class AdminTerminalItem extends Item {
 
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             if (sp.hasPermissions(2)) {
-                Network.CHANNEL.sendTo(AdminStatePacket.collect(), sp.connection.connection,
+                Network.CHANNEL.sendTo(AdminStatePacket.collect(sp), sp.connection.connection,
                         NetworkDirection.PLAY_TO_CLIENT);
             } else if (ReviewerRoster.canAnnotate(sp)) {
                 boolean canFinalize = ReviewerRoster.roleOf(sp.getUUID()) == null
