@@ -98,5 +98,10 @@
   "gui.meow_machine.state.draft": "draft",
   "gui.meow_machine.state.submitted": "pending",
   "gui.meow_machine.state.approved": "approved",
-  "gui.meow_machine.state.returned": "returned"
+  "gui.meow_machine.state.returned": "returned",
+  "gui.meow_machine.btn.view": "View",
+  "gui.meow_machine.refresh": "Refresh",
+  "gui.meow_machine.back": "Back to list",
+  "gui.meow_machine.detail_title": "Review detail",
+  "gui.meow_machine.detail_empty": "(no body)"
 }

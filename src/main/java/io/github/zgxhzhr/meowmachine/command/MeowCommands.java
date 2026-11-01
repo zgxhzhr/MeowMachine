@@ -200,29 +200,13 @@ public final class MeowCommands {
 
     // ---------------- 审核 ----------------
 
-    /**
-     * 审核员能看到的待审列表。
-     *
-     * <p>只有「完整审核员」（OP / 名册成员）能看全部；
-     * 仅靠单人自审放行的作者只能看到**自己**那份——否则他能裁决却拿不到 id，人工路径直接死锁。
-     */
-    private static List<SubmissionQueue.Entry> visibleQueue(ServerPlayer self) {
-        if (self == null) {
-            return List.of();
-        }
-        if (ReviewerRoster.isOp(self) || ReviewerRoster.isRosterMember(self.getUUID())) {
-            return SubmissionQueue.snapshot();
-        }
-        return SubmissionQueue.byAuthor(self.getUUID());
-    }
-
     private static int reviewList(CommandContext<CommandSourceStack> ctx) {
         ServerPlayer self = ctx.getSource().getPlayer();
         if (!ReviewerRoster.canAnnotate(self)) {
             ctx.getSource().sendFailure(Component.translatable("command.meow_machine.no_permission"));
             return 0;
         }
-        List<SubmissionQueue.Entry> all = visibleQueue(self);
+        List<SubmissionQueue.Entry> all = SubmissionQueue.visibleTo(self);
         if (all.isEmpty()) {
             ctx.getSource().sendSuccess(() -> Component.translatable(
                     "command.meow_machine.queue_empty"), false);
@@ -274,7 +258,7 @@ public final class MeowCommands {
             ctx.getSource().sendFailure(Component.translatable("command.meow_machine.no_permission"));
             return 0;
         }
-        List<ReviewListPacket.Entry> list = visibleQueue(self).stream()
+        List<ReviewListPacket.Entry> list = SubmissionQueue.visibleTo(self).stream()
                 .map(e -> ReviewListPacket.Entry.of(e.submission()))
                 .toList();
         Network.CHANNEL.sendTo(new ReviewListPacket(list), self.connection.connection,

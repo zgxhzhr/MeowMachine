@@ -99,6 +99,22 @@ public final class SubmissionQueue {
         return removed;
     }
 
+    /**
+     * 某个审核员能看到的待审列表。
+     *
+     * <p>完整审核员（OP / 名册成员）看全部；只靠单人自审放行的玩家只看自己的——
+     * 否则他能裁决却拿不到 id，人工路径会死锁。
+     */
+    public static List<Entry> visibleTo(net.minecraft.server.level.ServerPlayer player) {
+        if (player == null) {
+            return List.of();
+        }
+        if (ReviewerRoster.isOp(player) || ReviewerRoster.isRosterMember(player.getUUID())) {
+            return snapshot();
+        }
+        return byAuthor(player.getUUID());
+    }
+
     /** 按作者查（作者想看自己有哪些在审；单人自审时也只该看到自己的） */
     public static List<Entry> byAuthor(UUID author) {
         List<Entry> out = new ArrayList<>();

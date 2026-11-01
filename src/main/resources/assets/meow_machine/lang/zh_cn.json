@@ -98,5 +98,10 @@
   "gui.meow_machine.state.draft": "草稿",
   "gui.meow_machine.state.submitted": "待审",
   "gui.meow_machine.state.approved": "已通过",
-  "gui.meow_machine.state.returned": "被打回"
+  "gui.meow_machine.state.returned": "被打回",
+  "gui.meow_machine.btn.view": "查看",
+  "gui.meow_machine.refresh": "刷新列表",
+  "gui.meow_machine.back": "返回列表",
+  "gui.meow_machine.detail_title": "审核详情",
+  "gui.meow_machine.detail_empty": "（这篇投稿没有正文）"
 }

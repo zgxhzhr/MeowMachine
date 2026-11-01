@@ -57,12 +57,24 @@ public class SubmissionScreen extends Screen {
     /** 排版缓存：字符盒 + 表格框（x, y, w, h, cols） */
     private final List<CharBox> boxes = new ArrayList<>();
     private final List<int[]> tableFrames = new ArrayList<>();
+    /** 每个单元（段落/列表项/表格单元格）的屏幕矩形，用于点击命中 */
+    private final List<CellRect> cellRects = new ArrayList<>();
+    /** 列表前缀这类装饰文字（不参与光标/选区） */
+    private final List<Deco> decorations = new ArrayList<>();
 
     /** 撤销栈（粗粒度：每次命令前存一份 HTML） */
     private final Deque<String> undoStack = new ArrayDeque<>();
 
     private record CharBox(int block, int cell, int offset, int x, int y, int w, char ch,
                            boolean bold, boolean italic) {
+    }
+
+    /** 单元矩形：x/y/w/h 以及正文起始 x（列表项要跳过前缀宽度） */
+    private record CellRect(int block, int cell, int x, int y, int w, int h, int textX) {
+    }
+
+    /** 装饰文字（列表前缀） */
+    private record Deco(int x, int y, String text) {
     }
 
     public SubmissionScreen(OpenEditorPacket draft) {
@@ -162,6 +174,8 @@ public class SubmissionScreen extends Screen {
     private void layout() {
         boxes.clear();
         tableFrames.clear();
+        cellRects.clear();
+        decorations.clear();
         int left = panelLeft + PAD;
         int right = panelLeft + PANEL_W - PAD;
         int maxW = right - left;
@@ -198,42 +212,47 @@ public class SubmissionScreen extends Screen {
         clampScroll();
     }
 
-    /** 排一个单元（段落 / 列表项 / 表格单元格），返回下一行 y */
+    /**
+     * 排一个单元（段落 / 列表项 / 表格单元格），返回下一行 y。
+     *
+     * <p>列表前缀画成装饰，不进入字符盒——否则光标/选区会被前缀错位一格。
+     * 每个单元都登记一个矩形，空单元也能被点中。
+     */
     private int layoutCell(int block, int cell, List<RichDoc.Run> runs,
                            int x0, int y0, int maxW, String prefix) {
-        int x = x0;
+        int prefixW = prefix.isEmpty() ? 0 : this.font.width(prefix);
+        if (!prefix.isEmpty()) {
+            decorations.add(new Deco(x0, y0, prefix));
+        }
+        int textX = x0 + prefixW;
+        int x = textX;
         int y = y0;
         int right = x0 + maxW;
-        int offsetBase = -prefix.length();
         int cursor = 0;
+        int lines = 1;
 
-        if (!prefix.isEmpty()) {
-            for (char ch : prefix.toCharArray()) {
-                int w = this.font.width(String.valueOf(ch));
-                boxes.add(new CharBox(block, cell, 0, x, y, w, ch, false, false));
-                x += w;
-            }
-        }
         for (RichDoc.Run run : runs) {
             for (int i = 0; i < run.text().length(); i++) {
                 char ch = run.text().charAt(i);
                 if (ch == '\n') {
-                    x = x0;
+                    x = textX;
                     y += LINE_H;
+                    lines++;
                     continue;
                 }
-                String s = String.valueOf(ch);
-                int w = this.font.width(s);
-                if (x + w > right && x > x0) {
-                    x = x0;
+                int w = this.font.width(String.valueOf(ch));
+                if (x + w > right && x > textX) {
+                    x = textX;
                     y += LINE_H;
+                    lines++;
                 }
-                boxes.add(new CharBox(block, cell, Math.max(0, cursor + offsetBase),
-                        x, y, w, ch, run.bold(), run.italic()));
+                boxes.add(new CharBox(block, cell, cursor, x, y, w, ch, run.bold(), run.italic()));
                 x += w;
                 cursor++;
             }
         }
+        int height = Math.max(LINE_H, lines * LINE_H);
+        cellRects.add(new CellRect(block, cell, x0, y0, maxW, height, textX));
         return y + LINE_H;
     }
 
@@ -243,11 +262,11 @@ public class SubmissionScreen extends Screen {
     }
 
     private void scrollToCaret() {
-        CharBox caretBox = caretBox();
-        if (caretBox == null) {
+        int[] caret = caretPoint();
+        if (caret == null) {
             return;
         }
-        int y = caretBox.y() - bodyTop;
+        int y = caret[1] - bodyTop;
         if (y < 0) {
             scrollY += y - PAD;
         } else if (y > bodyH - LINE_H) {
@@ -258,30 +277,70 @@ public class SubmissionScreen extends Screen {
 
     // ---------------- 光标 / 命中 ----------------
 
-    private CharBox caretBox() {
+    /** 光标屏幕坐标（解析式：不依赖“恰好有那个字符盒”） */
+    private int[] caretPoint() {
         RichEditor.Pos caret = editor.caret();
-        CharBox last = null;
-        for (CharBox b : boxes) {
-            if (b.block() == caret.block() && b.cell() == caret.cell()) {
-                if (b.offset() == caret.offset()) {
-                    return b;
-                }
-                last = b;
-                if (b.offset() > caret.offset()) {
-                    return b;
-                }
+        CellRect rect = null;
+        int lastX = -1;
+        int lastY = -1;
+        int lastOffset = -1;
+        for (CellRect r : cellRects) {
+            if (r.block() == caret.block() && r.cell() == caret.cell()) {
+                rect = r;
+                break;
             }
         }
-        return last;
+        if (rect == null) {
+            return null;
+        }
+        for (CharBox b : boxes) {
+            if (b.block() != caret.block() || b.cell() != caret.cell() || b.offset() < 0) {
+                continue;
+            }
+            if (b.offset() >= caret.offset()) {
+                return new int[]{b.x(), b.y()};
+            }
+            if (b.offset() > lastOffset) {
+                lastX = b.x() + b.w();
+                lastY = b.y();
+                lastOffset = b.offset();
+            }
+        }
+        if (lastX >= 0) {
+            return new int[]{lastX, lastY};
+        }
+        return new int[]{rect.textX(), rect.y()};
     }
 
     private RichEditor.Pos posAt(double mx, double my) {
         int py = (int) my + scrollY;
+        // 先看落在哪个单元矩形里（空单元格、空段落也能点中）
+        for (CellRect r : cellRects) {
+            if (mx >= r.x() && mx <= r.x() + r.w()
+                    && py >= r.y() && py < r.y() + r.h()) {
+                int offset = 0;
+                for (CharBox b : boxes) {
+                    if (b.block() != r.block() || b.cell() != r.cell() || b.offset() < 0) {
+                        continue;
+                    }
+                    offset = b.offset();
+                    if (mx < b.x() + b.w() / 2.0) {
+                        return new RichEditor.Pos(r.block(), r.cell(), b.offset());
+                    }
+                    offset = b.offset() + 1;
+                }
+                return new RichEditor.Pos(r.block(), r.cell(), offset);
+            }
+        }
+        // 兜底：就近吸附
         CharBox best = null;
         int bestDist = Integer.MAX_VALUE;
         for (CharBox b : boxes) {
-            int dx = (int) Math.abs(mx - (b.x() + b.w() / 2.0));
-            int dy = Math.abs(py - (b.y() + LINE_H / 2));
+            if (b.offset() < 0) {
+                continue;
+            }
+            int dx = (int) Math.abs(mx - b.x());
+            int dy = Math.abs(py - b.y());
             int dist = dy * 400 + dx;
             if (dist < bestDist) {
                 bestDist = dist;
@@ -291,8 +350,8 @@ public class SubmissionScreen extends Screen {
         if (best == null) {
             return new RichEditor.Pos(0, 0, 0);
         }
-        int off = mx > best.x() + best.w() / 2.0 ? best.offset() + 1 : best.offset();
-        return new RichEditor.Pos(best.block(), best.cell(), off);
+        return new RichEditor.Pos(best.block(), best.cell(),
+                mx > best.x() + best.w() / 2.0 ? best.offset() + 1 : best.offset());
     }
 
     // ---------------- 渲染 ----------------
@@ -353,7 +412,7 @@ public class SubmissionScreen extends Screen {
             CharBox first = boxes.get(i);
             int py = first.y() - scrollY;
             if (py < bodyTop - LINE_H || py > bodyTop + bodyH
-                    || first.ch() == ' ' || first.ch() == '\n') {
+                    || first.offset() < 0 || first.ch() == ' ' || first.ch() == '\n') {
                 i++;
                 continue;
             }
@@ -363,7 +422,7 @@ public class SubmissionScreen extends Screen {
                 CharBox prev = boxes.get(j - 1);
                 CharBox cur = boxes.get(j);
                 if (cur.y() != first.y() || cur.bold() != first.bold()
-                        || cur.italic() != first.italic()
+                        || cur.italic() != first.italic() || cur.offset() < 0
                         || cur.ch() == ' ' || cur.ch() == '\n'
                         || cur.x() != prev.x() + prev.w()) {
                     break;
@@ -377,12 +436,20 @@ public class SubmissionScreen extends Screen {
             i = j;
         }
 
-        // 光标
-        CharBox caret = caretBox();
-        if (caret != null && (System.currentTimeMillis() / 500L) % 2 == 0) {
-            int py = caret.y() - scrollY;
+        // 列表前缀
+        for (Deco d : decorations) {
+            int py = d.y() - scrollY;
             if (py >= bodyTop && py < bodyTop + bodyH) {
-                g.fill(caret.x(), py, caret.x() + 1, py + LINE_H, 0xFFFFFFFF);
+                g.drawString(this.font, Component.literal(d.text()), d.x(), py, 0xFFAAAAAA, false);
+            }
+        }
+
+        // 光标
+        int[] caret = caretPoint();
+        if (caret != null && (System.currentTimeMillis() / 500L) % 2 == 0) {
+            int py = caret[1] - scrollY;
+            if (py >= bodyTop && py < bodyTop + bodyH) {
+                g.fill(caret[0], py, caret[0] + 1, py + LINE_H, 0xFFFFFFFF);
             }
         }
     }

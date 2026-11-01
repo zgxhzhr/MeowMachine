@@ -2,6 +2,7 @@ package io.github.zgxhzhr.meowmachine.network;
 
 import io.github.zgxhzhr.meowmachine.client.ReviewerScreenOpener;
 import io.github.zgxhzhr.meowmachine.review.Submission;
+import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
@@ -23,12 +24,23 @@ public record ReviewListPacket(List<Entry> entries) {
     /** 一次最多下发多少条：界面本身只显示 8 条，多发的没有意义 */
     private static final int MAX_ENTRIES = 512;
 
-    /** 一条待审 */
-    public record Entry(String fullId, String shortId, String author, String title) {
+    /** 正文在列表包里的长度上限：够审核判断即可，避免列表包过大 */
+    private static final int MAX_BODY = 4096;
+
+    /**
+     * 一条待审。
+     *
+     * @param body 正文（**剥掉 HTML 标签后的纯文本**，审核员要能读到实际内容）
+     */
+    public record Entry(String fullId, String shortId, String author, String title, String body) {
 
         public static Entry of(Submission s) {
             String full = s.id().toString();
-            return new Entry(full, full.substring(0, 8), s.authorName(), s.title());
+            String plain = RichHtml.stripTags(s.body());
+            if (plain.length() > MAX_BODY) {
+                plain = plain.substring(0, MAX_BODY);
+            }
+            return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain);
         }
     }
 
@@ -48,6 +60,7 @@ public record ReviewListPacket(List<Entry> entries) {
             buf.writeUtf(e.shortId(), 12);
             buf.writeUtf(e.author(), 40);
             buf.writeUtf(e.title(), Network.MAX_TITLE_LEN);
+            buf.writeUtf(e.body(), MAX_BODY);
         }
     }
 
@@ -60,7 +73,7 @@ public record ReviewListPacket(List<Entry> entries) {
         List<Entry> list = new ArrayList<>(Math.min(n, 16));
         for (int i = 0; i < n; i++) {
             list.add(new Entry(buf.readUtf(40), buf.readUtf(12), buf.readUtf(40),
-                    buf.readUtf(Network.MAX_TITLE_LEN)));
+                    buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(MAX_BODY)));
         }
         return new ReviewListPacket(list);
     }
