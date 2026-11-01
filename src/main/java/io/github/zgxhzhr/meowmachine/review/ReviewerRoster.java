@@ -189,11 +189,15 @@ public final class ReviewerRoster {
         if (player == null) {
             return false;
         }
-        if (isOp(player)) {
+        ReviewerRole role = roleOf(player.getUUID());
+        // 名册角色优先于 OP：被任命为助理就是没有终裁权，哪怕他是 OP
+        if (role == ReviewerRole.ASSISTANT) {
+            return false;
+        }
+        if (role == ReviewerRole.REVIEWER) {
             return true;
         }
-        ReviewerRole role = roleOf(player.getUUID());
-        return role != null && role.canFinalize();
+        return isOp(player);
     }
 
     /**

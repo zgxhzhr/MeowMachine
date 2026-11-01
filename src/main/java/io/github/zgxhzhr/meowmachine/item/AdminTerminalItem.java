@@ -36,16 +36,23 @@ public class AdminTerminalItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
 
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
-            if (sp.hasPermissions(2)) {
+            var role = ReviewerRoster.roleOf(sp.getUUID());
+            if (role == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT) {
+                // 助理优先：即便他是 OP，也只给助理面板（查看 + 写意见）
+                Network.CHANNEL.sendTo(
+                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp), false, true),
+                        sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+            } else if (role == io.github.zgxhzhr.meowmachine.review.ReviewerRole.REVIEWER) {
+                Network.CHANNEL.sendTo(
+                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp), true, false),
+                        sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+            } else if (sp.hasPermissions(2)) {
                 Network.CHANNEL.sendTo(AdminStatePacket.collect(sp), sp.connection.connection,
                         NetworkDirection.PLAY_TO_CLIENT);
             } else if (ReviewerRoster.canAnnotate(sp)) {
-                boolean canFinalize = ReviewerRoster.roleOf(sp.getUUID()) == null
-                        || ReviewerRoster.roleOf(sp.getUUID()).canFinalize();
-                boolean assistant = ReviewerRoster.roleOf(sp.getUUID())
-                        == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT;
                 Network.CHANNEL.sendTo(
-                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp), canFinalize, assistant),
+                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp),
+                                ReviewerRoster.canFinalize(sp), false),
                         sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
             } else {
                 sp.sendSystemMessage(Component.translatable("gui.meow_machine.admin.no_permission"));

@@ -41,8 +41,7 @@ public record ReviewListRequestPacket() {
                 player.getName().getString());
         Network.CHANNEL.sendTo(
                 ReviewListPacket.of(SubmissionQueue.visibleTo(player),
-                        ReviewerRoster.roleOf(player.getUUID()) == null
-                                || ReviewerRoster.roleOf(player.getUUID()).canFinalize(),
+                        ReviewerRoster.canFinalize(player),
                         ReviewerRoster.roleOf(player.getUUID())
                                 == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT),
                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);

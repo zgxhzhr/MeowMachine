@@ -241,8 +241,7 @@ public final class MeowCommands {
         List<ReviewListPacket.Entry> list = SubmissionQueue.visibleTo(self).stream()
                 .map(e -> ReviewListPacket.Entry.of(e.submission()))
                 .toList();
-        boolean canFinalize = ReviewerRoster.roleOf(self.getUUID()) == null
-                || ReviewerRoster.roleOf(self.getUUID()).canFinalize();
+        boolean canFinalize = ReviewerRoster.canFinalize(self);
         boolean assistant = ReviewerRoster.roleOf(self.getUUID())
                 == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT;
         Network.CHANNEL.sendTo(new ReviewListPacket(list, canFinalize, assistant), self.connection.connection,
