@@ -45,13 +45,11 @@ public final class MysteryPoolSavedData extends SavedData {
      * @param moddedEnabled  false = 只抽原版
      */
     public String takeNext(List<String> vanilla, List<String> modded,
-                           int moddedPercent, boolean moddedEnabled) {
+                           int moddedSlots, boolean moddedEnabled) {
         if (vanilla.isEmpty() && modded.isEmpty()) {
             return "";
         }
-        int mWeight = moddedEnabled
-                ? Math.max(0, Math.min(DECK, Math.round(moddedPercent / (100f / DECK))))
-                : 0;
+        int mWeight = moddedEnabled ? Math.max(0, Math.min(DECK, moddedSlots)) : 0;
         int vWeight = DECK - mWeight;
 
         remaining.removeIf(id -> !vanilla.contains(id) && !modded.contains(id));
@@ -148,6 +146,8 @@ public final class MysteryPoolSavedData extends SavedData {
         }
         List<String> vanilla = new ArrayList<>();
         List<String> modded = new ArrayList<>();
+        List<String> blacklist = MysteryConfig.blacklist();
+        List<String> whitelist = MysteryConfig.whitelist();
         var access = server.registryAccess();
         for (var recipe : server.getRecipeManager().getAllRecipesFor(
                 net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
@@ -155,8 +155,22 @@ public final class MysteryPoolSavedData extends SavedData {
             if (id == null || id.isBlank() || id.startsWith(MeowMachine.MOD_ID + ":")) {
                 continue;
             }
+            if (id.contains("spawn_egg") || id.contains("spawner")) {
+                continue; // 刷怪蛋/刷怪笼：多数没有正常合成表
+            }
             if (id.equals("minecraft:air") || id.equals("minecraft:barrier")
-                    || id.equals("minecraft:light") || id.equals("minecraft:structure_void")) {
+                    || id.equals("minecraft:light") || id.equals("minecraft:structure_void")
+                    || id.equals("minecraft:bedrock") || id.equals("minecraft:command_block")
+                    || id.equals("minecraft:chain_command_block")
+                    || id.equals("minecraft:repeating_command_block")
+                    || id.equals("minecraft:structure_block")
+                    || id.equals("minecraft:jigsaw") || id.equals("minecraft:end_portal_frame")) {
+                continue;
+            }
+            if (!whitelist.isEmpty() && !MysteryConfig.matches(whitelist, id)) {
+                continue;
+            }
+            if (MysteryConfig.matches(blacklist, id)) {
                 continue;
             }
             if (id.startsWith("minecraft:")) {
@@ -174,8 +188,12 @@ public final class MysteryPoolSavedData extends SavedData {
         if (data == null) {
             return "";
         }
+        int pct = MysteryConfig.moddedMin()
+                + java.util.concurrent.ThreadLocalRandom.current().nextInt(
+                        Math.max(1, MysteryConfig.moddedMax() - MysteryConfig.moddedMin() + 1));
+        int slots = Math.round(pct / (100f / DECK));
         String picked = data.takeNext(List.copyOf(vanilla), List.copyOf(modded),
-                MysteryConfig.moddedPercent(), MysteryConfig.moddedEnabled());
+                slots, MysteryConfig.moddedEnabled());
         MeowMachine.LOG.debug("[喵呜机] 神秘合成结果 {}", picked);
         return picked;
     }
