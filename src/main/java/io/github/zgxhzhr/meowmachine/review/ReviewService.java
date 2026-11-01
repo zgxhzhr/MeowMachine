@@ -268,10 +268,13 @@ public final class ReviewService {
             return false;
         }
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            if (ReviewerRoster.isOp(p)) {
+            // 在线 OP 或在线名册成员都算
+            if (ReviewerRoster.isOp(p) || ReviewerRoster.canFinalize(p)) {
                 return true;
             }
         }
-        return ReviewerRoster.hasAnyFinalizer();
+        // 名册里有人但全离线：不再无限期挂在 PENDING（旧实现会让队列永远卡住），
+        // 交给本地规则/AI 先出结论，作者之后还能重新投稿。
+        return false;
     }
 }

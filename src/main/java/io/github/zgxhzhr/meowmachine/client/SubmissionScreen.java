@@ -65,7 +65,6 @@ public class SubmissionScreen extends Screen {
     private final List<Deco> decorations = new ArrayList<>();
 
     /** 撤销栈（粗粒度：每次命令前存一份 HTML） */
-    private final Deque<String> undoStack = new ArrayDeque<>();
 
     private record CharBox(int block, int cell, int offset, int x, int y, int w, char ch,
                            boolean bold, boolean italic) {
@@ -166,9 +165,27 @@ public class SubmissionScreen extends Screen {
         layout();
     }
 
+    /** 撤销快照：连光标一起存，撤销后回到原位置而不是跳回文首 */
+    private record Snapshot(String html, RichEditor.Pos caret) {
+    }
+
+    private final java.util.Deque<Snapshot> undoStack = new java.util.ArrayDeque<>();
+    private long lastUndoAt = 0L;
+
     private void pushUndo() {
-        undoStack.push(RichHtml.toHtml(editor.doc()));
-        while (undoStack.size() > 50) {
+        pushUndo(false);
+    }
+
+    /** @param coalesce true = 连续打字，短时间内只入栈一次 */
+    private void pushUndo(boolean coalesce) {
+        long now = System.currentTimeMillis();
+        if (coalesce && now - lastUndoAt < 700) {
+            lastUndoAt = now;
+            return;
+        }
+        lastUndoAt = now;
+        undoStack.push(new Snapshot(RichHtml.toHtml(editor.doc()), editor.caret()));
+        while (undoStack.size() > 100) {
             undoStack.removeLast();
         }
     }
@@ -177,7 +194,9 @@ public class SubmissionScreen extends Screen {
         if (undoStack.isEmpty()) {
             return;
         }
-        editor = new RichEditor(RichHtml.parse(undoStack.pop()));
+        Snapshot snap = undoStack.pop();
+        editor = new RichEditor(RichHtml.parse(snap.html()));
+        editor.setCaret(snap.caret());
         layout();
     }
 
@@ -539,7 +558,7 @@ public class SubmissionScreen extends Screen {
         if (Character.isISOControl(c)) {
             return true;
         }
-        pushUndo();
+        pushUndo(true);
         editor.typeText(String.valueOf(c));
         layout();
         scrollToCaret();
@@ -630,9 +649,11 @@ public class SubmissionScreen extends Screen {
             }
             case GLFW.GLFW_KEY_LEFT -> {
                 RichEditor.Pos from = editor.caret();
+                RichEditor.Pos anchor = editor.anchor();
                 editor.moveLeft();
                 if (shift) {
-                    editor.select(from, editor.caret());
+                    // 已有选区时锚点保持不动；只有第一次按 Shift 才把锚点落在起点
+                    editor.select(editor.hasSelection() ? anchor : from, editor.caret());
                 }
                 layout();
                 scrollToCaret();
@@ -640,9 +661,10 @@ public class SubmissionScreen extends Screen {
             }
             case GLFW.GLFW_KEY_RIGHT -> {
                 RichEditor.Pos from = editor.caret();
+                RichEditor.Pos anchor = editor.anchor();
                 editor.moveRight();
                 if (shift) {
-                    editor.select(from, editor.caret());
+                    editor.select(editor.hasSelection() ? anchor : from, editor.caret());
                 }
                 layout();
                 scrollToCaret();

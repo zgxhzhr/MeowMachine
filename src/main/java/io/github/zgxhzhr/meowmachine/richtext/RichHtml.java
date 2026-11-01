@@ -397,18 +397,43 @@ public final class RichHtml {
         return sb.toString();
     }
 
-    /** 去掉所有标签（保留 {@code <br>} 为换行） */
+    /**
+     * 去掉所有标签（{@code <br>} 与块级闭合标签变成换行）。
+     *
+     * <p>单趟扫描而不是正则：正则 {@code <[^>]+>} 遇到成千上万个没有闭合的 {@code '<'}
+     * 会退化成 O(n²)（16000 个 '<' 要 249ms，且这段在主线程跑，可被投稿卡服 —— 审查 P2）。
+     */
     public static String stripTags(String html) {
-        if (html == null) {
+        if (html == null || html.isEmpty()) {
             return "";
         }
-        String withBreaks = html
-                .replaceAll("(?i)<br\\s*/?>", "\n")
-                .replaceAll("(?i)</p\\s*>", "\n")
-                .replaceAll("(?i)</li\\s*>", "\n")
-                .replaceAll("(?i)</tr\\s*>", "\n")
-                .replaceAll("(?i)</h[1-6]\\s*>", "\n");
-        return unescape(withBreaks.replaceAll("<[^>]+>", ""));
+        StringBuilder sb = new StringBuilder(html.length());
+        int i = 0;
+        int n = html.length();
+        while (i < n) {
+            char ch = html.charAt(i);
+            if (ch != '<') {
+                sb.append(ch);
+                i++;
+                continue;
+            }
+            int gt = html.indexOf('>', i + 1);
+            if (gt < 0) {
+                // 没有闭合的 '>'：这个 '<' 是普通字符，原样保留
+                sb.append(ch);
+                i++;
+                continue;
+            }
+            String tag = html.substring(i + 1, gt).trim().toLowerCase(java.util.Locale.ROOT);
+            boolean newline = tag.equals("br") || tag.equals("br/") || tag.startsWith("br ")
+                    || tag.equals("/p") || tag.equals("/li") || tag.equals("/tr")
+                    || tag.matches("/h[1-6]");
+            if (newline) {
+                sb.append('\n');
+            }
+            i = gt + 1;
+        }
+        return unescape(sb.toString());
     }
 
     private static String unescape(String s) {
