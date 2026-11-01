@@ -19,7 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class Network {
 
     /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6 加入「我的投稿」） */
-    private static final String PROTOCOL = "10";
+    private static final String PROTOCOL = "11";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -88,6 +88,13 @@ public final class Network {
                 .encoder(ReviewResultPacket::encode)
                 .decoder(ReviewResultPacket::decode)
                 .consumerMainThread(ReviewResultPacket::handle)
+                .add();
+
+        // 客户端 → 服务端：给待审稿留一条意见（助理/审核员都能写）
+        CHANNEL.messageBuilder(AnnotatePacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(AnnotatePacket::encode)
+                .decoder(AnnotatePacket::decode)
+                .consumerMainThread(AnnotatePacket::handle)
                 .add();
 
         // 客户端 → 服务端：请求待审列表（审核界面刷新/从详情页返回）

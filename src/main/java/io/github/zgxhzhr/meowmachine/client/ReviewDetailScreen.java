@@ -25,13 +25,15 @@ public class ReviewDetailScreen extends Screen {
     private static final int TOP = 56;
 
     private final ReviewListPacket.Entry entry;
+    private final boolean canFinalize;
     private final List<String> lines = new ArrayList<>();
     private int scroll = 0;
     private int viewHeight;
 
-    public ReviewDetailScreen(ReviewListPacket.Entry entry) {
+    public ReviewDetailScreen(ReviewListPacket.Entry entry, boolean canFinalize) {
         super(Component.translatable("gui.meow_machine.detail_title"));
         this.entry = entry;
+        this.canFinalize = canFinalize;
     }
 
     @Override
@@ -64,23 +66,56 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
+        if (!entry.notes().isEmpty()) {
+            lines.add("");
+            lines.add("—— " + Component.translatable("gui.meow_machine.note_section").getString() + " ——");
+            for (String note : entry.notes()) {
+                if (this.font.width(note) <= PANEL_W - 16) {
+                    lines.add(note);
+                    continue;
+                }
+                StringBuilder cur = new StringBuilder();
+                for (int i = 0; i < note.length(); i++) {
+                    char ch = note.charAt(i);
+                    if (this.font.width(cur.toString() + ch) > PANEL_W - 16 && cur.length() > 0) {
+                        lines.add(cur.toString());
+                        cur.setLength(0);
+                    }
+                    cur.append(ch);
+                }
+                lines.add(cur.toString());
+            }
+        }
+
         int bw = 84;
         int gap = 6;
-        int x0 = cx - (bw * 4 + gap * 3) / 2;
         int by = this.height - 28;
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.btn.pass"), b -> decide("PASS"))
-                .bounds(x0, by, bw, 20).build());
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.btn.revise"), b -> decide("REVISE"))
-                .bounds(x0 + bw + gap, by, bw, 20).build());
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.btn.return"), b -> decide("RETURN"))
-                .bounds(x0 + (bw + gap) * 2, by, bw, 20).build());
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.back"),
-                        b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
-                .bounds(x0 + (bw + gap) * 3, by, bw, 20).build());
+        if (canFinalize) {
+            int x0 = cx - (bw * 4 + gap * 3) / 2;
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.btn.pass"), b -> decide("PASS"))
+                    .bounds(x0, by, bw, 20).build());
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.btn.revise"), b -> decide("REVISE"))
+                    .bounds(x0 + bw + gap, by, bw, 20).build());
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.btn.return"), b -> decide("RETURN"))
+                    .bounds(x0 + (bw + gap) * 2, by, bw, 20).build());
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.note_write"),
+                            b -> this.minecraft.setScreen(new AddNoteScreen(entry)))
+                    .bounds(x0 + (bw + gap) * 3, by, bw, 20).build());
+        } else {
+            int x0 = cx - (bw * 2 + gap) / 2;
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.note_write"),
+                            b -> this.minecraft.setScreen(new AddNoteScreen(entry)))
+                    .bounds(x0, by, bw, 20).build());
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.back"),
+                            b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
+                    .bounds(x0 + bw + gap, by, bw, 20).build());
+        }
         clampScroll();
     }
 

@@ -261,7 +261,9 @@ public final class MeowCommands {
         List<ReviewListPacket.Entry> list = SubmissionQueue.visibleTo(self).stream()
                 .map(e -> ReviewListPacket.Entry.of(e.submission()))
                 .toList();
-        Network.CHANNEL.sendTo(new ReviewListPacket(list), self.connection.connection,
+        boolean canFinalize = ReviewerRoster.roleOf(self.getUUID()) == null
+                || ReviewerRoster.roleOf(self.getUUID()).canFinalize();
+        Network.CHANNEL.sendTo(new ReviewListPacket(list, canFinalize), self.connection.connection,
                 NetworkDirection.PLAY_TO_CLIENT);
         return 1;
     }

@@ -89,6 +89,14 @@ public final class ReviewActions {
             findings = List.of(ReviewFinding.unexplained(note.trim()));
         }
 
+        // 助理/审核员留的意见：并进给作者的结果里（作为附言式说明），然后清空
+        List<ReviewFinding> withNotes = new java.util.ArrayList<>(findings);
+        for (String opinion : ReviewNotes.notesOnly(sub.id())) {
+            withNotes.add(ReviewFinding.unexplained("审核意见：" + opinion));
+        }
+        findings = List.copyOf(withNotes);
+        ReviewNotes.clear(sub.id());
+
         String sticker = ruleId >= 0
                 ? StickerRegistry.forRule(ruleId).map(s -> s.id().toString()).orElse(stateSticker(verdict))
                 : stateSticker(verdict);

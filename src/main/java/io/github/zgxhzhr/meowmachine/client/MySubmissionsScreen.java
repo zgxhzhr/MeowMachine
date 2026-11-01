@@ -82,13 +82,13 @@ public class MySubmissionsScreen extends Screen {
         for (int i = 0; i < shown; i++) {
             MySubmissionsPacket.Entry e = rows.get(i);
             int y = top + i * ROW_H;
-            g.drawString(this.font, Component.literal(e.shortId()), left, y + 3, 0xFFFF80, false);
-            g.drawString(this.font,
-                    Component.literal(trimToWidth(e.title(), TEXT_W - 100)),
-                    left + 68, y + 3, 0xDDDDDD, false);
+            g.drawString(this.font, Component.literal(e.shortId()), left, y + 2, 0xFFFF80, false);
             Component state = Component.translatable("gui.meow_machine.state." + e.state());
-            g.drawString(this.font, state, left + TEXT_W - 4, y + 13,
+            g.drawString(this.font, state, left + 62, y + 2,
                     e.pending() ? 0xFFAA44 : 0xAAAAAA, false);
+            g.drawString(this.font,
+                    Component.literal(trimToWidth(e.title(), TEXT_W)),
+                    left, y + 13, 0xDDDDDD, false);
         }
 
         if (rows.size() > shown) {

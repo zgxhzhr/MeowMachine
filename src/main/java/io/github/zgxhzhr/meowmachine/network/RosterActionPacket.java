@@ -101,7 +101,7 @@ public record RosterActionPacket(Action action, String target, String role) {
             }
         }
 
-        Network.CHANNEL.sendTo(RosterStatePacket.collect(), player.connection.connection,
+        Network.CHANNEL.sendTo(RosterStatePacket.collect(player), player.connection.connection,
                 NetworkDirection.PLAY_TO_CLIENT);
         c.setPacketHandled(true);
     }

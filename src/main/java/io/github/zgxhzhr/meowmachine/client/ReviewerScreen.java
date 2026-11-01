@@ -27,11 +27,14 @@ public class ReviewerScreen extends Screen {
     private static final int TEXT_W = PANEL_W - BUTTONS_W - 8;
 
     private final List<ReviewListPacket.Entry> entries;
+    /** 助理为 false：只能查看与写意见，不能终裁 */
+    private final boolean canFinalize;
     private int shown;
 
     public ReviewerScreen(ReviewListPacket packet) {
         super(Component.translatable("gui.meow_machine.reviewer_title"));
         this.entries = packet.entries();
+        this.canFinalize = packet.canFinalize();
     }
 
     @Override
@@ -52,18 +55,20 @@ public class ReviewerScreen extends Screen {
                             Component.translatable("gui.meow_machine.btn.view"),
                             b -> openDetail(e))
                     .bounds(bx, y, 42, 18).build());
-            addRenderableWidget(Button.builder(
-                            Component.translatable("gui.meow_machine.btn.pass"),
-                            b -> decide(e, "PASS"))
-                    .bounds(bx + 46, y, 50, 18).build());
-            addRenderableWidget(Button.builder(
-                            Component.translatable("gui.meow_machine.btn.revise"),
-                            b -> decide(e, "REVISE"))
-                    .bounds(bx + 100, y, 50, 18).build());
-            addRenderableWidget(Button.builder(
-                            Component.translatable("gui.meow_machine.btn.return"),
-                            b -> decide(e, "RETURN"))
-                    .bounds(bx + 154, y, 50, 18).build());
+            if (canFinalize) {
+                addRenderableWidget(Button.builder(
+                                Component.translatable("gui.meow_machine.btn.pass"),
+                                b -> decide(e, "PASS"))
+                        .bounds(bx + 46, y, 50, 18).build());
+                addRenderableWidget(Button.builder(
+                                Component.translatable("gui.meow_machine.btn.revise"),
+                                b -> decide(e, "REVISE"))
+                        .bounds(bx + 100, y, 50, 18).build());
+                addRenderableWidget(Button.builder(
+                                Component.translatable("gui.meow_machine.btn.return"),
+                                b -> decide(e, "RETURN"))
+                        .bounds(bx + 154, y, 50, 18).build());
+            }
         }
 
         addRenderableWidget(Button.builder(
@@ -77,7 +82,7 @@ public class ReviewerScreen extends Screen {
 
     private void openDetail(ReviewListPacket.Entry entry) {
         if (this.minecraft != null) {
-            this.minecraft.setScreen(new ReviewDetailScreen(entry));
+            this.minecraft.setScreen(new ReviewDetailScreen(entry, canFinalize));
         }
     }
 
@@ -100,6 +105,12 @@ public class ReviewerScreen extends Screen {
         int top = 40;
 
         g.drawCenteredString(this.font, this.title, cx, 20, 0xFFFFFF);
+
+        if (!canFinalize) {
+            g.drawCenteredString(this.font,
+                    Component.translatable("gui.meow_machine.assistant_hint"),
+                    cx, 30, 0xFFAA44);
+        }
 
         if (shown == 0) {
             g.drawCenteredString(this.font,

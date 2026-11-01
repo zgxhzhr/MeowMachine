@@ -105,5 +105,15 @@
   "gui.meow_machine.detail_title": "Review detail",
   "gui.meow_machine.detail_empty": "(no body)",
   "gui.meow_machine.btn.edit": "Edit",
-  "gui.meow_machine.my_review_list": "Pending list"
+  "gui.meow_machine.my_review_list": "Pending list",
+  "chat.meow_machine.terminal_granted": "[MeowMachine] Review terminal granted (right-click to open)",
+  "gui.meow_machine.assistant_hint": "Assistants can view and annotate, but cannot finalize",
+  "gui.meow_machine.note_title": "Write a review note",
+  "gui.meow_machine.note_hint": "One line for the author",
+  "gui.meow_machine.note_send": "Send",
+  "gui.meow_machine.note_write": "Add note",
+  "gui.meow_machine.note_section": "Review notes",
+  "gui.meow_machine.roster.members_header": "Roster",
+  "gui.meow_machine.roster.online_header": "Online players (click to appoint)",
+  "gui.meow_machine.roster.no_online": "No other players online"
 }

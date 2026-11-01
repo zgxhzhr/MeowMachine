@@ -1,6 +1,7 @@
 package io.github.zgxhzhr.meowmachine.network;
 
 import io.github.zgxhzhr.meowmachine.client.ReviewerScreenOpener;
+import io.github.zgxhzhr.meowmachine.review.ReviewNotes;
 import io.github.zgxhzhr.meowmachine.review.Submission;
 import io.github.zgxhzhr.meowmachine.richtext.RichHtml;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
@@ -19,7 +20,7 @@ import java.util.function.Supplier;
  *
  * @param entries 每条：fullId / 短 id / 作者 / 标题
  */
-public record ReviewListPacket(List<Entry> entries) {
+public record ReviewListPacket(List<Entry> entries, boolean canFinalize) {
 
     /** 一次最多下发多少条：界面本身只显示 8 条，多发的没有意义 */
     private static final int MAX_ENTRIES = 512;
@@ -32,7 +33,8 @@ public record ReviewListPacket(List<Entry> entries) {
      *
      * @param body 正文（**剥掉 HTML 标签后的纯文本**，审核员要能读到实际内容）
      */
-    public record Entry(String fullId, String shortId, String author, String title, String body) {
+    public record Entry(String fullId, String shortId, String author, String title, String body,
+                        List<String> notes) {
 
         public static Entry of(Submission s) {
             String full = s.id().toString();
@@ -40,27 +42,38 @@ public record ReviewListPacket(List<Entry> entries) {
             if (plain.length() > MAX_BODY) {
                 plain = plain.substring(0, MAX_BODY);
             }
-            return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain);
+            return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain,
+                    ReviewNotes.of(s.id()));
         }
     }
 
-    /** 由队列快照构造 */
+    /** 由队列快照构造（默认允许终裁） */
     public static ReviewListPacket of(List<SubmissionQueue.Entry> queue) {
+        return of(queue, true);
+    }
+
+    /** @param canFinalize 助理为 false：只能看与写意见，不能终裁 */
+    public static ReviewListPacket of(List<SubmissionQueue.Entry> queue, boolean canFinalize) {
         List<Entry> list = new ArrayList<>();
         for (SubmissionQueue.Entry e : queue) {
             list.add(Entry.of(e.submission()));
         }
-        return new ReviewListPacket(List.copyOf(list));
+        return new ReviewListPacket(List.copyOf(list), canFinalize);
     }
 
     public static void encode(ReviewListPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.entries.size());
+        buf.writeBoolean(msg.canFinalize());
         for (Entry e : msg.entries) {
             buf.writeUtf(e.fullId(), 40);
             buf.writeUtf(e.shortId(), 12);
             buf.writeUtf(e.author(), 40);
             buf.writeUtf(e.title(), Network.MAX_TITLE_LEN);
             buf.writeUtf(e.body(), MAX_BODY);
+            buf.writeVarInt(e.notes().size());
+            for (String n : e.notes()) {
+                buf.writeUtf(n, 240);
+            }
         }
     }
 
@@ -70,12 +83,25 @@ public record ReviewListPacket(List<Entry> entries) {
         if (n < 0 || n > MAX_ENTRIES) {
             throw new DecoderException("喵呜机：待审列表条数非法: " + n);
         }
+        boolean canFinalize = buf.readBoolean();
         List<Entry> list = new ArrayList<>(Math.min(n, 16));
         for (int i = 0; i < n; i++) {
-            list.add(new Entry(buf.readUtf(40), buf.readUtf(12), buf.readUtf(40),
-                    buf.readUtf(Network.MAX_TITLE_LEN), buf.readUtf(MAX_BODY)));
+            String fullId = buf.readUtf(40);
+            String shortId = buf.readUtf(12);
+            String author = buf.readUtf(40);
+            String title = buf.readUtf(Network.MAX_TITLE_LEN);
+            String body = buf.readUtf(MAX_BODY);
+            int nc = buf.readVarInt();
+            if (nc < 0 || nc > 16) {
+                throw new DecoderException("喵呜机：意见条数非法: " + nc);
+            }
+            List<String> notes = new ArrayList<>(nc);
+            for (int k = 0; k < nc; k++) {
+                notes.add(buf.readUtf(240));
+            }
+            list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes)));
         }
-        return new ReviewListPacket(list);
+        return new ReviewListPacket(list, canFinalize);
     }
 
     public static void handle(ReviewListPacket msg, Supplier<NetworkEvent.Context> ctx) {

@@ -3,9 +3,11 @@ package io.github.zgxhzhr.meowmachine;
 import io.github.zgxhzhr.meowmachine.command.MeowCommands;
 import io.github.zgxhzhr.meowmachine.review.ResultInbox;
 import io.github.zgxhzhr.meowmachine.review.ReviewActions;
+import io.github.zgxhzhr.meowmachine.review.ReviewerRoster;
 import io.github.zgxhzhr.meowmachine.review.SubmissionHistory;
 import io.github.zgxhzhr.meowmachine.review.SubmissionQueue;
 import io.github.zgxhzhr.meowmachine.sticker.StickerRegistry;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -48,6 +50,7 @@ public final class MeowMachineEvents {
         SubmissionQueue.attach(event.getServer());
         ResultInbox.attach(event.getServer());
         SubmissionHistory.attach(event.getServer());
+        io.github.zgxhzhr.meowmachine.review.ReviewNotes.attach(event.getServer());
     }
 
     /** 服务端停止：解绑，避免关服过程中继续往存档写 */
@@ -56,6 +59,32 @@ public final class MeowMachineEvents {
         SubmissionQueue.detach();
         ResultInbox.detach();
         SubmissionHistory.detach();
+        io.github.zgxhzhr.meowmachine.review.ReviewNotes.detach();
+    }
+
+    /**
+     * 玩家上线：给有审核权限的人发一个审核终端（每人只发一次）。
+     *
+     * <p>没权限的人给了也用不了，所以不发；后来被任命的人下次登录会补发。
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer sp)) {
+            return;
+        }
+        net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
+        if (data.getBoolean("meow_machine_terminal_granted")) {
+            return;
+        }
+        boolean reviewer = sp.hasPermissions(2) || ReviewerRoster.canAnnotate(sp);
+        if (!reviewer) {
+            return;
+        }
+        data.putBoolean("meow_machine_terminal_granted", true);
+        sp.getInventory().add(new net.minecraft.world.item.ItemStack(
+                io.github.zgxhzhr.meowmachine.registry.ModItems.ADMIN_TERMINAL.get()));
+        sp.sendSystemMessage(Component.translatable("chat.meow_machine.terminal_granted"));
+        MeowMachine.LOG.info("[喵呜机] 已发放审核终端给 {}", sp.getName().getString());
     }
 
     /**

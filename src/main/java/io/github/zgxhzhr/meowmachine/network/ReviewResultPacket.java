@@ -34,9 +34,11 @@ public record ReviewResultPacket(String verdict, List<String> ruleIds, String st
     /** 从审核结果构造：规则号、纹理路径、摘要都在这里统一算 */
     public static ReviewResultPacket from(ReviewResult result) {
         // 只把有条款号的发现算进「命中规则」；附言（ruleId=null）只出现在说明里
+        // 同一个条款可能被本地与 AI 各报一次，列表里要去重
         List<String> ruleIds = result.findings().stream()
                 .filter(f -> f.ruleId() != null)
                 .map(f -> String.valueOf(f.ruleId()))
+                .distinct()
                 .toList();
         return new ReviewResultPacket(result.verdict().name(), ruleIds,
                 result.stickerId() == null ? "" : result.stickerId(),

@@ -13,11 +13,12 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * 服务端 → 客户端：审核员名册（打开/刷新「审核员管理」界面用）。
+ * 服务端 → 客户端：审核员名册 + 在线玩家（打开/刷新「审核员管理」界面用）。
  *
  * @param members 名册成员：uuid / 名字（可能为空，旧数据）/ 角色（小写）
+ * @param online  在线玩家：直接点名字任命，不用手打
  */
-public record RosterStatePacket(List<Entry> members) {
+public record RosterStatePacket(List<Entry> members, List<Online> online) {
 
     /** 名册上限：真到 512 个审核员也该换别的方案了，超出按坏包处理 */
     private static final int MAX_MEMBERS = 512;
@@ -39,12 +40,24 @@ public record RosterStatePacket(List<Entry> members) {
         }
     }
 
-    public static RosterStatePacket collect() {
+    /** 在线玩家（给界面点选用的） */
+    public record Online(String uuid, String name) {
+    }
+
+    public static RosterStatePacket collect(net.minecraft.server.level.ServerPlayer viewer) {
         List<Entry> list = new ArrayList<>();
         for (ReviewerRoster.Member m : ReviewerRoster.members()) {
             list.add(Entry.of(m));
         }
-        return new RosterStatePacket(List.copyOf(list));
+        List<Online> online = new ArrayList<>();
+        if (viewer != null && viewer.getServer() != null) {
+            for (net.minecraft.server.level.ServerPlayer p : viewer.getServer().getPlayerList().getPlayers()) {
+                if (!p.getUUID().equals(viewer.getUUID())) {
+                    online.add(new Online(p.getUUID().toString(), p.getName().getString()));
+                }
+            }
+        }
+        return new RosterStatePacket(List.copyOf(list), List.copyOf(online));
     }
 
     public static void encode(RosterStatePacket msg, FriendlyByteBuf buf) {
@@ -53,6 +66,11 @@ public record RosterStatePacket(List<Entry> members) {
             buf.writeUtf(e.uuid(), 40);
             buf.writeUtf(e.name(), 40);
             buf.writeUtf(e.role(), 16);
+        }
+        buf.writeVarInt(msg.online.size());
+        for (Online o : msg.online) {
+            buf.writeUtf(o.uuid(), 40);
+            buf.writeUtf(o.name(), 40);
         }
     }
 
@@ -65,7 +83,15 @@ public record RosterStatePacket(List<Entry> members) {
         for (int i = 0; i < n; i++) {
             list.add(new Entry(buf.readUtf(40), buf.readUtf(40), buf.readUtf(16)));
         }
-        return new RosterStatePacket(list);
+        int on = buf.readVarInt();
+        if (on < 0 || on > MAX_MEMBERS) {
+            throw new DecoderException("喵呜机：在线玩家条数非法: " + on);
+        }
+        List<Online> online = new ArrayList<>(Math.min(on, 16));
+        for (int i = 0; i < on; i++) {
+            online.add(new Online(buf.readUtf(40), buf.readUtf(40)));
+        }
+        return new RosterStatePacket(list, online);
     }
 
     public static void handle(RosterStatePacket msg, Supplier<NetworkEvent.Context> ctx) {

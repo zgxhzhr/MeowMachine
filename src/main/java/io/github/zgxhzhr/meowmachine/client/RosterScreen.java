@@ -6,60 +6,53 @@ import io.github.zgxhzhr.meowmachine.network.RosterStatePacket;
 import io.github.zgxhzhr.meowmachine.review.ReviewerRole;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
 /**
- * 审核员管理界面：列出名册（名字 + 角色 + 撤销），并可以按**在线玩家名**任命。
+ * 审核员管理：上半是名册（名字 / 角色 / 撤销），下半是**在线玩家点选任命**。
  *
- * <p>以前只能在命令里任命（{@code /meow reviewers grant <player> <role>}），
- * 后台只显示一个数字。现在后台点「审核员管理」就能看到谁在里面、一键撤销。
- *
- * <p>任命为什么按名字：Screen 里没法用实体选择器，最实际的做法是输入在线玩家名，
- * 服务端用 {@code PlayerList#getPlayerByName} 解析；离线玩家会回一句提示。
+ * <p>以前靠手打玩家名，容易打错还看不见选的是谁；现在服务端把在线玩家一起发来，
+ * 点一行就能任命，不用输入框（离线玩家仍然走命令）。
  */
 public class RosterScreen extends Screen {
 
-    private static final int PANEL_W = 320;
+    private static final int PANEL_W = 340;
     private static final int ROW_H = 22;
     private static final int ROW_BTN_W = 66;
-    /** 底部留给「输入框 + 两颗任命按钮 + 关闭」的高度 */
-    private static final int BOTTOM_RESERVED = 124;
+    private static final int ONLINE_BTN_W = 58;
 
     private List<RosterStatePacket.Entry> members;
-    private int shown;
-    private EditBox nameBox;
+    private List<RosterStatePacket.Online> online;
+    private int shownMembers;
+    private int shownOnline;
 
     public RosterScreen(RosterStatePacket packet) {
         super(Component.translatable("gui.meow_machine.roster_title"));
         this.members = packet.members();
+        this.online = packet.online();
     }
 
-    /** 收到新名册：只刷新列表，保留输入框里还没提交的玩家名 */
+    /** 收到新名册：整屏重建 */
     public void applyState(RosterStatePacket packet) {
         this.members = packet.members();
-        String keep = nameBox == null ? "" : nameBox.getValue();
+        this.online = packet.online();
         this.rebuildWidgets();
-        if (nameBox != null) {
-            nameBox.setValue(keep);
-        }
     }
 
     @Override
     protected void init() {
-        ImeCompat.onTextScreenOpened();
         int cx = this.width / 2;
         int left = cx - PANEL_W / 2;
         int top = 30;
 
-        int fit = Math.max(1, (this.height - top - BOTTOM_RESERVED) / ROW_H);
-        this.shown = Math.min(members.size(), Math.min(8, fit));
+        int avail = this.height - top - 60;
+        int memberRows = Math.max(1, Math.min(6, (avail - 26) / ROW_H));
+        this.shownMembers = Math.min(members.size(), memberRows);
 
-        // 每一行：名字 / 角色 / 撤销
-        for (int i = 0; i < shown; i++) {
+        for (int i = 0; i < shownMembers; i++) {
             RosterStatePacket.Entry e = members.get(i);
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.roster.revoke"),
@@ -67,37 +60,29 @@ public class RosterScreen extends Screen {
                     .bounds(left + PANEL_W - ROW_BTN_W, top + i * ROW_H + 2, ROW_BTN_W, 18).build());
         }
 
-        // 输入框：在线玩家名
-        int inputY = top + shown * ROW_H + 10;
-        this.nameBox = new EditBox(this.font, left, inputY, PANEL_W, 18,
-                Component.translatable("gui.meow_machine.roster.name_hint"));
-        this.nameBox.setMaxLength(16);
-        this.nameBox.setHint(Component.translatable("gui.meow_machine.roster.name_hint"));
-        addRenderableWidget(nameBox);
+        // 在线玩家：一行名字 + 两个任命按钮
+        int onlineTop = top + shownMembers * ROW_H + 24;
+        int room = Math.max(1, (this.height - 34 - onlineTop) / ROW_H);
+        this.shownOnline = Math.min(online.size(), Math.min(5, room));
 
-        // 两颗任命按钮
-        int half = (PANEL_W - 6) / 2;
-        int grantY = inputY + 22;
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.roster.grant_reviewer"),
-                        b -> grant(ReviewerRole.REVIEWER))
-                .bounds(left, grantY, half, 18).build());
-        addRenderableWidget(Button.builder(
-                        Component.translatable("gui.meow_machine.roster.grant_assistant"),
-                        b -> grant(ReviewerRole.ASSISTANT))
-                .bounds(left + half + 6, grantY, half, 18).build());
+        for (int i = 0; i < shownOnline; i++) {
+            RosterStatePacket.Online p = online.get(i);
+            int y = onlineTop + i * ROW_H + 2;
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.roster.grant_reviewer"),
+                            b -> Network.CHANNEL.sendToServer(
+                                    RosterActionPacket.grant(p.name(), ReviewerRole.REVIEWER)))
+                    .bounds(left + PANEL_W - ONLINE_BTN_W * 2 - 14, y, ONLINE_BTN_W, 18).build());
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.roster.grant_assistant"),
+                            b -> Network.CHANNEL.sendToServer(
+                                    RosterActionPacket.grant(p.name(), ReviewerRole.ASSISTANT)))
+                    .bounds(left + PANEL_W - ONLINE_BTN_W - 6, y, ONLINE_BTN_W, 18).build());
+        }
 
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.close"), b -> this.onClose())
                 .bounds(cx - 50, this.height - 24, 100, 20).build());
-    }
-
-    private void grant(ReviewerRole role) {
-        String name = nameBox == null ? "" : nameBox.getValue().trim();
-        if (name.isEmpty()) {
-            return;
-        }
-        Network.CHANNEL.sendToServer(RosterActionPacket.grant(name, role));
     }
 
     @Override
@@ -108,34 +93,54 @@ public class RosterScreen extends Screen {
         int top = 30;
 
         g.drawCenteredString(this.font, this.title, cx, 14, 0xFFFFFF);
+        g.drawString(this.font,
+                Component.translatable("gui.meow_machine.roster.members_header"),
+                left, top - 12, 0xFFAA44, false);
 
-        if (shown == 0) {
-            g.drawCenteredString(this.font,
+        if (shownMembers == 0) {
+            g.drawString(this.font,
                     Component.translatable("gui.meow_machine.roster.empty"),
-                    cx, top + 20, 0xAAAAAA);
+                    left, top + 6, 0xAAAAAA, false);
         }
 
-        for (int i = 0; i < shown; i++) {
+        for (int i = 0; i < shownMembers; i++) {
             RosterStatePacket.Entry e = members.get(i);
             int y = top + i * ROW_H;
             g.drawString(this.font,
-                    Component.literal(trimToWidth(e.displayName(), 140)), left, y + 6, 0xFFFF80, false);
+                    Component.literal(trimToWidth(e.displayName(), 160)), left, y + 6, 0xFFFF80, false);
             g.drawString(this.font,
                     Component.translatable("gui.meow_machine.roster.role." + e.role()),
-                    left + 150, y + 6, 0xCCCCCC, false);
+                    left + 168, y + 6, 0xCCCCCC, false);
         }
 
-        if (members.size() > shown) {
+        int onlineTop = top + shownMembers * ROW_H + 24;
+        g.drawString(this.font,
+                Component.translatable("gui.meow_machine.roster.online_header"),
+                left, onlineTop - 12, 0xFFAA44, false);
+
+        if (shownOnline == 0) {
+            g.drawString(this.font,
+                    Component.translatable("gui.meow_machine.roster.no_online"),
+                    left, onlineTop + 6, 0xAAAAAA, false);
+        }
+
+        for (int i = 0; i < shownOnline; i++) {
+            RosterStatePacket.Online p = online.get(i);
+            int y = onlineTop + i * ROW_H;
+            g.drawString(this.font,
+                    Component.literal(trimToWidth(p.name(), 150)), left, y + 6, 0xDDDDDD, false);
+        }
+
+        if (members.size() > shownMembers || online.size() > shownOnline) {
             g.drawCenteredString(this.font,
                     Component.translatable("gui.meow_machine.roster.more",
-                            members.size() - shown),
-                    cx, top + shown * ROW_H + 52, 0xFF8080);
+                            Math.max(members.size() - shownMembers, online.size() - shownOnline)),
+                    cx, this.height - 40, 0xFF8080);
         }
 
         super.render(g, mouseX, mouseY, partialTick);
     }
 
-    /** 按像素宽度截断（中文/英文宽度差一倍，按字符截会溢出） */
     private String trimToWidth(String s, int maxWidth) {
         if (s == null) {
             return "";
@@ -154,11 +159,5 @@ public class RosterScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
-    }
-
-    @Override
-    public void removed() {
-        ImeCompat.onTextScreenClosed();
-        super.removed();
     }
 }

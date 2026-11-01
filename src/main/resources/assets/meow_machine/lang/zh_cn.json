@@ -105,5 +105,15 @@
   "gui.meow_machine.detail_title": "审核详情",
   "gui.meow_machine.detail_empty": "（这篇投稿没有正文）",
   "gui.meow_machine.btn.edit": "编辑",
-  "gui.meow_machine.my_review_list": "待审列表"
+  "gui.meow_machine.my_review_list": "待审列表",
+  "chat.meow_machine.terminal_granted": "[喵呜机] 已发放审核终端（右键打开审核后台）",
+  "gui.meow_machine.assistant_hint": "助理只能查看与标注，不能终裁",
+  "gui.meow_machine.note_title": "写审核意见",
+  "gui.meow_machine.note_hint": "写一句给作者看的意见",
+  "gui.meow_machine.note_send": "发送",
+  "gui.meow_machine.note_write": "写意见",
+  "gui.meow_machine.note_section": "审核意见",
+  "gui.meow_machine.roster.members_header": "名册",
+  "gui.meow_machine.roster.online_header": "在线玩家（点按钮任命）",
+  "gui.meow_machine.roster.no_online": "没有其他在线玩家"
 }

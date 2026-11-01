@@ -370,7 +370,9 @@ public class SubmissionScreen extends Screen {
         int titleY = Math.max(6, this.bodyTop - TITLE_H - TOOLBAR_H - 30);
         g.drawCenteredString(this.font, this.title, cx, titleY, 0xFFFFFF);
         g.drawCenteredString(this.font,
-                Component.translatable("gui.meow_machine.status", draft.status()),
+                Component.translatable("gui.meow_machine.status",
+                        Component.translatable("gui.meow_machine.state."
+                                + (draft.status() == null ? "draft" : draft.status().toLowerCase()))),
                 cx, titleY + 12, 0xAAAAAA);
 
         super.render(g, mouseX, mouseY, partialTick);
