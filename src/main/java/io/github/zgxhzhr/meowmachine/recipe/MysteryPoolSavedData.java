@@ -52,9 +52,15 @@ public final class MysteryPoolSavedData extends SavedData {
         }
         // 牌堆里的东西如果已经不在这个世界了（删了模组），只清理不合法的
         remaining.removeIf(id -> !vanilla.contains(id) && !modded.contains(id));
+        if (remaining.size() > DECK) {
+            remaining.clear();
+        }
         if (remaining.isEmpty()) {
             remaining.addAll(buildDeck(vanilla, modded, vWeight, mWeight));
-            if (remaining.isEmpty()) {
+            if (remaining.size() > DECK) {
+            remaining.clear();
+        }
+        if (remaining.isEmpty()) {
                 return "";
             }
             if (remaining.size() > 1 && remaining.get(0).equals(last)) {
@@ -100,10 +106,20 @@ public final class MysteryPoolSavedData extends SavedData {
 
     // ---------------- 序列化 ----------------
 
+    /** 牌堆格式版本：1 = 旧版「全量候选洗牌」，2 = 现在的「一轮 10 张加权牌堆」 */
+    private static final int DECK_VERSION = 2;
+
     public static MysteryPoolSavedData load(CompoundTag tag) {
         MysteryPoolSavedData d = new MysteryPoolSavedData();
         d.last = tag.getString("last");
+        int version = tag.getInt("deck_version");
         ListTag list = tag.getList("remaining", Tag.TAG_STRING);
+        if (version < DECK_VERSION || list.size() > DECK) {
+            // 旧版存档里是几百上千个候选的洗牌队列，不清掉的话要先抽完它们才轮到新牌堆
+            // （实测：22 次全是原版，模组物品一直不出现）
+            MeowMachine.LOG.info("[喵呜机] 神秘合成牌堆格式升级，重置旧队列（{} 条）", list.size());
+            return d;
+        }
         for (int i = 0; i < list.size(); i++) {
             d.remaining.add(list.getString(i));
         }
@@ -112,6 +128,7 @@ public final class MysteryPoolSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag) {
+        tag.putInt("deck_version", DECK_VERSION);
         tag.putString("last", last);
         ListTag list = new ListTag();
         for (String id : remaining) {
