@@ -92,10 +92,12 @@ public class SubmissionScreen extends Screen {
         int top = Math.max(44, Math.min(this.height / 4, 72));
         this.panelLeft = cx - PANEL_W / 2;
 
+        String keepTitle = this.titleBox == null ? draft.title() : this.titleBox.getValue();
         this.titleBox = new EditBox(this.font, panelLeft, top, PANEL_W, TITLE_H,
                 Component.translatable("gui.meow_machine.title_field"));
         this.titleBox.setMaxLength(Network.MAX_TITLE_LEN);
-        this.titleBox.setValue(draft.title());
+        // 窗口大小变化/从插入表格界面返回都会重新 init：保留玩家已经打的标题
+        this.titleBox.setValue(keepTitle);
         this.titleBox.setHint(Component.translatable("gui.meow_machine.title_hint"));
         this.titleBox.setEditable(editable);
         this.addRenderableWidget(this.titleBox);

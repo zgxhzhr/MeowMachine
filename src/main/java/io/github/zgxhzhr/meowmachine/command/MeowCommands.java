@@ -249,7 +249,7 @@ public final class MeowCommands {
             return 0;
         }
         List<ReviewListPacket.Entry> list = SubmissionQueue.visibleTo(self).stream()
-                .map(e -> ReviewListPacket.Entry.of(e.submission()))
+                .map(e -> ReviewListPacket.Entry.of(e.submission(), true))
                 .toList();
         boolean canFinalize = ReviewerRoster.canFinalize(self);
         boolean assistant = ReviewerRoster.roleOf(self.getUUID())

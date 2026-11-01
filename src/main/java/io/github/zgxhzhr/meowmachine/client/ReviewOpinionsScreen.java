@@ -51,16 +51,11 @@ public class ReviewOpinionsScreen extends Screen {
 
         lines.add("—— " + Component.translatable(
                 "gui.meow_machine.detail.local_rules").getString() + " ——");
-        List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
-                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(),
-                        io.github.zgxhzhr.meowmachine.richtext.RichHtml.stripTags(entry.body()),
-                        entry.body());
-        if (pre.isEmpty()) {
+        // 用服务端下发的预检（客户端自己重跑会和真正生效的结论不一致）
+        if (entry.localRules().isEmpty()) {
             lines.add(none);
         } else {
-            for (var f : pre) {
-                String text = "第 " + (f.ruleId() == null ? "?" : f.ruleId()) + " 条："
-                        + (f.reason() == null ? "" : f.reason());
+            for (String text : entry.localRules()) {
                 lines.addAll(wrap(text, PANEL_W - 16));
             }
         }

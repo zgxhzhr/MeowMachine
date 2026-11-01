@@ -38,9 +38,9 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
      */
     public record Entry(String fullId, String shortId, String author, String title, String body,
                         List<String> notes, List<String> aiOpinions,
-                        List<String> diffLines) {
+                        List<String> diffLines, List<String> localRules) {
 
-        public static Entry of(Submission s) {
+        public static Entry of(Submission s, boolean withDiff) {
             String full = s.id().toString();
             String plain = RichHtml.stripTags(s.body());
             if (plain.length() > MAX_BODY) {
@@ -49,12 +49,23 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             List<String> diff = new ArrayList<>();
             io.github.zgxhzhr.meowmachine.review.ApprovedSavedData.Entry prev =
                     io.github.zgxhzhr.meowmachine.review.ApprovedIndex.find(s.id()).orElse(null);
-            if (prev != null) {
+            if (withDiff && prev != null) {
                 var d = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(prev.body(), s.body());
                 diff.addAll(d.summaryLines());
             }
+            // 预检也由服务端算（原来客户端自己重跑，和真正生效的结论可能不一致）
+            List<String> precheck = new ArrayList<>();
+            for (var f : io.github.zgxhzhr.meowmachine.review.LocalRules
+                    .check(s.title(), plain, s.body())) {
+                precheck.add("第" + (f.ruleId() == null ? "?" : f.ruleId()) + "条："
+                        + (f.reason() == null ? "" : f.reason()));
+                if (precheck.size() >= 8) {
+                    break;
+                }
+            }
             return new Entry(full, full.substring(0, 8), s.authorName(), s.title(), plain,
-                    ReviewNotes.of(s.id()), AiOpinions.of(s.id()), List.copyOf(diff));
+                    ReviewNotes.of(s.id()), AiOpinions.of(s.id()), List.copyOf(diff),
+                    List.copyOf(precheck));
         }
     }
 
@@ -72,8 +83,13 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
     public static ReviewListPacket of(List<SubmissionQueue.Entry> queue, boolean canFinalize,
                                       boolean assistant) {
         List<Entry> list = new ArrayList<>();
+        int i = 0;
         for (SubmissionQueue.Entry e : queue) {
-            list.add(Entry.of(e.submission()));
+            // 主线程上做 stripTags/对比是有成本的：只给前 150 条算，其余等客户端重拉
+            if (i++ >= 150) {
+                break;
+            }
+            list.add(Entry.of(e.submission(), i <= 40));
         }
         return new ReviewListPacket(List.copyOf(list), canFinalize, assistant,
                 StickerRegistry.idsForState("approved"));
@@ -117,6 +133,10 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             }
             buf.writeVarInt(e.diffLines().size());
             for (String n : e.diffLines()) {
+                buf.writeUtf(n, 240);
+            }
+            buf.writeVarInt(e.localRules().size());
+            for (String n : e.localRules()) {
                 buf.writeUtf(n, 240);
             }
         }
@@ -169,8 +189,16 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             for (int k = 0; k < dc; k++) {
                 diff.add(buf.readUtf(240));
             }
+            int lc = buf.readVarInt();
+            if (lc < 0 || lc > 32) {
+                throw new DecoderException("喵呜机：预检条数非法: " + lc);
+            }
+            List<String> pre = new ArrayList<>(lc);
+            for (int k = 0; k < lc; k++) {
+                pre.add(buf.readUtf(240));
+            }
             list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes),
-                    List.copyOf(ai), List.copyOf(diff)));
+                    List.copyOf(ai), List.copyOf(diff), List.copyOf(pre)));
         }
         return new ReviewListPacket(list, canFinalize, assistant, List.copyOf(approved));
     }
