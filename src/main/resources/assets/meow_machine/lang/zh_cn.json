@@ -222,5 +222,7 @@
   "chat.meow_machine.mystery_revealed": "喵呜机把抽到的东西塞进了你的背包。",
   "item.meow_machine.mystery_result.use": "右键揭晓",
   "chat.meow_machine.mystery_dropped": "背包满了，东西掉在你脚边。",
-  "chat.meow_machine.body_truncated": "正文超过长度上限，超出的部分被截掉了（考虑拆成两篇）"
+  "chat.meow_machine.body_truncated": "正文超过长度上限，超出的部分被截掉了（考虑拆成两篇）",
+  "command.meow_machine.ambiguous_id": "id 前缀太短或匹配到多份，请输入更长的前缀",
+  "chat.meow_machine.roster_bad_role": "角色不合法（只能是 reviewer / assistant）"
 }

@@ -107,7 +107,7 @@ public final class StickerAlbum {
 
     private static Set<String> loadOwned(ServerPlayer player) {
         Set<String> owned = new LinkedHashSet<>();
-        CompoundTag data = player.getPersistentData();
+        CompoundTag data = io.github.zgxhzhr.meowmachine.util.PlayerData.persisted(player);
         ListTag list = data.getList(KEY, Tag.TAG_STRING);
         for (int i = 0; i < list.size(); i++) {
             owned.add(list.getString(i));
@@ -120,7 +120,7 @@ public final class StickerAlbum {
         for (String id : owned) {
             list.add(StringTag.valueOf(id));
         }
-        player.getPersistentData().put(KEY, list);
+        io.github.zgxhzhr.meowmachine.util.PlayerData.persisted(player).put(KEY, list);
     }
 
     private static void announce(ServerPlayer player, ItemStack stack, int count) {
@@ -131,7 +131,7 @@ public final class StickerAlbum {
                 : stack.getHoverName();
         player.sendSystemMessage(Component.translatable(
                 "chat.meow_machine.sticker_progress", name, count, COLLECTOR_TARGET));
-        if (count >= COLLECTOR_TARGET) {
+        if (count == COLLECTOR_TARGET) {
             MeowAdvancements.award(player, ADVANCEMENT);
             player.sendSystemMessage(Component.translatable(
                     "chat.meow_machine.sticker_complete", COLLECTOR_TARGET));

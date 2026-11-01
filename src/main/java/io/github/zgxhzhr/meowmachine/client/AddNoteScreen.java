@@ -30,6 +30,7 @@ public class AddNoteScreen extends Screen {
 
     @Override
     protected void init() {
+        io.github.zgxhzhr.meowmachine.client.ImeCompat.onTextScreenOpened();
         int cx = this.width / 2;
         int left = cx - PANEL_W / 2;
         int y = this.height / 2 - 20;

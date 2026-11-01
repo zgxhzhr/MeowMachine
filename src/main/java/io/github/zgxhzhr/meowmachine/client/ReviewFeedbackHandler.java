@@ -32,6 +32,10 @@ public final class ReviewFeedbackHandler {
                     Component.translatable("chat.meow_machine.rules", joinRules(msg.ruleIds())), false);
         }
 
+        // 正在编辑投稿时先把草稿存了再弹结果，否则编辑界面被顶掉、内容直接消失
+        if (mc.screen instanceof SubmissionScreen sub) {
+            sub.onClose();
+        }
         // 主反馈：梗图弹窗
         mc.setScreen(new StickerScreen(msg));
     }

@@ -41,7 +41,7 @@ public final class StatsAchievements {
     }
 
     private static int inc(ServerPlayer player, String field) {
-        CompoundTag data = player.getPersistentData();
+        CompoundTag data = io.github.zgxhzhr.meowmachine.util.PlayerData.persisted(player);
         CompoundTag stats = data.contains(KEY) ? data.getCompound(KEY) : new CompoundTag();
         int n = stats.getInt(field) + 1;
         stats.putInt(field, n);

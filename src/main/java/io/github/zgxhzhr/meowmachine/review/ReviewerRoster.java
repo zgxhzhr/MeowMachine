@@ -95,7 +95,7 @@ public final class ReviewerRoster {
                             ReviewerRole role = ReviewerRole.valueOf(value.getAsString().toUpperCase());
                             ROSTER.put(uuid, new Member(uuid, "", role));
                         }
-                    } catch (IllegalArgumentException | IllegalStateException e) {
+                    } catch (RuntimeException e) {
                         MeowMachine.LOG.warn("[喵呜机] 审核员名册里有非法条目，已跳过: {}", key);
                     }
                 }

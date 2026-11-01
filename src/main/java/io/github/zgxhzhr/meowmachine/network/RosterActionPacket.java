@@ -81,6 +81,11 @@ public record RosterActionPacket(Action action, String target, String role) {
                         notice(player, "chat.meow_machine.player_not_online", msg.target);
                     } else {
                         ReviewerRole role = parseRole(msg.role);
+                        if (role == null) {
+                            notice(player, "chat.meow_machine.roster_bad_role", "");
+                            c.setPacketHandled(true);
+                            return;
+                        }
                         boolean ok = ReviewerRoster.grant(target.getUUID(),
                                 target.getName().getString(), role);
                         if (!ok) {
@@ -116,10 +121,14 @@ public record RosterActionPacket(Action action, String target, String role) {
     }
 
     private static ReviewerRole parseRole(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
         try {
-            return ReviewerRole.valueOf(s.toUpperCase());
+            return ReviewerRole.valueOf(s.strip().toUpperCase(java.util.Locale.ROOT));
         } catch (RuntimeException e) {
-            return ReviewerRole.REVIEWER;
+            // 以前 fail-open 降级成 REVIEWER（最高权限），非法值必须拒绝
+            return null;
         }
     }
 

@@ -96,7 +96,13 @@ public final class MeowCommands {
             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
             String roleName = StringArgumentType.getString(ctx, "role").toUpperCase();
             ReviewerRole role = ReviewerRole.valueOf(roleName);
-            ReviewerRoster.grant(target.getUUID(), target.getName().getString(), role);
+            if (!ReviewerRoster.grant(target.getUUID(), target.getName().getString(), role)) {
+                ctx.getSource().sendFailure(Component.translatable(
+                        "chat.meow_machine.roster_role_taken"));
+                return 0;
+            }
+            io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
+                    target, "appointed");
             ctx.getSource().sendSuccess(() -> Component.translatable(
                     "command.meow_machine.grant", target.getName().getString(), role.name()),
                     true);

@@ -79,8 +79,22 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
                 StickerRegistry.idsForState("approved"));
     }
 
+    /** 单包字节预算（Netty 上限 2MB，留足余量；超了就少发几条，客户端可重拉） */
+    private static final int BYTE_BUDGET = 1_200_000;
+
     public static void encode(ReviewListPacket msg, FriendlyByteBuf buf) {
-        buf.writeVarInt(msg.entries.size());
+        // 超出预算的条目直接不发：前端还有「更多」提示，重新打开列表即可
+        java.util.List<Entry> sendable = new ArrayList<>();
+        int budget = BYTE_BUDGET;
+        for (Entry e : msg.entries) {
+            int cost = e.body().length() * 2 + 200;
+            if (cost > budget) {
+                break;
+            }
+            budget -= cost;
+            sendable.add(e);
+        }
+        buf.writeVarInt(sendable.size());
         buf.writeBoolean(msg.canFinalize());
         buf.writeBoolean(msg.assistant());
         buf.writeVarInt(msg.approvedStickers().size());

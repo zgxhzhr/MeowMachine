@@ -29,13 +29,21 @@ public final class ReviewActions {
     private ReviewActions() {
     }
 
+    /** 在线玩家（作者离线时返回 null，成就等依赖在线状态的操作跳过） */
+    private static ServerPlayer serverPlayerOf(java.util.UUID uuid) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        return server == null || uuid == null ? null : server.getPlayerList().getPlayer(uuid);
+    }
+
     /** 裁决结果 */
     public enum Outcome {
         OK,
         NO_PERMISSION,
         NO_SUCH_ID,
         CANNOT_FINALIZE,
-        BAD_VERDICT
+        BAD_VERDICT,
+        /** id 前缀太短（容易误伤别人的稿）或匹配到多份 */
+        AMBIGUOUS_ID
     }
 
     /**
@@ -73,12 +81,20 @@ public final class ReviewActions {
         if (idPrefix == null || idPrefix.isBlank()) {
             return Outcome.NO_SUCH_ID;
         }
-        Optional<SubmissionQueue.Entry> found = SubmissionQueue.snapshot().stream()
-                .filter(e -> e.submission().id().toString().startsWith(idPrefix))
-                .findFirst();
-        if (found.isEmpty()) {
+        // 列表只显示 8 位短 id，前缀太短会撞到别人的稿；且必须唯一
+        if (idPrefix.strip().length() < 4) {
+            return Outcome.AMBIGUOUS_ID;
+        }
+        java.util.List<SubmissionQueue.Entry> matches = SubmissionQueue.snapshot().stream()
+                .filter(e -> e.submission().id().toString().startsWith(idPrefix.strip()))
+                .toList();
+        if (matches.isEmpty()) {
             return Outcome.NO_SUCH_ID;
         }
+        if (matches.size() > 1) {
+            return Outcome.AMBIGUOUS_ID;
+        }
+        Optional<SubmissionQueue.Entry> found = Optional.of(matches.get(0));
         Submission sub = found.get().submission();
 
         // 控制台（reviewer == null）天然有权；玩家要过 canFinalize
@@ -137,6 +153,18 @@ public final class ReviewActions {
                     reviewer, verdict == Verdict.RETURN || verdict == Verdict.REVISE);
         }
         Submission app = sub.apply(result);
+        // 人工裁决路径也要发作者侧成就（以前只在自动审核路径发，有审核员时作者成就永远停在 first_submit）
+        if (app.authorUuid() != null && serverPlayerOf(app.authorUuid()) != null) {
+            var author = serverPlayerOf(app.authorUuid());
+            if (verdict == Verdict.PASS) {
+                io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_approved");
+                if (sub.state() == SubmissionState.RETURNED) {
+                    io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "revised_approved");
+                }
+            } else {
+                io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(author, "first_returned");
+            }
+        }
         SubmissionHistory.record(app);
         ApprovedIndex.record(app);
         if (reviewer != null) {
@@ -219,6 +247,7 @@ public final class ReviewActions {
             case OK -> "command.meow_machine.decided_ok";
             case NO_PERMISSION -> "command.meow_machine.no_permission";
             case NO_SUCH_ID -> "command.meow_machine.no_such_id";
+        case AMBIGUOUS_ID -> "command.meow_machine.ambiguous_id";
             case CANNOT_FINALIZE -> "command.meow_machine.cannot_finalize";
             case BAD_VERDICT -> "command.meow_machine.bad_verdict";
         };

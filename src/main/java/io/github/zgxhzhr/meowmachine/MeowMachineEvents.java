@@ -83,26 +83,34 @@ public final class MeowMachineEvents {
         io.github.zgxhzhr.meowmachine.progress.StickerAlbum.scanInventory(sp);
         grantIconOnce(sp);
 
-        net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
+        net.minecraft.nbt.CompoundTag data =
+                io.github.zgxhzhr.meowmachine.util.PlayerData.persisted(sp);
         if (data.getBoolean("meow_machine_terminal_granted")) {
             return;
         }
         data.putBoolean("meow_machine_terminal_granted", true);
-        sp.getInventory().add(new net.minecraft.world.item.ItemStack(
-                io.github.zgxhzhr.meowmachine.registry.ModItems.ADMIN_TERMINAL.get()));
+        var terminal = new net.minecraft.world.item.ItemStack(
+                io.github.zgxhzhr.meowmachine.registry.ModItems.ADMIN_TERMINAL.get());
+        if (!sp.getInventory().add(terminal)) {
+            sp.drop(terminal, false);
+        }
         sp.sendSystemMessage(Component.translatable("chat.meow_machine.terminal_granted"));
         MeowMachine.LOG.info("[喵呜机] 已发放审核终端给 {}", sp.getName().getString());
     }
 
     /** 首次进入世界发一个「喵喵喵」图标物品（条目册入口，后续扩展） */
     private static void grantIconOnce(ServerPlayer sp) {
-        net.minecraft.nbt.CompoundTag data = sp.getPersistentData();
+        net.minecraft.nbt.CompoundTag data =
+                io.github.zgxhzhr.meowmachine.util.PlayerData.persisted(sp);
         if (data.getBoolean("meow_machine_icon_granted")) {
             return;
         }
         data.putBoolean("meow_machine_icon_granted", true);
-        sp.getInventory().add(new net.minecraft.world.item.ItemStack(
-                io.github.zgxhzhr.meowmachine.registry.ModItems.MEOW_ICON.get()));
+        var icon = new net.minecraft.world.item.ItemStack(
+                io.github.zgxhzhr.meowmachine.registry.ModItems.MEOW_ICON.get());
+        if (!sp.getInventory().add(icon)) {
+            sp.drop(icon, false);
+        }
     }
 
     /**

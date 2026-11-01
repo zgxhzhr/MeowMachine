@@ -117,6 +117,27 @@ public record SubmitPacket(String title, String body) {
                         Network.CHANNEL.sendTo(ReviewResultPacket.from(result),
                                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
                     });
+                })
+                .exceptionally(ex -> {
+                    MeowMachine.LOG.error("[喵呜机] 审核流水线异常，按兜底打回", ex);
+                    var server = player.getServer();
+                    if (server != null) {
+                        server.execute(() -> {
+                            io.github.zgxhzhr.meowmachine.review.ReviewResult fallback =
+                                    io.github.zgxhzhr.meowmachine.review.ReviewResult.of(
+                                            io.github.zgxhzhr.meowmachine.review.Verdict.RETURN,
+                                            java.util.List.of(
+                                                    io.github.zgxhzhr.meowmachine.review.ReviewFinding
+                                                            .unexplained("审核出现异常，先按打回处理，请稍后重新投稿")),
+                                            "server", "");
+                            Submission failed = sub.apply(fallback);
+                            io.github.zgxhzhr.meowmachine.review.DraftStore.save(player, failed);
+                            io.github.zgxhzhr.meowmachine.review.SubmissionHistory.record(failed);
+                            Network.CHANNEL.sendTo(ReviewResultPacket.from(fallback),
+                                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                        });
+                    }
+                    return null;
                 });
 
         c.setPacketHandled(true);
