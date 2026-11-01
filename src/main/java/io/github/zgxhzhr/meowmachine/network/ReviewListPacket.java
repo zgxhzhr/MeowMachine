@@ -53,12 +53,25 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean
             List<String> diff = new ArrayList<>();
             io.github.zgxhzhr.meowmachine.review.ApprovedSavedData.Entry prev =
                     io.github.zgxhzhr.meowmachine.review.ApprovedIndex.find(s.id()).orElse(null);
-            if (withDiff && prev != null) {
-                var d = io.github.zgxhzhr.meowmachine.review.EditDiffs.of(prev.body(), s.body());
+            var d = prev == null ? null
+                    : io.github.zgxhzhr.meowmachine.review.EditDiffs.of(prev.body(), s.body());
+            if (withDiff && d != null) {
                 diff.addAll(d.summaryLines());
             }
             // 预检也由服务端算（原来客户端自己重跑，和真正生效的结论可能不一致）
             List<String> precheck = new ArrayList<>();
+            // 修改类判定也进预检：改动过小 / 越改越倒退，审核员不点「意见」也该看到
+            if (prev != null) {
+                int delta = Math.abs(d.newChars() - d.oldChars());
+                if (d.trivial()) {
+                    precheck.add("第10条：与上一版几乎相同（字数 " + d.oldChars() + " → "
+                            + d.newChars() + "，变动 " + Math.max(d.added(), d.removed()) + " 行），实质未修改");
+                }
+                if (d.regressed()) {
+                    precheck.add("第29条：越改越倒退（删除 " + d.removed() + " 行 / 新增 "
+                            + d.added() + " 行，字数 " + d.oldChars() + " → " + d.newChars() + "）");
+                }
+            }
             for (var f : io.github.zgxhzhr.meowmachine.review.LocalRules
                     .check(s.title(), plain, s.body())) {
                 precheck.add("第" + (f.ruleId() == null ? "?" : f.ruleId()) + "条："
