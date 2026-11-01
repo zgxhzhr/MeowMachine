@@ -174,5 +174,6 @@
   "chat.meow_machine.sticker_progress": "[喵呜机] 获得梗图「%s」（收集 %s/%s）",
   "chat.meow_machine.sticker_complete": "[喵呜机] 集齐 %s 张梗图！",
   "gui.meow_machine.sticker_view_title": "梗图",
-  "gui.meow_machine.detail.local_rules": "本地规则预检"
+  "gui.meow_machine.detail.local_rules": "本地规则预检",
+  "chat.meow_machine.roster_role_taken": "[喵呜机] %s 已有其他身份，想换角色请先撤销"
 }

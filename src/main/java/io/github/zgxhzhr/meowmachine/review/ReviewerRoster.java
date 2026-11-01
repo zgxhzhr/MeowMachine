@@ -127,10 +127,25 @@ public final class ReviewerRoster {
 
     // ---------------- 任命 ----------------
 
-    /** 任命（OP 专用；调用方自己校验权限） */
-    public static void grant(UUID player, String name, ReviewerRole role) {
+    /**
+     * 任命（OP 专用；调用方自己校验权限）。
+     *
+     * <p>**角色互斥**：一个人只能有一个身份。已经是别的角色时拒绝，必须先撤销，
+     * 避免界面上出现「既是审核员又是助理」的错觉。
+     *
+     * @return true 表示成功；false 表示已有其它角色（或参数非法）
+     */
+    public static boolean grant(UUID player, String name, ReviewerRole role) {
+        if (player == null || role == null) {
+            return false;
+        }
+        Member existing = ROSTER.get(player);
+        if (existing != null && existing.role() != role) {
+            return false;
+        }
         ROSTER.put(player, new Member(player, name == null ? "" : name, role));
         save();
+        return true;
     }
 
     public static void revoke(UUID player) {

@@ -40,8 +40,8 @@ public record RosterStatePacket(List<Entry> members, List<Online> online) {
         }
     }
 
-    /** 在线玩家（给界面点选用的） */
-    public record Online(String uuid, String name) {
+    /** 在线玩家（给界面点选用的；role 为空表示尚未任命） */
+    public record Online(String uuid, String name, String role) {
     }
 
     public static RosterStatePacket collect(net.minecraft.server.level.ServerPlayer viewer) {
@@ -53,7 +53,10 @@ public record RosterStatePacket(List<Entry> members, List<Online> online) {
         if (viewer != null && viewer.getServer() != null) {
             for (net.minecraft.server.level.ServerPlayer p : viewer.getServer().getPlayerList().getPlayers()) {
                 // 包含自己：单人测试时也要能把某人（包括自己）任命成审核员
-                online.add(new Online(p.getUUID().toString(), p.getName().getString()));
+                io.github.zgxhzhr.meowmachine.review.ReviewerRole r =
+                        ReviewerRoster.roleOf(p.getUUID());
+                online.add(new Online(p.getUUID().toString(), p.getName().getString(),
+                        r == null ? "" : r.name().toLowerCase()));
             }
         }
         return new RosterStatePacket(List.copyOf(list), List.copyOf(online));
@@ -70,6 +73,7 @@ public record RosterStatePacket(List<Entry> members, List<Online> online) {
         for (Online o : msg.online) {
             buf.writeUtf(o.uuid(), 40);
             buf.writeUtf(o.name(), 40);
+            buf.writeUtf(o.role() == null ? "" : o.role(), 16);
         }
     }
 
@@ -88,7 +92,7 @@ public record RosterStatePacket(List<Entry> members, List<Online> online) {
         }
         List<Online> online = new ArrayList<>(Math.min(on, 16));
         for (int i = 0; i < on; i++) {
-            online.add(new Online(buf.readUtf(40), buf.readUtf(40)));
+            online.add(new Online(buf.readUtf(40), buf.readUtf(40), buf.readUtf(16)));
         }
         return new RosterStatePacket(list, online);
     }

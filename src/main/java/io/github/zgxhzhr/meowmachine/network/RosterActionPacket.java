@@ -81,8 +81,14 @@ public record RosterActionPacket(Action action, String target, String role) {
                         notice(player, "chat.meow_machine.player_not_online", msg.target);
                     } else {
                         ReviewerRole role = parseRole(msg.role);
-                        ReviewerRoster.grant(target.getUUID(),
+                        boolean ok = ReviewerRoster.grant(target.getUUID(),
                                 target.getName().getString(), role);
+                        if (!ok) {
+                            notice(player, "chat.meow_machine.roster_role_taken",
+                                    target.getName().getString() + "（"
+                                            + role.name().toLowerCase() + "）");
+                            return;
+                        }
                         io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.award(
                                 target,
                                 io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements.APPOINTED);

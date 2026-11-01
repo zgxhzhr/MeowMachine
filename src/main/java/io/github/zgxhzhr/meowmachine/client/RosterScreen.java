@@ -69,6 +69,16 @@ public class RosterScreen extends Screen {
         for (int i = 0; i < shownOnline; i++) {
             RosterStatePacket.Online p = online.get(i);
             int y = onlineTop + i * ROW_H + 2;
+            boolean appointed = p.role() != null && !p.role().isBlank();
+            if (appointed) {
+                // 已任命：角色互斥，只给撤销（想改角色必须先撤销）
+                addRenderableWidget(Button.builder(
+                                Component.translatable("gui.meow_machine.roster.revoke"),
+                                b -> Network.CHANNEL.sendToServer(
+                                        RosterActionPacket.revoke(p.uuid())))
+                        .bounds(left + PANEL_W - ONLINE_BTN_W - 6, y, ONLINE_BTN_W, 18).build());
+                continue;
+            }
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.roster.grant_reviewer"),
                             b -> Network.CHANNEL.sendToServer(
@@ -147,7 +157,12 @@ public class RosterScreen extends Screen {
             RosterStatePacket.Online p = online.get(i);
             int y = onlineTop + i * ROW_H;
             g.drawString(this.font,
-                    Component.literal(trimToWidth(p.name(), 150)), left, y + 6, 0xDDDDDD, false);
+                    Component.literal(trimToWidth(p.name(), 120)), left, y + 6, 0xDDDDDD, false);
+            if (p.role() != null && !p.role().isBlank()) {
+                g.drawString(this.font,
+                        Component.translatable("gui.meow_machine.roster.role." + p.role()),
+                        left + 126, y + 6, 0xFFAA44, false);
+            }
         }
 
         if (members.size() > shownMembers || online.size() > shownOnline) {
