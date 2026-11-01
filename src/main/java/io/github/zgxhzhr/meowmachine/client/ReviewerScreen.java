@@ -29,12 +29,15 @@ public class ReviewerScreen extends Screen {
     private final List<ReviewListPacket.Entry> entries;
     /** 助理为 false：只能查看与写意见，不能终裁 */
     private final boolean canFinalize;
+    /** 助理：只查看与写意见 */
+    private final boolean assistant;
     private int shown;
 
     public ReviewerScreen(ReviewListPacket packet) {
         super(Component.translatable("gui.meow_machine.reviewer_title"));
         this.entries = packet.entries();
         this.canFinalize = packet.canFinalize();
+        this.assistant = packet.assistant();
     }
 
     @Override
@@ -82,7 +85,7 @@ public class ReviewerScreen extends Screen {
 
     private void openDetail(ReviewListPacket.Entry entry) {
         if (this.minecraft != null) {
-            this.minecraft.setScreen(new ReviewDetailScreen(entry, canFinalize));
+            this.minecraft.setScreen(new ReviewDetailScreen(entry, canFinalize, assistant));
         }
     }
 

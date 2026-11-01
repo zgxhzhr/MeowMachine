@@ -20,7 +20,7 @@ import java.util.function.Supplier;
  *
  * @param entries 每条：fullId / 短 id / 作者 / 标题
  */
-public record ReviewListPacket(List<Entry> entries, boolean canFinalize) {
+public record ReviewListPacket(List<Entry> entries, boolean canFinalize, boolean assistant) {
 
     /** 一次最多下发多少条：界面本身只显示 8 条，多发的没有意义 */
     private static final int MAX_ENTRIES = 512;
@@ -49,21 +49,28 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize) {
 
     /** 由队列快照构造（默认允许终裁） */
     public static ReviewListPacket of(List<SubmissionQueue.Entry> queue) {
-        return of(queue, true);
+        return of(queue, true, false);
     }
 
     /** @param canFinalize 助理为 false：只能看与写意见，不能终裁 */
     public static ReviewListPacket of(List<SubmissionQueue.Entry> queue, boolean canFinalize) {
+        return of(queue, canFinalize, false);
+    }
+
+    /** @param assistant 助理：只查看与写意见，不裁决 */
+    public static ReviewListPacket of(List<SubmissionQueue.Entry> queue, boolean canFinalize,
+                                      boolean assistant) {
         List<Entry> list = new ArrayList<>();
         for (SubmissionQueue.Entry e : queue) {
             list.add(Entry.of(e.submission()));
         }
-        return new ReviewListPacket(List.copyOf(list), canFinalize);
+        return new ReviewListPacket(List.copyOf(list), canFinalize, assistant);
     }
 
     public static void encode(ReviewListPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.entries.size());
         buf.writeBoolean(msg.canFinalize());
+        buf.writeBoolean(msg.assistant());
         for (Entry e : msg.entries) {
             buf.writeUtf(e.fullId(), 40);
             buf.writeUtf(e.shortId(), 12);
@@ -84,6 +91,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize) {
             throw new DecoderException("喵呜机：待审列表条数非法: " + n);
         }
         boolean canFinalize = buf.readBoolean();
+        boolean assistant = buf.readBoolean();
         List<Entry> list = new ArrayList<>(Math.min(n, 16));
         for (int i = 0; i < n; i++) {
             String fullId = buf.readUtf(40);
@@ -101,7 +109,7 @@ public record ReviewListPacket(List<Entry> entries, boolean canFinalize) {
             }
             list.add(new Entry(fullId, shortId, author, title, body, List.copyOf(notes)));
         }
-        return new ReviewListPacket(list, canFinalize);
+        return new ReviewListPacket(list, canFinalize, assistant);
     }
 
     public static void handle(ReviewListPacket msg, Supplier<NetworkEvent.Context> ctx) {

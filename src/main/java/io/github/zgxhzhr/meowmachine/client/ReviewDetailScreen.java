@@ -26,14 +26,20 @@ public class ReviewDetailScreen extends Screen {
 
     private final ReviewListPacket.Entry entry;
     private final boolean canFinalize;
+    private final boolean assistant;
     private final List<String> lines = new ArrayList<>();
     private int scroll = 0;
     private int viewHeight;
+    /** 正文框顶部（有预检行时下移） */
+    private int bodyTop = TOP;
+    /** 本地规则预检摘要（正文框外单独一行） */
+    private String precheck = "";
 
-    public ReviewDetailScreen(ReviewListPacket.Entry entry, boolean canFinalize) {
+    public ReviewDetailScreen(ReviewListPacket.Entry entry, boolean canFinalize, boolean assistant) {
         super(Component.translatable("gui.meow_machine.detail_title"));
         this.entry = entry;
         this.canFinalize = canFinalize;
+        this.assistant = assistant;
     }
 
     @Override
@@ -66,25 +72,6 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
-        // 本地规则预检：给审核员当参考意见（确定性检查，纯客户端可跑）
-        java.util.List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
-                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(), entry.body());
-        if (!pre.isEmpty()) {
-            lines.add("");
-            lines.add("—— " + Component.translatable("gui.meow_machine.detail.local_rules").getString() + " ——");
-            for (var f : pre) {
-                String text = "第 " + (f.ruleId() == null ? "?" : f.ruleId()) + " 条：" +
-                        (f.reason() == null ? "" : f.reason());
-                if (this.font.width(text) <= PANEL_W - 16) {
-                    lines.add(text);
-                } else {
-                    for (String part : io.github.zgxhzhr.meowmachine.item.StickerItem.wrap(text, 24)) {
-                        lines.add(part);
-                    }
-                }
-            }
-        }
-
         if (!entry.notes().isEmpty()) {
             lines.add("");
             lines.add("—— " + Component.translatable("gui.meow_machine.note_section").getString() + " ——");
@@ -106,6 +93,26 @@ public class ReviewDetailScreen extends Screen {
             }
         }
 
+        // 本地规则预检：只算摘要，显示在正文框**外面**，不混进正文
+        java.util.List<io.github.zgxhzhr.meowmachine.review.ReviewFinding> pre =
+                io.github.zgxhzhr.meowmachine.review.LocalRules.check(entry.title(), entry.body());
+        if (pre.isEmpty()) {
+            this.precheck = "";
+            this.bodyTop = TOP;
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (var f : pre) {
+                if (sb.length() > 0) {
+                    sb.append(" / ");
+                }
+                sb.append("第").append(f.ruleId() == null ? "?" : f.ruleId()).append("条");
+            }
+            this.precheck = Component.translatable(
+                    "gui.meow_machine.detail.local_rules").getString() + "：" + sb;
+            this.bodyTop = TOP + 12;
+        }
+        this.viewHeight = bottom - this.bodyTop - 6;
+
         int bw = 84;
         int gap = 6;
         int by = this.height - 28;
@@ -121,8 +128,8 @@ public class ReviewDetailScreen extends Screen {
                             Component.translatable("gui.meow_machine.btn.return"), b -> decide("RETURN"))
                     .bounds(x0 + (bw + gap) * 2, by, bw, 20).build());
             addRenderableWidget(Button.builder(
-                            Component.translatable("gui.meow_machine.note_write"),
-                            b -> this.minecraft.setScreen(new AddNoteScreen(entry)))
+                            Component.translatable("gui.meow_machine.back"),
+                            b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
                     .bounds(x0 + (bw + gap) * 3, by, bw, 20).build());
         } else {
             int x0 = cx - (bw * 2 + gap) / 2;
@@ -174,18 +181,22 @@ public class ReviewDetailScreen extends Screen {
         g.drawString(this.font,
                 Component.literal(trim(entry.title(), PANEL_W)), left, 40, 0xDDDDDD, false);
 
-        g.fill(left - 1, TOP - 1, left + PANEL_W + 1, TOP + viewHeight + 1, 0xFF808080);
-        g.fill(left, TOP, left + PANEL_W, TOP + viewHeight, 0xFF101010);
+        if (!precheck.isEmpty()) {
+            g.drawString(this.font, Component.literal(trim(precheck, PANEL_W)),
+                    left, bodyTop - 11, 0xFFAA44, false);
+        }
+        g.fill(left - 1, bodyTop - 1, left + PANEL_W + 1, bodyTop + viewHeight + 1, 0xFF808080);
+        g.fill(left, bodyTop, left + PANEL_W, bodyTop + viewHeight, 0xFF101010);
 
         int visible = viewHeight / LINE_H;
         for (int i = 0; i < visible && scroll + i < lines.size(); i++) {
             g.drawString(this.font, Component.literal(lines.get(scroll + i)),
-                    left + 8, TOP + 4 + i * LINE_H, 0xE0E0E0, false);
+                    left + 8, bodyTop + 4 + i * LINE_H, 0xE0E0E0, false);
         }
         if (lines.size() > visible) {
             g.drawString(this.font,
                     Component.literal((int) Math.min(lines.size(), scroll + visible) + "/" + lines.size()),
-                    left + PANEL_W - 40, TOP - 12, 0x808080, false);
+                    left + PANEL_W - 40, bodyTop - 12, 0x808080, false);
         }
 
         super.render(g, mouseX, mouseY, partialTick);

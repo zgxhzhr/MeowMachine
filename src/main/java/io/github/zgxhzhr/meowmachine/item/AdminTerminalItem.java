@@ -42,8 +42,10 @@ public class AdminTerminalItem extends Item {
             } else if (ReviewerRoster.canAnnotate(sp)) {
                 boolean canFinalize = ReviewerRoster.roleOf(sp.getUUID()) == null
                         || ReviewerRoster.roleOf(sp.getUUID()).canFinalize();
+                boolean assistant = ReviewerRoster.roleOf(sp.getUUID())
+                        == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT;
                 Network.CHANNEL.sendTo(
-                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp), canFinalize),
+                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp), canFinalize, assistant),
                         sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
             } else {
                 sp.sendSystemMessage(Component.translatable("gui.meow_machine.admin.no_permission"));

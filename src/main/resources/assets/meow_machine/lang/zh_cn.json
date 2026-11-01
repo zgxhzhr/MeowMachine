@@ -61,7 +61,7 @@
   "gui.meow_machine.reason.12": "第 12 条 句末标点",
   "gui.meow_machine.reason.18": "第 18 条 灌水/无信息",
   "gui.meow_machine.reason.19": "第 19 条 标点堆叠",
-  "gui.meow_machine.reason.22": "第 22 条 分割线",
+  "gui.meow_machine.reason.22": "第 22 条 全文样式异常",
   "gui.meow_machine.reason.23": "第 23 条 版本号不具体",
   "gui.meow_machine.reason.24": "第 24 条 PS/注前缀",
   "gui.meow_machine.reason.29": "第 29 条 冗余句",
@@ -175,5 +175,8 @@
   "chat.meow_machine.sticker_complete": "[喵呜机] 集齐 %s 张梗图！",
   "gui.meow_machine.sticker_view_title": "梗图",
   "gui.meow_machine.detail.local_rules": "本地规则预检",
-  "chat.meow_machine.roster_role_taken": "[喵呜机] %s 已有其他身份，想换角色请先撤销"
+  "chat.meow_machine.roster_role_taken": "[喵呜机] %s 已有其他身份，想换角色请先撤销",
+  "gui.meow_machine.reason.3": "第 3 条 颜文字/emoji",
+  "gui.meow_machine.reason.10": "第 10 条 重复/误导",
+  "gui.meow_machine.reason.26": "第 26 条 标题结构"
 }

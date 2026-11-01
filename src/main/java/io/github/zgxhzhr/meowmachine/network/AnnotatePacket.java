@@ -38,7 +38,9 @@ public record AnnotatePacket(String fullId, String note) {
             c.setPacketHandled(true);
             return;
         }
-        if (!ReviewerRoster.canAnnotate(player)) {
+        // 写意见是助理的活：审核员/OP 直接裁决，不走意见通道
+        if (ReviewerRoster.roleOf(player.getUUID())
+                != io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT) {
             c.setPacketHandled(true);
             return;
         }
@@ -61,7 +63,9 @@ public record AnnotatePacket(String fullId, String note) {
         Network.CHANNEL.sendTo(
                 ReviewListPacket.of(SubmissionQueue.visibleTo(player),
                         ReviewerRoster.roleOf(player.getUUID()) == null
-                                || ReviewerRoster.roleOf(player.getUUID()).canFinalize()),
+                                || ReviewerRoster.roleOf(player.getUUID()).canFinalize(),
+                        ReviewerRoster.roleOf(player.getUUID())
+                                == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT),
                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
         c.setPacketHandled(true);
     }

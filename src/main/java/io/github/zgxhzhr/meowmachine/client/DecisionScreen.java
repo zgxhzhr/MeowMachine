@@ -24,7 +24,7 @@ import java.util.Map;
 public class DecisionScreen extends Screen {
 
     /** 可选的规则：只列我们真的知道语义的条款 + 「说不出依据」 */
-    private static final int[] RULES = {1, 6, 7, 12, 18, 19, 22, 23, 24, 29, 31, -1};
+    private static final int[] RULES = {1, 3, 6, 7, 10, 12, 18, 19, 22, 23, 24, 26, 29, 31, -1};
 
     private static final int COLS = 3;
     private static final int BTN_W = 100;

@@ -61,7 +61,7 @@
   "gui.meow_machine.reason.12": "rule 12 missing end punctuation",
   "gui.meow_machine.reason.18": "rule 18 low content / no info",
   "gui.meow_machine.reason.19": "rule 19 repeated punctuation",
-  "gui.meow_machine.reason.22": "rule 22 ascii divider",
+  "gui.meow_machine.reason.22": "Rule 22 Formatting broken",
   "gui.meow_machine.reason.23": "rule 23 vague version",
   "gui.meow_machine.reason.24": "rule 24 PS/note prefix",
   "gui.meow_machine.reason.29": "rule 29 redundant sentence",
@@ -175,5 +175,8 @@
   "chat.meow_machine.sticker_complete": "[MeowMachine] All %s stickers collected!",
   "gui.meow_machine.sticker_view_title": "Sticker",
   "gui.meow_machine.detail.local_rules": "Local rule precheck",
-  "chat.meow_machine.roster_role_taken": "[MeowMachine] %s already has a role; revoke it first to change role"
+  "chat.meow_machine.roster_role_taken": "[MeowMachine] %s already has a role; revoke it first to change role",
+  "gui.meow_machine.reason.3": "Rule 3 Kaomoji/emoji",
+  "gui.meow_machine.reason.10": "Rule 10 Duplication/misleading",
+  "gui.meow_machine.reason.26": "Rule 26 Heading structure"
 }
