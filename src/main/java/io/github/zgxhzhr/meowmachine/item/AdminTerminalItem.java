@@ -64,6 +64,10 @@ public class AdminTerminalItem extends Item {
                     Network.CHANNEL.sendTo(
                             ReviewListPacket.of(SubmissionQueue.visibleTo(sp), true, false),
                             sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                    // 同时把待处理的退回申请发过去：否则界面首次打开时按钮不会出现
+                    Network.CHANNEL.sendTo(
+                            io.github.zgxhzhr.meowmachine.network.ReturnRequestListPacket.of(),
+                            sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
                 }
             } else if (effective == io.github.zgxhzhr.meowmachine.privilege.AccessTier.ASSISTANT) {
                 // 助理档：只能查看与标注，终裁按钮不给
