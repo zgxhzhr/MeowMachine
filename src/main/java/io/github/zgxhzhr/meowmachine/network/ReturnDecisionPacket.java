@@ -50,28 +50,29 @@ public record ReturnDecisionPacket(String entryId, boolean accept) {
         }
         var req = ReturnRequests.get(id).orElse(null);
         var entry = ApprovedIndex.find(id).orElse(null);
-        if (entry == null) {
-            ReturnRequests.clear(id);
-            c.setPacketHandled(true);
-            return;
-        }
+        MeowMachine.LOG.info("[喵呜机] 处理退回申请 id={} accept={} 有申请={} 有条目={}",
+                id, msg.accept, req != null, entry != null);
         if (!msg.accept) {
             ReturnRequests.clear(id);
             notify(player, "chat.meow_machine.return_request_dismissed");
             c.setPacketHandled(true);
             return;
         }
+        if (entry == null) {
+            ReturnRequests.clear(id);
+            notify(player, "chat.meow_machine.return_not_found");
+            c.setPacketHandled(true);
+            return;
+        }
         List<String> reasons = List.of(req != null && req.reason() != null && !req.reason().isBlank()
                 ? "被审核员退回：" + req.reason() : "被审核员退回");
+        SubmissionHistory.markReturnedById(id, entry.title(), entry.body(),
+                entry.revision(), reasons);
         UUID authorId;
         try {
             authorId = UUID.fromString(entry.authorUuid());
         } catch (RuntimeException e) {
             authorId = null;
-        }
-        if (authorId != null) {
-            SubmissionHistory.markReturned(authorId, id, entry.title(), entry.body(),
-                    entry.revision(), reasons);
         }
         ApprovedIndex.remove(id);
         ReturnRequests.clear(id);

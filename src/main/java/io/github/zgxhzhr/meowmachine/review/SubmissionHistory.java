@@ -117,6 +117,35 @@ public final class SubmissionHistory {
         }
     }
 
+    /**
+     * 按投稿 id 把历史状态改成「被打回」。
+     *
+     * <p>用 id 而不是 authorUuid：早期回填出来的已通过条目 authorUuid 是空的，
+     * 按 uuid 找会直接跳过，作者那边就永远显示「已通过」。
+     */
+    public static void markReturnedById(UUID id, String title, String body, int revision,
+                                        List<String> reasons) {
+        if (id == null) {
+            return;
+        }
+        BY_AUTHOR.forEach((author, list) -> {
+            for (int i = 0; i < list.size(); i++) {
+                if (!list.get(i).id().equals(id)) {
+                    continue;
+                }
+                list.set(i, new Record(id, title == null ? list.get(i).title() : title,
+                        SubmissionState.RETURNED.name().toLowerCase(),
+                        body == null ? list.get(i).body() : body, revision,
+                        System.currentTimeMillis(),
+                        reasons == null ? List.of() : List.copyOf(reasons), ""));
+                if (store != null) {
+                    store.put(author, list);
+                }
+                return;
+            }
+        });
+    }
+
     /** 全部历史记录（回填已通过索引用） */
     public static List<Record> allRecords() {
         List<Record> out = new ArrayList<>();

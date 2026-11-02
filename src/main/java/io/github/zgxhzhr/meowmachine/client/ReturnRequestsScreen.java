@@ -36,12 +36,16 @@ public class ReturnRequestsScreen extends Screen {
             addRenderableWidget(Button.builder(Component.translatable("gui.meow_machine.btn.return_now"),
                             b -> {
                                 Network.CHANNEL.sendToServer(new ReturnDecisionPacket(e.fullId(), true));
+                                Network.CHANNEL.sendToServer(
+                                        new io.github.zgxhzhr.meowmachine.network.ReviewListRequestPacket());
                                 this.onClose();
                             })
                     .bounds(left + PANEL_W - 160, y, 76, 18).build());
             addRenderableWidget(Button.builder(Component.translatable("gui.meow_machine.btn.dismiss"),
                             b -> {
                                 Network.CHANNEL.sendToServer(new ReturnDecisionPacket(e.fullId(), false));
+                                Network.CHANNEL.sendToServer(
+                                        new io.github.zgxhzhr.meowmachine.network.ReviewListRequestPacket());
                                 this.onClose();
                             })
                     .bounds(left + PANEL_W - 80, y, 76, 18).build());

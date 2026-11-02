@@ -176,15 +176,16 @@ public record RequestReturnPacket(String entryId, String reason) {
     private static void markAuthorReturned(
             io.github.zgxhzhr.meowmachine.review.ApprovedSavedData.Entry entry,
             java.util.List<String> reasons) {
-        java.util.UUID authorId;
+        io.github.zgxhzhr.meowmachine.review.SubmissionHistory.markReturnedById(
+                entry.id(), entry.title(), entry.body(), entry.revision(), reasons);
+        java.util.UUID authorId = null;
         try {
             authorId = java.util.UUID.fromString(entry.authorUuid());
-        } catch (RuntimeException e) {
+        } catch (RuntimeException ignored) {
+        }
+        if (authorId == null) {
             return;
         }
-        io.github.zgxhzhr.meowmachine.review.SubmissionHistory.markReturned(
-                authorId, entry.id(), entry.title(), entry.body(),
-                entry.revision(), reasons);
         var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return;
