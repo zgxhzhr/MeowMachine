@@ -25,8 +25,8 @@ public record ApprovedListRequestPacket() {
             return;
         }
         Network.CHANNEL.sendTo(ApprovedListPacket.of(
-                io.github.zgxhzhr.meowmachine.review.ReviewerRoster.canFinalize(player)
-                        || io.github.zgxhzhr.meowmachine.review.ReviewerRoster.isOp(player)),
+                io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers.canFinalize(player)
+                        ),
                 player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
         c.setPacketHandled(true);
     }

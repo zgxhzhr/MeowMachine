@@ -52,6 +52,9 @@ public class MeowIconItem extends Item {
                         "chat.meow_machine.tier_denied", tier.label(), actual.label()));
                 return InteractionResultHolder.fail(stack);
             }
+            // 物品封顶：拿「普通」图标时，即使你是审核员也按普通用户处理（不能直接退回）
+            io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers.set(
+                    sp, tier.effectiveFor(actual));
         }
         if (level.isClientSide) {
             // 只在客户端发包：服务端调用 sendToServer 会去拿 Minecraft.getInstance()，
