@@ -283,5 +283,13 @@
   "gui.meow_machine.rant_title": "Rant about the AI review",
   "gui.meow_machine.btn.rant": "Rant",
   "gui.meow_machine.btn.send": "Send",
-  "gui.meow_machine.result.rant": "MeowMachine says:"
+  "gui.meow_machine.result.rant": "MeowMachine says:",
+  "item.meow_machine.tier_line": "Access tier: %s",
+  "chat.meow_machine.tier_denied": "Insufficient access: this item requires \"%s\", you are \"%s\"",
+  "item.meow_machine.review_terminal_assistant": "Review Terminal (Assistant)",
+  "item.meow_machine.review_terminal_reviewer": "Review Terminal (Reviewer)",
+  "item.meow_machine.review_terminal_op": "Review Terminal (Owner)",
+  "item.meow_machine.meow_icon_assistant": "Meow Icon (Assistant)",
+  "item.meow_machine.meow_icon_reviewer": "Meow Icon (Reviewer)",
+  "item.meow_machine.meow_icon_op": "Meow Icon (Owner)"
 }

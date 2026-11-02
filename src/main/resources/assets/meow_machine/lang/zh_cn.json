@@ -283,5 +283,13 @@
   "gui.meow_machine.rant_title": "吐槽 AI 审核",
   "gui.meow_machine.btn.rant": "吐槽",
   "gui.meow_machine.btn.send": "发送",
-  "gui.meow_machine.result.rant": "喵呜机的吐槽："
+  "gui.meow_machine.result.rant": "喵呜机的吐槽：",
+  "item.meow_machine.tier_line": "权限等级：%s",
+  "chat.meow_machine.tier_denied": "权限不足：这个物品需要「%s」，你现在是「%s」",
+  "item.meow_machine.review_terminal_assistant": "审核终端·助理",
+  "item.meow_machine.review_terminal_reviewer": "审核终端·审核员",
+  "item.meow_machine.review_terminal_op": "审核终端·站长",
+  "item.meow_machine.meow_icon_assistant": "喵喵喵·助理",
+  "item.meow_machine.meow_icon_reviewer": "喵喵喵·审核员",
+  "item.meow_machine.meow_icon_op": "喵喵喵·站长"
 }

@@ -27,8 +27,16 @@ import net.minecraftforge.network.NetworkDirection;
  */
 public class AdminTerminalItem extends Item {
 
-    public AdminTerminalItem(Properties properties) {
+    private final io.github.zgxhzhr.meowmachine.privilege.AccessTier tier;
+
+    public io.github.zgxhzhr.meowmachine.privilege.AccessTier tier() {
+        return tier;
+    }
+
+    public AdminTerminalItem(Properties properties,
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier tier) {
         super(properties);
+        this.tier = tier;
     }
 
     @Override
@@ -36,6 +44,13 @@ public class AdminTerminalItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
 
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
+            // 物品自带等级：低档物品不能进高档界面（防串权）
+            var actual = io.github.zgxhzhr.meowmachine.privilege.AccessTier.of(sp);
+            if (!tier.allowedBy(actual)) {
+                sp.sendSystemMessage(Component.translatable(
+                        "chat.meow_machine.tier_denied", tier.label(), actual.label()));
+                return InteractionResultHolder.fail(stack);
+            }
             var role = ReviewerRoster.roleOf(sp.getUUID());
             if (role == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT) {
                 // 助理优先：即便他是 OP，也只给助理面板（查看 + 写意见）

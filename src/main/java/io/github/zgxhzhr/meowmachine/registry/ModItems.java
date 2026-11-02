@@ -30,10 +30,25 @@ public final class ModItems {
             ITEMS.register("submission_scroll",
                     () -> new SubmissionScrollItem(new Item.Properties().stacksTo(1)));
 
-    /** 管理终端：右键打开审核后台（仅 OP） */
+    /** 管理终端：右键打开审核后台（旧物品，等价于「审核员」档） */
     public static final RegistryObject<Item> ADMIN_TERMINAL =
             ITEMS.register("admin_terminal",
-                    () -> new AdminTerminalItem(new Item.Properties().stacksTo(1)));
+                    () -> new AdminTerminalItem(new Item.Properties().stacksTo(1),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER));
+
+    /** 分档审核终端：助理 / 审核员 / 站长，等级不够用不了 */
+    public static final RegistryObject<Item> REVIEW_TERMINAL_ASSISTANT =
+            ITEMS.register("review_terminal_assistant",
+                    () -> new AdminTerminalItem(new Item.Properties().stacksTo(1),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.ASSISTANT));
+    public static final RegistryObject<Item> REVIEW_TERMINAL_REVIEWER =
+            ITEMS.register("review_terminal_reviewer",
+                    () -> new AdminTerminalItem(new Item.Properties().stacksTo(1),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER));
+    public static final RegistryObject<Item> REVIEW_TERMINAL_OP =
+            ITEMS.register("review_terminal_op",
+                    () -> new AdminTerminalItem(new Item.Properties().stacksTo(1),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.OP));
 
     /** 18 张梗图对应的物品 id（顺序不重要，按名字映射） */
     public static final String[] STICKER_IDS = {
@@ -119,7 +134,22 @@ public final class ModItems {
      */
     public static final RegistryObject<Item> MEOW_ICON =
             ITEMS.register("meow_icon",
-                    () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties()));
+                    () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties(),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER));
+
+    /** 分档喵喵喵：助理 / 审核员 / 站长，等级不够用不了 */
+    public static final RegistryObject<Item> MEOW_ICON_ASSISTANT =
+            ITEMS.register("meow_icon_assistant",
+                    () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties(),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.ASSISTANT));
+    public static final RegistryObject<Item> MEOW_ICON_REVIEWER =
+            ITEMS.register("meow_icon_reviewer",
+                    () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties(),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER));
+    public static final RegistryObject<Item> MEOW_ICON_OP =
+            ITEMS.register("meow_icon_op",
+                    () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties(),
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.OP));
 
     /** 神秘合成的输出占位（合成前只显示它） */
     public static final RegistryObject<Item> MYSTERY_RESULT =
