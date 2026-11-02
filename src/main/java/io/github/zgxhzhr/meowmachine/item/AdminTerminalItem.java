@@ -54,6 +54,7 @@ public class AdminTerminalItem extends Item {
             // 物品封顶：用 min(玩家等级, 物品等级) 决定开哪个界面 ——
             // 审核员拿「助理终端」也只能用助理面板；站长拿助理终端同样降级
             var effective = tier.effectiveFor(actual);
+            io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers.set(sp, effective);
             if (effective == io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER) {
                 // 审核员档：待审列表 + 裁决；站长额外给完整后台
                 if (sp.hasPermissions(2)) {
