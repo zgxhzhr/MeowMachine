@@ -35,6 +35,12 @@ public final class ApprovedSavedData extends SavedData {
         return java.util.Collections.unmodifiableMap(entries);
     }
 
+    void remove(UUID id) {
+        if (entries.remove(id) != null) {
+            setDirty();
+        }
+    }
+
     void put(Entry e) {
         entries.put(e.id(), e);
         setDirty();

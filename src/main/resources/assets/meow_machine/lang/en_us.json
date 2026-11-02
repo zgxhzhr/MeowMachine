@@ -269,5 +269,18 @@
   "advancements.meow_machine.sticker_taste.title": "Tasted Eight",
   "advancements.meow_machine.sticker_taste.description": "Eat 8 different stickers",
   "advancements.meow_machine.meow_marked.title": "MeowMachine Marked You",
-  "advancements.meow_machine.meow_marked.description": "Eat all four AI-only stickers"
+  "advancements.meow_machine.meow_marked.description": "Eat all four AI-only stickers",
+  "gui.meow_machine.btn.request_return": "Request return",
+  "gui.meow_machine.btn.return_now": "Return",
+  "chat.meow_machine.return_not_found": "Approved entry not found",
+  "chat.meow_machine.return_done": "Returned \"%s\"",
+  "chat.meow_machine.return_done_author": "Your approved entry \"%s\" was returned (reason: %s)",
+  "chat.meow_machine.return_requested": "Return requested: \"%s\"",
+  "chat.meow_machine.return_requested_reviewer": "%s requests returning \"%s\" (reason: %s)",
+  "chat.meow_machine.rant_ok": "Rant recorded",
+  "chat.meow_machine.rant_full": "This entry already has 5 rants",
+  "chat.meow_machine.rant_no_submission": "You can only rant about your own reviewed entries",
+  "gui.meow_machine.rant_title": "Rant about the AI review",
+  "gui.meow_machine.btn.rant": "Rant",
+  "gui.meow_machine.btn.send": "Send"
 }

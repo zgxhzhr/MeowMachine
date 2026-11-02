@@ -72,7 +72,27 @@ public class VerdictScreen extends Screen {
         this.texture = resolveTexture(entry.stickerId());
         clamp();
 
+        // 吐槽区
+        if (entry.rants() != null && !entry.rants().isEmpty()) {
+            lines.add("");
+            lines.add("吐槽 AI 审核：");
+            for (String r : entry.rants()) {
+                for (String seg : wrap(r, PANEL_W - 28)) {
+                    lines.add("  　" + seg);
+                }
+            }
+        }
+        clamp();
+
         int cx = this.width / 2;
+        addRenderableWidget(Button.builder(
+                        Component.translatable("gui.meow_machine.btn.rant"),
+                        b -> {
+                            if (this.minecraft != null) {
+                                this.minecraft.setScreen(new RantScreen(this, entry));
+                            }
+                        })
+                .bounds(cx - 104, this.height - 28, 100, 20).build());
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.close"),
                         b -> {
@@ -80,7 +100,7 @@ public class VerdictScreen extends Screen {
                                 this.minecraft.setScreen(parent);
                             }
                         })
-                .bounds(cx - 50, this.height - 28, 100, 20).build());
+                .bounds(cx + 4, this.height - 28, 100, 20).build());
     }
 
     private ResourceLocation resolveTexture(String stickerId) {

@@ -41,7 +41,7 @@ public record MySubmissionsPacket(List<Entry> rows) {
      */
     public record Entry(String id, String shortId, String title, String state,
                         boolean pending, boolean editable, String body,
-                        List<String> reasons, String stickerId) {
+                        List<String> reasons, String stickerId, List<String> rants) {
     }
 
     /** 组装：当前草稿打头，后面接队列里属于该玩家的条目（按 id 去重） */
@@ -65,7 +65,8 @@ public record MySubmissionsPacket(List<Entry> rows) {
                     rows.add(new Entry(r.id().toString(), r.id().toString().substring(0, 8),
                             r.title(), r.state(), false,
                             !"approved".equals(r.state()), plainBody(r.body()),
-                            r.reasons(), r.stickerId()));
+                            r.reasons(), r.stickerId(),
+                            io.github.zgxhzhr.meowmachine.review.Rants.of(r.id())));
                 }
             }
         }
@@ -76,7 +77,7 @@ public record MySubmissionsPacket(List<Entry> rows) {
         String id = s.id().toString();
         String state = s.state().name().toLowerCase();
         return new Entry(id, id.substring(0, 8), s.title(), state, pending,
-                !"approved".equals(state), plainBody(s.body()), reasons, sticker);
+                !"approved".equals(state), plainBody(s.body()), reasons, sticker, List.of());
     }
 
     /** 正文在列表包里的长度上限 */
@@ -104,6 +105,12 @@ public record MySubmissionsPacket(List<Entry> rows) {
                 }
             }
             buf.writeUtf(e.stickerId() == null ? "" : e.stickerId(), 64);
+            buf.writeVarInt(e.rants() == null ? 0 : e.rants().size());
+            if (e.rants() != null) {
+                for (String r : e.rants()) {
+                    buf.writeUtf(r, 140);
+                }
+            }
         }
     }
 
@@ -130,8 +137,16 @@ public record MySubmissionsPacket(List<Entry> rows) {
                 rreasons.add(buf.readUtf(400));
             }
             String rstick = buf.readUtf(64);
+            int rn = buf.readVarInt();
+            if (rn < 0 || rn > 8) {
+                throw new DecoderException("喵呜机：吐槽条数非法: " + rn);
+            }
+            List<String> rrants = new ArrayList<>(rn);
+            for (int k = 0; k < rn; k++) {
+                rrants.add(buf.readUtf(140));
+            }
             rows.add(new Entry(rid, rshort, rtitle, rstate, rpending, reditable, rbody,
-                    List.copyOf(rreasons), rstick));
+                    List.copyOf(rreasons), rstick, List.copyOf(rrants)));
         }
         return new MySubmissionsPacket(rows);
     }

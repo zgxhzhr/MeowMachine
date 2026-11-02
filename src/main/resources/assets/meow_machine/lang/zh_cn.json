@@ -269,5 +269,18 @@
   "advancements.meow_machine.sticker_taste.title": "尝过八种",
   "advancements.meow_machine.sticker_taste.description": "食用 8 种不同的梗图",
   "advancements.meow_machine.meow_marked.title": "喵呜机标记了你",
-  "advancements.meow_machine.meow_marked.description": "把 4 张「仅 AI 可选」的梗图各吃一次"
+  "advancements.meow_machine.meow_marked.description": "把 4 张「仅 AI 可选」的梗图各吃一次",
+  "gui.meow_machine.btn.request_return": "申请退回",
+  "gui.meow_machine.btn.return_now": "退回",
+  "chat.meow_machine.return_not_found": "找不到这条已通过条目",
+  "chat.meow_machine.return_done": "已退回条目「%s」",
+  "chat.meow_machine.return_done_author": "你通过过的条目「%s」被退回（原因：%s），可修改后重新投稿",
+  "chat.meow_machine.return_requested": "已提交退回申请：「%s」",
+  "chat.meow_machine.return_requested_reviewer": "%s 申请退回「%s」（原因：%s）",
+  "chat.meow_machine.rant_ok": "吐槽已记录",
+  "chat.meow_machine.rant_full": "这条投稿的吐槽已经满了（最多 5 条）",
+  "chat.meow_machine.rant_no_submission": "只能对自己出过结论的投稿吐槽",
+  "gui.meow_machine.rant_title": "吐槽 AI 审核",
+  "gui.meow_machine.btn.rant": "吐槽",
+  "gui.meow_machine.btn.send": "发送"
 }

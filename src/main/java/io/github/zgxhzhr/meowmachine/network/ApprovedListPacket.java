@@ -13,16 +13,16 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /** 服务端 → 客户端：已通过条目列表（所有人可见）。 */
-public record ApprovedListPacket(List<Entry> entries) {
+public record ApprovedListPacket(List<Entry> entries, boolean canFinalize) {
 
     private static final int MAX_ENTRIES = 200;
     private static final int MAX_BODY = 2000;
 
     public record Entry(String id, String shortId, String title, String author, String body,
-                        int revision) {
+                        int revision, String returnRequester, String returnReason) {
     }
 
-    public static ApprovedListPacket of() {
+    public static ApprovedListPacket of(boolean canFinalize) {
         List<Entry> list = new ArrayList<>();
         for (var e : ApprovedIndex.all()) {
             if (list.size() >= MAX_ENTRIES) {
@@ -33,12 +33,16 @@ public record ApprovedListPacket(List<Entry> entries) {
                 body = body.substring(0, MAX_BODY);
             }
             String id = e.id().toString();
-            list.add(new Entry(id, id.substring(0, 8), e.title(), e.author(), body, e.revision()));
+            var req = io.github.zgxhzhr.meowmachine.review.ReturnRequests.get(e.id()).orElse(null);
+            list.add(new Entry(id, id.substring(0, 8), e.title(), e.author(), body, e.revision(),
+                    req == null ? "" : req.requester(),
+                    req == null ? "" : req.reason()));
         }
-        return new ApprovedListPacket(List.copyOf(list));
+        return new ApprovedListPacket(List.copyOf(list), canFinalize);
     }
 
     public static void encode(ApprovedListPacket msg, FriendlyByteBuf buf) {
+        buf.writeBoolean(msg.canFinalize());
         buf.writeVarInt(msg.entries.size());
         for (Entry e : msg.entries) {
             buf.writeUtf(e.id(), 40);
@@ -47,10 +51,13 @@ public record ApprovedListPacket(List<Entry> entries) {
             buf.writeUtf(e.author(), 40);
             buf.writeUtf(e.body(), MAX_BODY);
             buf.writeVarInt(e.revision());
+            buf.writeUtf(e.returnRequester() == null ? "" : e.returnRequester(), 40);
+            buf.writeUtf(e.returnReason() == null ? "" : e.returnReason(), 120);
         }
     }
 
     public static ApprovedListPacket decode(FriendlyByteBuf buf) {
+        boolean canFinalize = buf.readBoolean();
         int n = buf.readVarInt();
         if (n < 0 || n > MAX_ENTRIES) {
             throw new DecoderException("喵呜机：已通过列表条数非法: " + n);
@@ -58,9 +65,10 @@ public record ApprovedListPacket(List<Entry> entries) {
         List<Entry> list = new ArrayList<>(Math.min(n, 32));
         for (int i = 0; i < n; i++) {
             list.add(new Entry(buf.readUtf(40), buf.readUtf(12), buf.readUtf(Network.MAX_TITLE_LEN),
-                    buf.readUtf(40), buf.readUtf(MAX_BODY), buf.readVarInt()));
+                    buf.readUtf(40), buf.readUtf(MAX_BODY), buf.readVarInt(),
+                    buf.readUtf(40), buf.readUtf(120)));
         }
-        return new ApprovedListPacket(list);
+        return new ApprovedListPacket(list, canFinalize);
     }
 
     public static void handle(ApprovedListPacket msg, Supplier<NetworkEvent.Context> ctx) {

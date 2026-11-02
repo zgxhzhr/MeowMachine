@@ -69,6 +69,13 @@ public final class ApprovedIndex {
                 sub.body(), sub.revision(), System.currentTimeMillis()));
     }
 
+    /** 退回：把条目从已通过索引里摘掉（作者之后可重新投稿） */
+    public static void remove(UUID id) {
+        if (store != null && id != null) {
+            store.remove(id);
+        }
+    }
+
     public static Optional<ApprovedSavedData.Entry> find(UUID id) {
         return store == null || id == null ? Optional.empty()
                 : Optional.ofNullable(store.entries().get(id));
