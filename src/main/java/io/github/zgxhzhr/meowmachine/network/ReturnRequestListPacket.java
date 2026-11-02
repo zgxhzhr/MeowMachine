@@ -28,14 +28,21 @@ public record ReturnRequestListPacket(List<Entry> entries) {
                 break;
             }
             var entry = ApprovedIndex.find(r.entryId()).orElse(null);
-            if (entry == null) {
-                continue;
-            }
+            // 条目已不在索引里也不要丢弃申请：标题从投稿历史里找，找不到就用短 id
             String id = r.entryId().toString();
-            out.add(new Entry(id, id.substring(0, 8), entry.title(),
+            String title = entry != null ? entry.title() : "";
+            if (title.isBlank()) {
+                title = io.github.zgxhzhr.meowmachine.review.SubmissionHistory.allRecords().stream()
+                        .filter(rec -> rec.id().equals(r.entryId()))
+                        .map(io.github.zgxhzhr.meowmachine.review.SubmissionHistory.Record::title)
+                        .findFirst().orElse(id.substring(0, 8));
+            }
+            out.add(new Entry(id, id.substring(0, 8), title,
                     r.requester() == null ? "" : r.requester(),
                     r.reason() == null ? "" : r.reason()));
         }
+        io.github.zgxhzhr.meowmachine.MeowMachine.LOG.info(
+                "[喵呜机] 下发退回申请 {} 条（存储中共 {} 条）", out.size(), ReturnRequests.all().size());
         return new ReturnRequestListPacket(List.copyOf(out));
     }
 
