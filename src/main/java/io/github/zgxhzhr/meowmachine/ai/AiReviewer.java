@@ -31,19 +31,24 @@ import java.util.concurrent.CompletableFuture;
 public final class AiReviewer {
 
     /** 解析结果：违规列表 + 可选的选图 */
-    private record Parsed(List<ReviewFinding> findings, String sticker, String note) {
+    private record Parsed(List<ReviewFinding> findings, String sticker, String note, String rant) {
     }
 
     /** 一次 AI 审核的结果：available=false 表示「没拿到可信结论」 */
     public record AiOutcome(boolean available, List<ReviewFinding> findings,
-                            String stickerId, String note) {
+                            String stickerId, String note, String rant) {
 
         public static AiOutcome unavailable() {
-            return new AiOutcome(false, List.of(), null, null);
+            return new AiOutcome(false, List.of(), null, null, null);
         }
 
         public static AiOutcome of(List<ReviewFinding> findings, String stickerId, String note) {
-            return new AiOutcome(true, List.copyOf(findings), stickerId, note);
+            return new AiOutcome(true, List.copyOf(findings), stickerId, note, null);
+        }
+
+        public static AiOutcome of(List<ReviewFinding> findings, String stickerId, String note,
+                                   String rant) {
+            return new AiOutcome(true, List.copyOf(findings), stickerId, note, rant);
         }
 
         public boolean clean() {
@@ -67,6 +72,27 @@ public final class AiReviewer {
             - 5 与制作团队无关的个人署名，如「由 XXX 汉化」。
             - 6 错别字、病句、语句不通顺。
             - 7 机翻、AIGC 生成、明显翻译错误（语序倒装、直译腔、模板化套话）。
+
+            ### 吐槽字段（rant）：只在「过于逆天」时写，普通问题不要写
+
+            输出 JSON 可以带一个可选字段 `rant`，它是**喵呜机对这篇稿子本身的吐槽**，
+            不是给作者的建议，也不是附言。判定标准（**由你判断，不是概率**）：
+
+            **该写**（明显逆天，写一句尖锐但不人身攻击的吐槽，≤60 字）：
+            - 整篇塞成一个超长自然段，几百字没有一个分段/标题，像把整页复制成一段；
+            - 把一大串「主要特色」清单原样挤进正文，用分号连成一坨；
+            - 全文都在写广告词（"无论你喜欢…都可以找到属于自己的玩法"这类收尾），几乎没信息；
+            - 明显是把别的页面的介绍整段搬过来，连"运行环境／加载器"都混在正文里；
+            - 结构上彻底崩坏：标题标记与正文糊在一起、列表和表格全被压成一行。
+
+            **不该写**（普通问题一律留空 `""`）：
+            - 错别字、句末缺标点、个别标点堆叠、一两处 Markdown 残留；
+            - 篇幅偏短、信息略少但结构正常；
+            - 严谨但啰嗦的技术说明；
+            - 只是风格不合口味。
+
+            口径：**普通错误用 violations 说明就够，吐槽只留给那种"看完想叹气"的稿子**。
+            没有把握时留空；空字符串不会显示。
 
             ### 第 7 条里的「AI 味」判定标准（来自真实审核退回案例，务必按下面判定）
 
@@ -263,7 +289,7 @@ public final class AiReviewer {
             }
         }
         return LlmClient.chat(cfg, systemPrompt(), user.toString())
-                .thenApply(raw -> parse(raw).map(p -> AiOutcome.of(p.findings(), p.sticker(), p.note())).orElseGet(() -> {
+                .thenApply(raw -> parse(raw).map(p -> AiOutcome.of(p.findings(), p.sticker(), p.note(), p.rant())).orElseGet(() -> {
                     MeowMachine.LOG.warn("[喵呜机] AI 返回内容无法解析，按「AI 不可用」处理");
                     return AiOutcome.unavailable();
                 }))
@@ -313,7 +339,9 @@ public final class AiReviewer {
                     ? root.get("sticker").getAsString().trim() : null;
             String note = root.has("note") && !root.get("note").isJsonNull()
                     ? clamp(root.get("note").getAsString(), MAX_REASON) : null;
-            return Optional.of(new Parsed(List.copyOf(out), sticker, note));
+            String rant = root.has("rant") && !root.get("rant").isJsonNull()
+                    ? clamp(root.get("rant").getAsString(), 200) : null;
+            return Optional.of(new Parsed(List.copyOf(out), sticker, note, rant));
         } catch (RuntimeException ex) {
             MeowMachine.LOG.warn("[喵呜机] AI 返回内容不是可解析的 JSON: {}", head(raw));
             return Optional.empty();

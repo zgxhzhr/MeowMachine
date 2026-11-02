@@ -282,5 +282,6 @@
   "chat.meow_machine.rant_no_submission": "只能对自己出过结论的投稿吐槽",
   "gui.meow_machine.rant_title": "吐槽 AI 审核",
   "gui.meow_machine.btn.rant": "吐槽",
-  "gui.meow_machine.btn.send": "发送"
+  "gui.meow_machine.btn.send": "发送",
+  "gui.meow_machine.result.rant": "喵呜机的吐槽："
 }

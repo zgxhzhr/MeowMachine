@@ -282,5 +282,6 @@
   "chat.meow_machine.rant_no_submission": "You can only rant about your own reviewed entries",
   "gui.meow_machine.rant_title": "Rant about the AI review",
   "gui.meow_machine.btn.rant": "Rant",
-  "gui.meow_machine.btn.send": "Send"
+  "gui.meow_machine.btn.send": "Send",
+  "gui.meow_machine.result.rant": "MeowMachine says:"
 }

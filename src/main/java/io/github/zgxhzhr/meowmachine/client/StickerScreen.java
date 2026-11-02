@@ -85,12 +85,32 @@ public class StickerScreen extends Screen {
                 }
             }
         }
-        if (result.notes() != null && !result.notes().isEmpty()) {
-            reasonLines.add("");
-            reasonLines.add(Component.translatable("gui.meow_machine.result.notes").getString());
+        if (result.notes() != null) {
+            java.util.List<String> notes = new java.util.ArrayList<>();
+            java.util.List<String> rants = new java.util.ArrayList<>();
             for (String n : result.notes()) {
-                for (String seg : wrap(n, this.width - 40)) {
-                    reasonLines.add("  " + seg);
+                if (n != null && n.startsWith("吐槽：")) {
+                    rants.add(n.substring(3));
+                } else if (n != null && !n.isBlank()) {
+                    notes.add(n);
+                }
+            }
+            if (!notes.isEmpty()) {
+                reasonLines.add("");
+                reasonLines.add(Component.translatable("gui.meow_machine.result.notes").getString());
+                for (String n : notes) {
+                    for (String seg : wrap(n, this.width - 40)) {
+                        reasonLines.add("  " + seg);
+                    }
+                }
+            }
+            if (!rants.isEmpty()) {
+                reasonLines.add("");
+                reasonLines.add(Component.translatable("gui.meow_machine.result.rant").getString());
+                for (String n : rants) {
+                    for (String seg : wrap(n, this.width - 40)) {
+                        reasonLines.add("  " + seg);
+                    }
                 }
             }
         }

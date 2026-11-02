@@ -123,8 +123,13 @@ public final class ReviewService {
                             String sticker = aiSticker != null ? aiSticker
                                     : StickerRegistry.forState("approved")
                                             .map(s -> s.id().toString()).orElse("");
-                            List<ReviewFinding> note = (ai.note() == null || ai.note().isBlank())
-                                    ? List.of() : List.of(ReviewFinding.unexplained(ai.note().trim()));
+                            List<ReviewFinding> note = new java.util.ArrayList<>();
+                            if (ai.note() != null && !ai.note().isBlank()) {
+                                note.add(ReviewFinding.unexplained(ai.note().trim()));
+                            }
+                            if (ai.rant() != null && !ai.rant().isBlank()) {
+                                note.add(ReviewFinding.unexplained("吐槽：" + ai.rant().trim()));
+                            }
                             return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
                         }
                         List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());
@@ -132,6 +137,9 @@ public final class ReviewService {
                         boolean aiSaidOk = ai.findings().isEmpty();
                         if (!aiSaidOk && ai.note() != null && !ai.note().isBlank()) {
                             findings.add(ReviewFinding.unexplained(ai.note().trim()));
+                        }
+                        if (ai.rant() != null && !ai.rant().isBlank()) {
+                            findings.add(ReviewFinding.unexplained("吐槽：" + ai.rant().trim()));
                         }
                         String sticker = aiSticker != null ? aiSticker
                                 : pickSticker(Verdict.RETURN, findings);
@@ -206,8 +214,13 @@ public final class ReviewService {
                             String sticker = aiSticker != null ? aiSticker
                                     : StickerRegistry.forState("approved")
                                             .map(s -> s.id().toString()).orElse("");
-                            List<ReviewFinding> note = (ai.note() == null || ai.note().isBlank())
-                                    ? List.of() : List.of(ReviewFinding.unexplained(ai.note().trim()));
+                            List<ReviewFinding> note = new java.util.ArrayList<>();
+                            if (ai.note() != null && !ai.note().isBlank()) {
+                                note.add(ReviewFinding.unexplained(ai.note().trim()));
+                            }
+                            if (ai.rant() != null && !ai.rant().isBlank()) {
+                                note.add(ReviewFinding.unexplained("吐槽：" + ai.rant().trim()));
+                            }
                             return ReviewResult.of(Verdict.PASS, note, "ai", sticker);
                         }
                         List<ReviewFinding> findings = new java.util.ArrayList<>(ai.findings());

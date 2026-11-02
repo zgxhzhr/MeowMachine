@@ -43,11 +43,14 @@ public class VerdictScreen extends Screen {
         lines.add("");
         List<String> rules = new ArrayList<>();
         List<String> notes = new ArrayList<>();
+        List<String> rants = new ArrayList<>();
         if (entry.reasons() != null) {
             for (String r : entry.reasons()) {
                 if (r != null && r.startsWith("第 ")) {
                     rules.add(r);
-                } else {
+                } else if (r != null && r.startsWith("吐槽：")) {
+                    rants.add(r.substring(3));
+                } else if (r != null && !r.isBlank()) {
                     notes.add(r);
                 }
             }
@@ -58,6 +61,15 @@ public class VerdictScreen extends Screen {
         for (String reason : rules) {
             for (String seg : wrap(reason, PANEL_W - 28)) {
                 lines.add("· " + seg);
+            }
+        }
+        if (!rants.isEmpty()) {
+            lines.add("");
+            lines.add(Component.translatable("gui.meow_machine.result.rant").getString());
+            for (String r : rants) {
+                for (String seg : wrap(r, PANEL_W - 28)) {
+                    lines.add("· " + seg);
+                }
             }
         }
         if (!notes.isEmpty()) {
