@@ -31,6 +31,18 @@ public final class ApprovedIndex {
         if (store == null) {
             return;
         }
+        // 先清掉「历史里已经不是 approved」的索引残留：
+        // 被退回的条目会在重启回填时复活，这是之前的 bug。
+        java.util.List<UUID> stale = new ArrayList<>();
+        for (ApprovedSavedData.Entry e : store.entries().values()) {
+            var rec = SubmissionHistory.allRecords().stream()
+                    .filter(r -> r.id().equals(e.id())).findFirst();
+            if (rec.isPresent() && !"approved".equals(rec.get().state())) {
+                stale.add(e.id());
+            }
+        }
+        stale.forEach(store::remove);
+
         int added = 0;
         for (SubmissionHistory.Record r : SubmissionHistory.allRecords()) {
             if (!"approved".equals(r.state()) || store.entries().containsKey(r.id())) {
