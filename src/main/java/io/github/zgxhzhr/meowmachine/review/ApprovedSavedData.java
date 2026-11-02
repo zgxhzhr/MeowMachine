@@ -35,19 +35,34 @@ public final class ApprovedSavedData extends SavedData {
         return java.util.Collections.unmodifiableMap(entries);
     }
 
+    /** 被退回（主动移除）的条目 id：回填时跳过，避免重启后复活 */
+    private final java.util.Set<UUID> removed = new java.util.LinkedHashSet<>();
+
+    boolean wasRemoved(UUID id) {
+        return removed.contains(id);
+    }
+
     void remove(UUID id) {
-        if (entries.remove(id) != null) {
-            setDirty();
-        }
+        removed.add(id);
+        entries.remove(id);
+        setDirty();
     }
 
     void put(Entry e) {
+        removed.remove(e.id());
         entries.put(e.id(), e);
         setDirty();
     }
 
     public static ApprovedSavedData load(CompoundTag tag) {
         ApprovedSavedData d = new ApprovedSavedData();
+        ListTag tombs = tag.getList("removed", Tag.TAG_STRING);
+        for (int i = 0; i < tombs.size(); i++) {
+            try {
+                d.removed.add(UUID.fromString(tombs.getString(i)));
+            } catch (RuntimeException ignored) {
+            }
+        }
         ListTag list = tag.getList("approved", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag t = list.getCompound(i);
@@ -78,6 +93,11 @@ public final class ApprovedSavedData extends SavedData {
             list.add(t);
         }
         tag.put("approved", list);
+        ListTag tombs = new ListTag();
+        for (UUID id : removed) {
+            tombs.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+        }
+        tag.put("removed", tombs);
         return tag;
     }
 }

@@ -42,10 +42,15 @@ public final class ApprovedIndex {
             }
         }
         stale.forEach(store::remove);
+        if (!stale.isEmpty()) {
+            io.github.zgxhzhr.meowmachine.MeowMachine.LOG.info(
+                    "[喵呜机] 已通过索引清理 {} 条（历史状态不是 approved）", stale.size());
+        }
 
         int added = 0;
         for (SubmissionHistory.Record r : SubmissionHistory.allRecords()) {
-            if (!"approved".equals(r.state()) || store.entries().containsKey(r.id())) {
+            if (!"approved".equals(r.state()) || store.entries().containsKey(r.id())
+                    || store.wasRemoved(r.id())) {
                 continue;
             }
             store.put(new ApprovedSavedData.Entry(r.id(), r.title(), "", "", r.body(),

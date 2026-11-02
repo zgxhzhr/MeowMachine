@@ -334,6 +334,8 @@ public final class ReviewService {
                 "pending-human",
                 StickerRegistry.forState("submitted").map(st -> st.id().toString()).orElse(""));
         SubmissionQueue.enqueue(sub, System.currentTimeMillis());
+        MeowMachine.LOG.info("[喵呜机] 未接管：投稿 {} 已入人工队列（当前 {} 条）",
+                sub.id(), SubmissionQueue.size());
         AiReviewer.review(cfg, sub.title(), aiText, localFindings, diffNote)
                 .thenApplyAsync(ai -> {
                     if (ai.available()) {
