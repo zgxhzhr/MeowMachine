@@ -27,6 +27,11 @@ public class ReturnRequestsScreen extends Screen {
 
     @Override
     protected void init() {
+        if (entries.isEmpty()) {
+            // 名单可能是空的（首次打开/数据未到）：自动再拉一次，别让用户自己点刷新
+            Network.CHANNEL.sendToServer(
+                    new io.github.zgxhzhr.meowmachine.network.ReviewListRequestPacket());
+        }
         int cx = this.width / 2;
         int left = cx - PANEL_W / 2;
         int top = 44;

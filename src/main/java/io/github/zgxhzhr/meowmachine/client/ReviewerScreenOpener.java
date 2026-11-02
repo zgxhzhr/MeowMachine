@@ -25,6 +25,9 @@ public final class ReviewerScreenOpener {
         var current = Minecraft.getInstance().screen;
         if (current instanceof ReviewerScreen) {
             Minecraft.getInstance().setScreen(new ReviewerScreen(p));
+        } else if (current instanceof ReturnRequestsScreen) {
+            Minecraft.getInstance().setScreen(new ReturnRequestsScreen(current,
+                    io.github.zgxhzhr.meowmachine.client.ReturnRequestsOpener.latest()));
         }
     }
 }
