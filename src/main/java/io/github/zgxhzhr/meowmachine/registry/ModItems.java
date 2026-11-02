@@ -172,7 +172,12 @@ public final class ModItems {
                     .displayItems((params, output) -> {
                         output.accept(SUBMISSION_SCROLL.get());
                         output.accept(ADMIN_TERMINAL.get());
+                        output.accept(REVIEW_TERMINAL_ASSISTANT.get());
+                        output.accept(REVIEW_TERMINAL_REVIEWER.get());
                         output.accept(MEOW_ICON.get());
+                        output.accept(MEOW_ICON_NORMAL.get());
+                        output.accept(MEOW_ICON_ASSISTANT.get());
+                        output.accept(MEOW_ICON_REVIEWER.get());
                         output.accept(MYSTERY_RESULT.get());
                         // 18 张梗图物品：创造栏里能直接翻看（正常游戏靠审核结果获得）
                         for (RegistryObject<Item> sticker : STICKER_ITEMS.values()) {
