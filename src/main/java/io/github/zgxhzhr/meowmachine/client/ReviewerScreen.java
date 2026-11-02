@@ -77,7 +77,7 @@ public class ReviewerScreen extends Screen {
         }
 
         final int pendingReturns = ReturnRequestsOpener.pendingCount();
-        if (canFinalize && pendingReturns > 0) {
+        if (canFinalize) {
             addRenderableWidget(Button.builder(
                             Component.translatable("gui.meow_machine.return_requests_btn", pendingReturns),
                             b -> {
