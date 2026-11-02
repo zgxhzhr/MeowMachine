@@ -91,7 +91,7 @@ public record RequestReturnPacket(String entryId, String reason) {
             // 认为确实该改 -> 直接退回并通知；认为没问题 -> 驳回这条申请。
             var cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
             var server = player.getServer();
-            if (cfg.enabled() && !cfg.apiKey().isBlank() && server != null) {
+            if (cfg.takeover() && cfg.usable() && server != null) {
                 final java.util.UUID targetId = id;
                 final String title = entry.get().title();
                 final String authorName = entry.get().author();

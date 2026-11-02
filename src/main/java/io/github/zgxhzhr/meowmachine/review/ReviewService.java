@@ -194,8 +194,8 @@ public final class ReviewService {
                     ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
-        // ⑤ 没人审 → AI
-        if (cfg.usable()) {
+        // ⑤ 没人审：只有「AI 接管」开启时 AI 才直接决定
+        if (aiTakesOver) {
             return AiReviewer.review(cfg, sub.title(), aiText, java.util.List.of(), diffNote)
                     .thenApplyAsync(ai -> {
                         if (!ai.available()) {
