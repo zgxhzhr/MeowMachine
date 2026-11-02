@@ -19,7 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class Network {
 
     /** 协议号：包结构一改就 +1（0.1.0=1，0.2.0=2，0.3.0=3，0.4.0=4，0.5.0=5，0.7.0=6 加入「我的投稿」） */
-    private static final String PROTOCOL = "25";
+    private static final String PROTOCOL = "26";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MeowMachine.MOD_ID, "main"),
@@ -88,6 +88,19 @@ public final class Network {
                 .encoder(ReviewResultPacket::encode)
                 .decoder(ReviewResultPacket::decode)
                 .consumerMainThread(ReviewResultPacket::handle)
+                .add();
+
+        // 服务端 → 客户端：待处理的退回申请
+        CHANNEL.messageBuilder(ReturnRequestListPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ReturnRequestListPacket::encode)
+                .decoder(ReturnRequestListPacket::decode)
+                .consumerMainThread(ReturnRequestListPacket::handle)
+                .add();
+        // 客户端 → 服务端：待审列表里同意/驳回退回申请
+        CHANNEL.messageBuilder(ReturnDecisionPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ReturnDecisionPacket::encode)
+                .decoder(ReturnDecisionPacket::decode)
+                .consumerMainThread(ReturnDecisionPacket::handle)
                 .add();
 
         // 客户端 → 服务端：已通过条目的退回申请 / 审核员直接退回

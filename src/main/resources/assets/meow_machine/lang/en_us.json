@@ -306,5 +306,11 @@
   "advancements.meow_machine.return_accepted.description": "Your return request was accepted",
   "advancements.meow_machine.entry_returned.title": "No Takebacks",
   "advancements.meow_machine.entry_returned.description": "One of your approved entries was returned",
-  "chat.meow_machine.return_reward": "Request accepted: +50 XP and a pass sticker"
+  "chat.meow_machine.return_reward": "Request accepted: +50 XP and a pass sticker",
+  "gui.meow_machine.return_requests_title": "Return requests",
+  "gui.meow_machine.return_requests_btn": "Return requests (%s)",
+  "gui.meow_machine.return_requests_empty": "No pending return requests",
+  "gui.meow_machine.btn.dismiss": "Dismiss",
+  "chat.meow_machine.return_request_accepted": "Return request accepted",
+  "chat.meow_machine.return_request_dismissed": "Return request dismissed"
 }

@@ -306,5 +306,11 @@
   "advancements.meow_machine.return_accepted.description": "你申请的条目退回被采纳了",
   "advancements.meow_machine.entry_returned.title": "覆水难收",
   "advancements.meow_machine.entry_returned.description": "你已通过的条目被退回过一次",
-  "chat.meow_machine.return_reward": "你的退回申请被采纳：+50 经验、获得一张「通过」梗图"
+  "chat.meow_machine.return_reward": "你的退回申请被采纳：+50 经验、获得一张「通过」梗图",
+  "gui.meow_machine.return_requests_title": "退回申请",
+  "gui.meow_machine.return_requests_btn": "退回申请 (%s)",
+  "gui.meow_machine.return_requests_empty": "暂时没有待处理的退回申请",
+  "gui.meow_machine.btn.dismiss": "驳回",
+  "chat.meow_machine.return_request_accepted": "已同意退回申请",
+  "chat.meow_machine.return_request_dismissed": "已驳回退回申请"
 }

@@ -30,6 +30,14 @@ public final class ReturnRequests {
                 reason == null ? "" : reason, System.currentTimeMillis()));
     }
 
+    /** 全部申请（待审列表要显示） */
+    public static java.util.List<ReturnRequestsSavedData.Request> all() {
+        if (store == null) {
+            return java.util.List.of();
+        }
+        return java.util.List.copyOf(store.requests().values());
+    }
+
     public static Optional<ReturnRequestsSavedData.Request> get(UUID entryId) {
         return store == null || entryId == null ? Optional.empty()
                 : Optional.ofNullable(store.requests().get(entryId));
