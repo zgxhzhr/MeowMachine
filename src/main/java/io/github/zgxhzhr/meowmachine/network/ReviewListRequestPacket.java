@@ -39,6 +39,10 @@ public record ReviewListRequestPacket() {
         }
         MeowMachine.LOG.debug("[喵呜机] 审核界面请求列表 player={}",
                 player.getName().getString());
+        if (io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers.canFinalize(player)) {
+            Network.CHANNEL.sendTo(ReturnRequestListPacket.of(), player.connection.connection,
+                    NetworkDirection.PLAY_TO_CLIENT);
+        }
         Network.CHANNEL.sendTo(
                 ReviewListPacket.of(SubmissionQueue.visibleTo(player),
                         ReviewerRoster.canFinalize(player),

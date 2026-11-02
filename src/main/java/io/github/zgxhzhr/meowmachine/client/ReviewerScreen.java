@@ -76,6 +76,18 @@ public class ReviewerScreen extends Screen {
             }
         }
 
+        final int pendingReturns = ReturnRequestsOpener.pendingCount();
+        if (canFinalize && pendingReturns > 0) {
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.meow_machine.return_requests_btn", pendingReturns),
+                            b -> {
+                                if (this.minecraft != null) {
+                                    this.minecraft.setScreen(new ReturnRequestsScreen(
+                                            this, ReturnRequestsOpener.latest()));
+                                }
+                            })
+                    .bounds(cx - 50, this.height - 56, 100, 20).build());
+        }
         addRenderableWidget(Button.builder(
                         Component.translatable("gui.meow_machine.refresh"),
                         b -> Network.CHANNEL.sendToServer(new ReviewListRequestPacket()))
