@@ -51,23 +51,23 @@ public class AdminTerminalItem extends Item {
                         "chat.meow_machine.tier_denied", tier.label(), actual.label()));
                 return InteractionResultHolder.fail(stack);
             }
-            var role = ReviewerRoster.roleOf(sp.getUUID());
-            if (role == io.github.zgxhzhr.meowmachine.review.ReviewerRole.ASSISTANT) {
-                // 助理优先：即便他是 OP，也只给助理面板（查看 + 写意见）
+            // 物品封顶：用 min(玩家等级, 物品等级) 决定开哪个界面 ——
+            // 审核员拿「助理终端」也只能用助理面板；站长拿助理终端同样降级
+            var effective = tier.effectiveFor(actual);
+            if (effective == io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER) {
+                // 审核员档：待审列表 + 裁决；站长额外给完整后台
+                if (sp.hasPermissions(2)) {
+                    Network.CHANNEL.sendTo(AdminStatePacket.collect(sp), sp.connection.connection,
+                            NetworkDirection.PLAY_TO_CLIENT);
+                } else {
+                    Network.CHANNEL.sendTo(
+                            ReviewListPacket.of(SubmissionQueue.visibleTo(sp), true, false),
+                            sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                }
+            } else if (effective == io.github.zgxhzhr.meowmachine.privilege.AccessTier.ASSISTANT) {
+                // 助理档：只能查看与标注，终裁按钮不给
                 Network.CHANNEL.sendTo(
                         ReviewListPacket.of(SubmissionQueue.visibleTo(sp), false, true),
-                        sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-            } else if (role == io.github.zgxhzhr.meowmachine.review.ReviewerRole.REVIEWER) {
-                Network.CHANNEL.sendTo(
-                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp), true, false),
-                        sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-            } else if (sp.hasPermissions(2)) {
-                Network.CHANNEL.sendTo(AdminStatePacket.collect(sp), sp.connection.connection,
-                        NetworkDirection.PLAY_TO_CLIENT);
-            } else if (ReviewerRoster.canAnnotate(sp)) {
-                Network.CHANNEL.sendTo(
-                        ReviewListPacket.of(SubmissionQueue.visibleTo(sp),
-                                ReviewerRoster.canFinalize(sp), false),
                         sp.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
             } else {
                 sp.sendSystemMessage(Component.translatable("gui.meow_machine.admin.no_permission"));
