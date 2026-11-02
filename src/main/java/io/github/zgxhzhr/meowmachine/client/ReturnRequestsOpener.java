@@ -12,6 +12,7 @@ public final class ReturnRequestsOpener {
 
     public static void open(ReturnRequestListPacket msg) {
         latest = msg;
+        ReviewerScreenOpener.refreshIfOpen();
     }
 
     public static int pendingCount() {
