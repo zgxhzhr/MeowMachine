@@ -26,11 +26,32 @@ public final class EffectiveTiers {
         }
     }
 
+    /** 以「手上物品」为准：手里是什么等级的物品，就用什么权限（不会因之前开过别的界面而残留）。 */
     public static AccessTier of(ServerPlayer player) {
         if (player == null) {
             return AccessTier.NONE;
         }
-        return SESSION.getOrDefault(player.getUUID(), AccessTier.of(player));
+        AccessTier actual = AccessTier.of(player);
+        AccessTier fromItem = fromHand(player);
+        if (fromItem == null) {
+            return SESSION.getOrDefault(player.getUUID(), actual);
+        }
+        return fromItem.effectiveFor(actual);
+    }
+
+    /** 主手/副手里的分档物品等级；不是分档物品返回 null */
+    public static AccessTier fromHand(ServerPlayer player) {
+        for (var hand : net.minecraft.world.InteractionHand.values()) {
+            var stack = player.getItemInHand(hand);
+            var item = stack.getItem();
+            if (item instanceof io.github.zgxhzhr.meowmachine.item.MeowIconItem icon) {
+                return icon.tier();
+            }
+            if (item instanceof io.github.zgxhzhr.meowmachine.item.AdminTerminalItem term) {
+                return term.tier();
+            }
+        }
+        return null;
     }
 
     /** 终裁需要审核员档 */
