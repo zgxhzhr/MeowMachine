@@ -295,5 +295,8 @@
   "item.meow_machine.meow_icon_normal": "喵喵喵·普通",
   "gui.meow_machine.return_reason_title": "退回理由",
   "gui.meow_machine.request_reason_title": "申请退回的理由",
-  "gui.meow_machine.return_reason_hint": "写清为什么该退回（可留空）"
+  "gui.meow_machine.return_reason_hint": "写清为什么该退回（可留空）",
+  "item.meow_machine.meow_icon_normal.how": "首次进入世界时自动获得",
+  "item.meow_machine.meow_icon_assistant.how": "由服主发放给审核助理（只能查看与写意见）",
+  "item.meow_machine.meow_icon_reviewer.how": "由服主发放给审核员"
 }

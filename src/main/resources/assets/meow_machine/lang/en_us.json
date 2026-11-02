@@ -295,5 +295,8 @@
   "item.meow_machine.meow_icon_normal": "Meow Icon (Normal)",
   "gui.meow_machine.return_reason_title": "Return reason",
   "gui.meow_machine.request_reason_title": "Reason for the request",
-  "gui.meow_machine.return_reason_hint": "Why should it be returned? (optional)"
+  "gui.meow_machine.return_reason_hint": "Why should it be returned? (optional)",
+  "item.meow_machine.meow_icon_normal.how": "Given once on first join",
+  "item.meow_machine.meow_icon_assistant.how": "Granted by the server owner to review assistants",
+  "item.meow_machine.meow_icon_reviewer.how": "Granted by the server owner to reviewers"
 }

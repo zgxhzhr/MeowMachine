@@ -30,8 +30,12 @@ public class MeowIconItem extends Item {
         tooltip.add(net.minecraft.network.chat.Component.translatable(
                 "item.meow_machine.meow_icon.desc")
                 .withStyle(net.minecraft.ChatFormatting.GRAY));
-        tooltip.add(net.minecraft.network.chat.Component.translatable(
-                "item.meow_machine.meow_icon.how")
+        String howKey = switch (tier) {
+            case NORMAL -> "item.meow_machine.meow_icon_normal.how";
+            case ASSISTANT -> "item.meow_machine.meow_icon_assistant.how";
+            default -> "item.meow_machine.meow_icon_reviewer.how";
+        };
+        tooltip.add(net.minecraft.network.chat.Component.translatable(howKey)
                 .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
         tooltip.add(net.minecraft.network.chat.Component.translatable(
                 "item.meow_machine.tier_line", tier.label())
