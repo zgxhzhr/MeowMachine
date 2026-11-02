@@ -35,8 +35,11 @@ public record AdminStatePacket(boolean aiEnabled, boolean aiTakeover,
 
     public static AdminStatePacket collect(net.minecraft.server.level.ServerPlayer viewer) {
         LlmConfig cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
+        // 待审队列 = 待审稿件 + 待处理的退回申请（两者都算「等人处理」）
+        int pendingAll = SubmissionQueue.size()
+                + io.github.zgxhzhr.meowmachine.review.ReturnRequests.all().size();
         return new AdminStatePacket(cfg.enabled(), cfg.takeover(),
-                SubmissionQueue.size(),
+                pendingAll,
                 ResultInbox.size(), ReviewerRoster.members().size(), !cfg.apiKey().isBlank(),
                 cfg.endpoint(), cfg.model());
     }
