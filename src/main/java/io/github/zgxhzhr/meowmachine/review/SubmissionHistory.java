@@ -97,6 +97,26 @@ public final class SubmissionHistory {
         }
     }
 
+    /** 已通过条目被退回：更新作者历史里的状态与理由（「我的投稿」据此变成可编辑） */
+    public static void markReturned(UUID authorUuid, UUID id, String title, String body,
+                                    int revision, List<String> reasons) {
+        if (authorUuid == null || id == null) {
+            return;
+        }
+        List<Record> list = BY_AUTHOR.computeIfAbsent(authorUuid, k -> new ArrayList<>());
+        list.removeIf(r -> r.id().equals(id));
+        list.add(0, new Record(id, title,
+                SubmissionState.RETURNED.name().toLowerCase(), body, revision,
+                System.currentTimeMillis(),
+                reasons == null ? List.of() : List.copyOf(reasons), ""));
+        while (list.size() > MAX_PER_PLAYER) {
+            list.remove(list.size() - 1);
+        }
+        if (store != null) {
+            store.put(authorUuid, list);
+        }
+    }
+
     /** 全部历史记录（回填已通过索引用） */
     public static List<Record> allRecords() {
         List<Record> out = new ArrayList<>();

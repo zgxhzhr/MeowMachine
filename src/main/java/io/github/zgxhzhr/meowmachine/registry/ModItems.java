@@ -89,7 +89,7 @@ public final class ModItems {
     );
 
     /** 梗图 id → 物品 */
-    private static final java.util.Map<String, RegistryObject<Item>> STICKER_ITEMS =
+    public static final java.util.Map<String, RegistryObject<Item>> STICKER_ITEMS =
             new java.util.LinkedHashMap<>();
 
     static {

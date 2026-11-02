@@ -53,8 +53,12 @@ public record RequestReturnPacket(String entryId, String reason) {
         String reason = msg.reason == null ? "" : msg.reason.strip();
         boolean reviewer = io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers.canFinalize(player);
         if (reviewer) {
+            var pending = ReturnRequests.get(id).orElse(null);
+            markAuthorReturned(entry.get(), java.util.List.of(reason.isBlank()
+                    ? "被审核员退回" : "被审核员退回：" + reason));
             ApprovedIndex.remove(id);
             ReturnRequests.clear(id);
+            rewardRequester(player, pending);
             // 通知作者（在线才通知）
             var author = player.getServer() == null ? null
                     : player.getServer().getPlayerList().getPlayerByName(entry.get().author());
@@ -68,7 +72,7 @@ public record RequestReturnPacket(String entryId, String reason) {
             MeowMachine.LOG.info("[喵呜机] {} 退回了已通过条目 {}（原因：{}）",
                     player.getName().getString(), id, reason);
         } else {
-            ReturnRequests.request(id, player.getName().getString(), reason);
+            ReturnRequests.request(id, player.getName().getString(), player.getUUID(), reason);
             // 提醒在线审核员
             if (player.getServer() != null) {
                 for (ServerPlayer p : player.getServer().getPlayerList().getPlayers()) {
@@ -104,14 +108,24 @@ public record RequestReturnPacket(String entryId, String reason) {
                                         NetworkDirection.PLAY_TO_CLIENT);
                                 return;
                             }
+                            var pendingAi = ReturnRequests.get(targetId).orElse(null);
+                            String aiWhy = outcome.findings().isEmpty() ? null
+                                    : outcome.findings().get(0).reason();
+                            java.util.List<String> aiReasons = new java.util.ArrayList<>();
+                            aiReasons.add(aiWhy == null || aiWhy.isBlank()
+                                    ? "AI 复核后同意退回" : "AI 复核后同意退回：" + aiWhy);
+                            if (outcome.note() != null && !outcome.note().isBlank()) {
+                                aiReasons.add(outcome.note().trim());
+                            }
+                            markAuthorReturned(entry.get(), aiReasons);
                             ApprovedIndex.remove(targetId);
                             ReturnRequests.clear(targetId);
-                            String why = outcome.findings().get(0).reason();
+                            rewardRequester(player, pendingAi);
                             var author = server.getPlayerList().getPlayerByName(authorName);
                             if (author != null) {
                                 author.sendSystemMessage(Component.translatable(
                                         "chat.meow_machine.return_done_author", title,
-                                        why == null || why.isBlank() ? "AI 复核后同意退回" : why));
+                                        aiWhy == null || aiWhy.isBlank() ? "AI 复核后同意退回" : aiWhy));
                             }
                             Network.CHANNEL.sendTo(NoticePacket.of(
                                             "chat.meow_machine.return_ai_accepted"),
@@ -128,5 +142,57 @@ public record RequestReturnPacket(String entryId, String reason) {
             }
         }
         c.setPacketHandled(true);
+    }
+
+    /**
+     * 「申请退回」被采纳时的奖励：给申请人经验、一张「通过」系列梗图，并解锁成就。
+     * 申请人不在线就跳过（奖励不排队，避免离线堆积）。
+     */
+    private static void rewardRequester(ServerPlayer actor,
+                                        io.github.zgxhzhr.meowmachine.review.ReturnRequestsSavedData.Request req) {
+        if (req == null || req.requesterId() == null || actor.getServer() == null) {
+            return;
+        }
+        ServerPlayer requester = actor.getServer().getPlayerList().getPlayer(req.requesterId());
+        if (requester == null) {
+            return;
+        }
+        requester.giveExperiencePoints(50);
+        var sticker = io.github.zgxhzhr.meowmachine.registry.ModItems.STICKER_ITEMS
+                .get("approved_plain");
+        if (sticker != null && sticker.get() != null) {
+            var stack = new net.minecraft.world.item.ItemStack(sticker.get());
+            if (!requester.getInventory().add(stack)) {
+                requester.drop(stack, false);
+            }
+        }
+        io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements
+                .award(requester, "return_accepted");
+        requester.sendSystemMessage(Component.translatable(
+                "chat.meow_machine.return_reward"));
+    }
+
+    /** 退回后更新作者的历史状态（列表里变成「被打回」，可编辑），并在其在线时发成就 */
+    private static void markAuthorReturned(
+            io.github.zgxhzhr.meowmachine.review.ApprovedSavedData.Entry entry,
+            java.util.List<String> reasons) {
+        java.util.UUID authorId;
+        try {
+            authorId = java.util.UUID.fromString(entry.authorUuid());
+        } catch (RuntimeException e) {
+            return;
+        }
+        io.github.zgxhzhr.meowmachine.review.SubmissionHistory.markReturned(
+                authorId, entry.id(), entry.title(), entry.body(),
+                entry.revision(), reasons);
+        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        var author = server.getPlayerList().getPlayer(authorId);
+        if (author != null) {
+            io.github.zgxhzhr.meowmachine.advancement.MeowAdvancements
+                    .award(author, "entry_returned");
+        }
     }
 }

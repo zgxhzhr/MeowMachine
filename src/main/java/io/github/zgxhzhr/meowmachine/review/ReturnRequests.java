@@ -21,11 +21,12 @@ public final class ReturnRequests {
         store = null;
     }
 
-    public static void request(UUID entryId, String requester, String reason) {
+    public static void request(UUID entryId, String requester, UUID requesterId, String reason) {
         if (store == null || entryId == null) {
             return;
         }
         store.put(new ReturnRequestsSavedData.Request(entryId, requester == null ? "" : requester,
+                requesterId,
                 reason == null ? "" : reason, System.currentTimeMillis()));
     }
 

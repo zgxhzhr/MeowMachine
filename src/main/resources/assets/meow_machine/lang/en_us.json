@@ -301,5 +301,10 @@
   "item.meow_machine.meow_icon_reviewer.how": "Granted by the server owner to reviewers",
   "chat.meow_machine.return_ai_accepted": "AI agreed: returning the entry",
   "chat.meow_machine.return_ai_rejected": "AI found nothing to fix; request dismissed",
-  "chat.meow_machine.return_ai_accepted_by": "AI agreed to return \"%s\""
+  "chat.meow_machine.return_ai_accepted_by": "AI agreed to return \"%s\"",
+  "advancements.meow_machine.return_accepted.title": "Right on Target",
+  "advancements.meow_machine.return_accepted.description": "Your return request was accepted",
+  "advancements.meow_machine.entry_returned.title": "No Takebacks",
+  "advancements.meow_machine.entry_returned.description": "One of your approved entries was returned",
+  "chat.meow_machine.return_reward": "Request accepted: +50 XP and a pass sticker"
 }

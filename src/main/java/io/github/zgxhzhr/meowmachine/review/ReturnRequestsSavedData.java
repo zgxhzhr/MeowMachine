@@ -15,7 +15,7 @@ public final class ReturnRequestsSavedData extends SavedData {
 
     public static final String DATA_NAME = "meow_machine_return_requests";
 
-    public record Request(UUID entryId, String requester, String reason, long time) {
+    public record Request(UUID entryId, String requester, UUID requesterId, String reason, long time) {
     }
 
     private final Map<UUID, Request> requests = new LinkedHashMap<>();
@@ -51,6 +51,7 @@ public final class ReturnRequestsSavedData extends SavedData {
             try {
                 UUID id = UUID.fromString(t.getString("id"));
                 d.requests.put(id, new Request(id, t.getString("requester"),
+                        t.contains("requester_id") ? UUID.fromString(t.getString("requester_id")) : null,
                         t.getString("reason"), t.getLong("time")));
             } catch (RuntimeException ignored) {
             }
@@ -65,6 +66,7 @@ public final class ReturnRequestsSavedData extends SavedData {
             CompoundTag t = new CompoundTag();
             t.putString("id", r.entryId().toString());
             t.putString("requester", r.requester());
+            t.putString("requester_id", r.requesterId() == null ? "" : r.requesterId().toString());
             t.putString("reason", r.reason());
             t.putLong("time", r.time());
             list.add(t);
