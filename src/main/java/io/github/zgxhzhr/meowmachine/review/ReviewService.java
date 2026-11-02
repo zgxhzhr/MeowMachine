@@ -136,9 +136,15 @@ public final class ReviewService {
                         String sticker = aiSticker != null ? aiSticker
                                 : pickSticker(Verdict.RETURN, findings);
                         if (prevApproved.isPresent()) {
-                            ReturnRequests.request(sub.id(), "AI",
-                                    "AI 判定需要修改" + (aiRantReason.isBlank() ? ""
-                                            : "：" + aiRantReason.replace("\n", "；")));
+                            // AI 也是审核方：判它需要修改就直接把已通过条目退回去（等同审核员点「退回」）
+                            ApprovedIndex.remove(sub.id());
+                            ReturnRequests.clear(sub.id());
+                            if (author != null) {
+                                author.sendSystemMessage(net.minecraft.network.chat.Component
+                                        .translatable("chat.meow_machine.return_done_author",
+                                                sub.title(), "AI 判定需要修改"));
+                            }
+                            MeowMachine.LOG.info("[喵呜机] AI 直接退回了已通过条目 {}", sub.id());
                         }
                         return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
                     }, server).exceptionally(ex -> {
@@ -211,9 +217,15 @@ public final class ReviewService {
                         String sticker = aiSticker != null ? aiSticker
                                 : pickSticker(Verdict.RETURN, ai.findings());
                         if (prevApproved.isPresent()) {
-                            ReturnRequests.request(sub.id(), "AI",
-                                    "AI 判定需要修改" + (aiRantReason.isBlank() ? ""
-                                            : "：" + aiRantReason.replace("\n", "；")));
+                            // AI 也是审核方：判它需要修改就直接把已通过条目退回去（等同审核员点「退回」）
+                            ApprovedIndex.remove(sub.id());
+                            ReturnRequests.clear(sub.id());
+                            if (author != null) {
+                                author.sendSystemMessage(net.minecraft.network.chat.Component
+                                        .translatable("chat.meow_machine.return_done_author",
+                                                sub.title(), "AI 判定需要修改"));
+                            }
+                            MeowMachine.LOG.info("[喵呜机] AI 直接退回了已通过条目 {}", sub.id());
                         }
                         return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
                     }, server).exceptionally(ex -> {
