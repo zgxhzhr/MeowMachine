@@ -247,6 +247,11 @@ public final class ReviewService {
                     });
         }
 
+        // ⑤.5 有 AI 但没开接管 → 只让 AI 写意见，稿件入人工队列保持待审
+        if (cfg.usable()) {
+            return queueWithoutTakingOver(sub, server, cfg, aiText, localFindings, diffNote);
+        }
+
         // ⑥ 既没人也没 AI → 兜底打回
         return CompletableFuture.completedFuture(fallbackReturn("没人审，也没查出具体问题"));
     }
@@ -319,5 +324,27 @@ public final class ReviewService {
         // 名册里有人但全离线：不再无限期挂在 PENDING（旧实现会让队列永远卡住），
         // 交给本地规则/AI 先出结论，作者之后还能重新投稿。
         return false;
+    }
+
+    /** 未开接管时的处理：稿件进人工队列保持待审，AI 只异步补意见，不做决定。 */
+    private static CompletableFuture<ReviewResult> queueWithoutTakingOver(
+            Submission sub, MinecraftServer server, LlmConfig cfg, String aiText,
+            List<ReviewFinding> localFindings, String diffNote) {
+        final ReviewResult pending = ReviewResult.of(Verdict.PENDING, List.of(),
+                "pending-human",
+                StickerRegistry.forState("submitted").map(st -> st.id().toString()).orElse(""));
+        SubmissionQueue.enqueue(sub, System.currentTimeMillis());
+        AiReviewer.review(cfg, sub.title(), aiText, localFindings, diffNote)
+                .thenApplyAsync(ai -> {
+                    if (ai.available()) {
+                        AiOpinions.putOutcome(sub.id(), ai.findings(), ai.note());
+                    }
+                    return pending;
+                }, server)
+                .exceptionally(ex -> {
+                    MeowMachine.LOG.warn("[喵呜机] 未接管模式的 AI 意见失败（不影响入队）", ex);
+                    return pending;
+                });
+        return CompletableFuture.completedFuture(pending);
     }
 }
