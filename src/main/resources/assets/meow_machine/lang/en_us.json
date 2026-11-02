@@ -298,5 +298,8 @@
   "gui.meow_machine.return_reason_hint": "Why should it be returned? (optional)",
   "item.meow_machine.meow_icon_normal.how": "Given once on first join",
   "item.meow_machine.meow_icon_assistant.how": "Granted by the server owner to review assistants",
-  "item.meow_machine.meow_icon_reviewer.how": "Granted by the server owner to reviewers"
+  "item.meow_machine.meow_icon_reviewer.how": "Granted by the server owner to reviewers",
+  "chat.meow_machine.return_ai_accepted": "AI agreed: returning the entry",
+  "chat.meow_machine.return_ai_rejected": "AI found nothing to fix; request dismissed",
+  "chat.meow_machine.return_ai_accepted_by": "AI agreed to return \"%s\""
 }

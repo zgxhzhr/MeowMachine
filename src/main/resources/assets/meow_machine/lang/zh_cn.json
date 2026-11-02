@@ -298,5 +298,8 @@
   "gui.meow_machine.return_reason_hint": "写清为什么该退回（可留空）",
   "item.meow_machine.meow_icon_normal.how": "首次进入世界时自动获得",
   "item.meow_machine.meow_icon_assistant.how": "由服主发放给审核助理（只能查看与写意见）",
-  "item.meow_machine.meow_icon_reviewer.how": "由服主发放给审核员"
+  "item.meow_machine.meow_icon_reviewer.how": "由服主发放给审核员",
+  "chat.meow_machine.return_ai_accepted": "AI 复核后同意退回",
+  "chat.meow_machine.return_ai_rejected": "AI 复核后认为无需退回，申请已驳回",
+  "chat.meow_machine.return_ai_accepted_by": "AI 同意退回「%s」，条目已退回"
 }

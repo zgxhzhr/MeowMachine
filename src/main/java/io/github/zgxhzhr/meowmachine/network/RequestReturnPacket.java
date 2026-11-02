@@ -82,6 +82,50 @@ public record RequestReturnPacket(String entryId, String reason) {
             }
             player.sendSystemMessage(Component.translatable(
                     "chat.meow_machine.return_requested", entry.get().title()));
+
+            // AI 也参与裁决：AI 审核已启用时，让 AI 重新复核这条已通过条目。
+            // 认为确实该改 -> 直接退回并通知；认为没问题 -> 驳回这条申请。
+            var cfg = io.github.zgxhzhr.meowmachine.ai.AiConfigStore.get();
+            var server = player.getServer();
+            if (cfg.enabled() && !cfg.apiKey().isBlank() && server != null) {
+                final java.util.UUID targetId = id;
+                final String title = entry.get().title();
+                final String authorName = entry.get().author();
+                io.github.zgxhzhr.meowmachine.ai.AiReviewer.review(cfg, title, entry.get().body())
+                        .thenAcceptAsync(outcome -> server.execute(() -> {
+                            if (!outcome.available()) {
+                                return;
+                            }
+                            if (outcome.findings().isEmpty()) {
+                                ReturnRequests.clear(targetId);
+                                Network.CHANNEL.sendTo(NoticePacket.of(
+                                                "chat.meow_machine.return_ai_rejected"),
+                                        player.connection.connection,
+                                        NetworkDirection.PLAY_TO_CLIENT);
+                                return;
+                            }
+                            ApprovedIndex.remove(targetId);
+                            ReturnRequests.clear(targetId);
+                            String why = outcome.findings().get(0).reason();
+                            var author = server.getPlayerList().getPlayerByName(authorName);
+                            if (author != null) {
+                                author.sendSystemMessage(Component.translatable(
+                                        "chat.meow_machine.return_done_author", title,
+                                        why == null || why.isBlank() ? "AI 复核后同意退回" : why));
+                            }
+                            Network.CHANNEL.sendTo(NoticePacket.of(
+                                            "chat.meow_machine.return_ai_accepted"),
+                                    player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+                            for (ServerPlayer p2 : server.getPlayerList().getPlayers()) {
+                                if (io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers
+                                        .canFinalize(p2)) {
+                                    p2.sendSystemMessage(Component.translatable(
+                                            "chat.meow_machine.return_ai_accepted_by", title));
+                                }
+                            }
+                            MeowMachine.LOG.info("[喵呜机] AI 复核后同意退回已通过条目 {}", targetId);
+                        }), server);
+            }
         }
         c.setPacketHandled(true);
     }
