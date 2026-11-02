@@ -96,12 +96,6 @@ public final class Network {
                 .decoder(RequestReturnPacket::decode)
                 .consumerMainThread(RequestReturnPacket::handle)
                 .add();
-        // 客户端 → 服务端：对 AI 审核的吐槽
-        CHANNEL.messageBuilder(RantPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
-                .encoder(RantPacket::encode)
-                .decoder(RantPacket::decode)
-                .consumerMainThread(RantPacket::handle)
-                .add();
 
         // 客户端 → 服务端：请求已通过条目列表（所有人）
         CHANNEL.messageBuilder(ApprovedListRequestPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)

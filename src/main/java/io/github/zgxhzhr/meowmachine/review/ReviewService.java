@@ -85,6 +85,10 @@ public final class ReviewService {
                     ReviewResult.of(Verdict.RETURN, localFindings, "local-rules", sticker));
         }
 
+        // AI 也算审核方：如果这是已通过条目的再编辑、且 AI 判它需要修改，就替 AI 记一条退回申请
+        // （审核员在「已通过条目」列表里能看到「AI 申请退回」）
+        final String aiRantReason = diffNote;
+
         // ② AI 接管：AI 判断优于本地规则（格式类 10/22/26/29 除外）
         boolean aiTakesOver = cfg.usable() && cfg.takeover();
         if (aiTakesOver) {
@@ -131,6 +135,11 @@ public final class ReviewService {
                         }
                         String sticker = aiSticker != null ? aiSticker
                                 : pickSticker(Verdict.RETURN, findings);
+                        if (prevApproved.isPresent()) {
+                            ReturnRequests.request(sub.id(), "AI",
+                                    "AI 判定需要修改" + (aiRantReason.isBlank() ? ""
+                                            : "：" + aiRantReason.replace("\n", "；")));
+                        }
                         return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
                     }, server).exceptionally(ex -> {
                         MeowMachine.LOG.error("[喵呜机] AI 接管裁决异常，退回本地规则", ex);
@@ -201,6 +210,11 @@ public final class ReviewService {
                         }
                         String sticker = aiSticker != null ? aiSticker
                                 : pickSticker(Verdict.RETURN, ai.findings());
+                        if (prevApproved.isPresent()) {
+                            ReturnRequests.request(sub.id(), "AI",
+                                    "AI 判定需要修改" + (aiRantReason.isBlank() ? ""
+                                            : "：" + aiRantReason.replace("\n", "；")));
+                        }
                         return ReviewResult.of(Verdict.RETURN, findings, "ai", sticker);
                     }, server).exceptionally(ex -> {
                         MeowMachine.LOG.error("[喵呜机] 自动审核异常，按兜底打回处理", ex);
