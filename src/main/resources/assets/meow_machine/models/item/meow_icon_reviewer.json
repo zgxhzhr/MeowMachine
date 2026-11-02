@@ -1,6 +1,6 @@
 {
   "parent": "item/generated",
   "textures": {
-    "layer0": "meow_machine:item/meow_icon"
+    "layer0": "meow_machine:item/meow_icon_reviewer"
   }
 }

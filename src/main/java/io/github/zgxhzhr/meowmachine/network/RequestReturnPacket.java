@@ -51,7 +51,7 @@ public record RequestReturnPacket(String entryId, String reason) {
             return;
         }
         String reason = msg.reason == null ? "" : msg.reason.strip();
-        boolean reviewer = ReviewerRoster.canFinalize(player) || ReviewerRoster.isOp(player);
+        boolean reviewer = io.github.zgxhzhr.meowmachine.privilege.EffectiveTiers.canFinalize(player);
         if (reviewer) {
             ApprovedIndex.remove(id);
             ReturnRequests.clear(id);
