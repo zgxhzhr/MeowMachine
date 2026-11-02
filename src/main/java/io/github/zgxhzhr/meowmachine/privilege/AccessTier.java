@@ -3,48 +3,25 @@ package io.github.zgxhzhr.meowmachine.privilege;
 import io.github.zgxhzhr.meowmachine.review.ReviewerRoster;
 import net.minecraft.server.level.ServerPlayer;
 
-/** 权限等级：物品自带等级，玩家等级不够就用不了，避免低权限物品串到高权限功能。 */
+/** 物品自带等级 = 使用它时的权限上限（min(玩家, 物品)），低档物品不会越级。 */
 public enum AccessTier {
+    NONE(0, "无"), NORMAL(1, "普通用户"), ASSISTANT(2, "助理"), REVIEWER(3, "审核员");
 
-    NONE(0, "无"),
-    ASSISTANT(1, "助理"),
-    REVIEWER(2, "审核员"),
-    OP(3, "站长");
+    private final int level; private final String label;
+    AccessTier(int level, String label) { this.level = level; this.label = label; }
+    public int level() { return level; }
+    public String label() { return label; }
 
-    private final int level;
-    private final String label;
-
-    AccessTier(int level, String label) {
-        this.level = level;
-        this.label = label;
+    public static AccessTier of(ServerPlayer p) {
+        if (p == null) return NONE;
+        if (ReviewerRoster.isOp(p) || ReviewerRoster.canFinalize(p)) return REVIEWER;
+        if (ReviewerRoster.canAnnotate(p)) return ASSISTANT;
+        return NORMAL;
     }
-
-    public int level() {
-        return level;
+    public AccessTier effectiveFor(AccessTier player) {
+        return player == null ? NONE : (player.level < this.level ? player : this);
     }
-
-    public String label() {
-        return label;
-    }
-
-    public boolean allowedBy(AccessTier actual) {
-        return actual != null && actual.level >= this.level;
-    }
-
-    /** 玩家实际等级：OP > 审核员 > 助理 */
-    public static AccessTier of(ServerPlayer player) {
-        if (player == null) {
-            return NONE;
-        }
-        if (ReviewerRoster.isOp(player)) {
-            return OP;
-        }
-        if (ReviewerRoster.canFinalize(player)) {
-            return REVIEWER;
-        }
-        if (ReviewerRoster.canAnnotate(player)) {
-            return ASSISTANT;
-        }
-        return NONE;
+    public boolean usableBy(AccessTier player) {
+        return player != null && player.level >= this.level;
     }
 }

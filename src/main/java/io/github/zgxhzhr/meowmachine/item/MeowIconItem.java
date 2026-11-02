@@ -43,7 +43,7 @@ public class MeowIconItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
         if (!level.isClientSide && player instanceof net.minecraft.server.level.ServerPlayer sp) {
             var actual = io.github.zgxhzhr.meowmachine.privilege.AccessTier.of(sp);
-            if (!tier.allowedBy(actual)) {
+            if (!tier.usableBy(actual)) {
                 sp.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
                         "chat.meow_machine.tier_denied", tier.label(), actual.label()));
                 return InteractionResultHolder.fail(stack);

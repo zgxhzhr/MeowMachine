@@ -114,7 +114,7 @@ public final class MeowMachineEvents {
         }
         data.putBoolean("meow_machine_icon_granted", true);
         var icon = new net.minecraft.world.item.ItemStack(
-                io.github.zgxhzhr.meowmachine.registry.ModItems.MEOW_ICON.get());
+                io.github.zgxhzhr.meowmachine.registry.ModItems.MEOW_ICON_NORMAL.get());
         if (!sp.getInventory().add(icon)) {
             sp.drop(icon, false);
         }

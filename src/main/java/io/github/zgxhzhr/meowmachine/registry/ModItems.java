@@ -45,10 +45,6 @@ public final class ModItems {
             ITEMS.register("review_terminal_reviewer",
                     () -> new AdminTerminalItem(new Item.Properties().stacksTo(1),
                             io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER));
-    public static final RegistryObject<Item> REVIEW_TERMINAL_OP =
-            ITEMS.register("review_terminal_op",
-                    () -> new AdminTerminalItem(new Item.Properties().stacksTo(1),
-                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.OP));
 
     /** 18 张梗图对应的物品 id（顺序不重要，按名字映射） */
     public static final String[] STICKER_IDS = {
@@ -146,10 +142,10 @@ public final class ModItems {
             ITEMS.register("meow_icon_reviewer",
                     () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties(),
                             io.github.zgxhzhr.meowmachine.privilege.AccessTier.REVIEWER));
-    public static final RegistryObject<Item> MEOW_ICON_OP =
-            ITEMS.register("meow_icon_op",
+    public static final RegistryObject<Item> MEOW_ICON_NORMAL =
+            ITEMS.register("meow_icon_normal",
                     () -> new io.github.zgxhzhr.meowmachine.item.MeowIconItem(new Item.Properties(),
-                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.OP));
+                            io.github.zgxhzhr.meowmachine.privilege.AccessTier.NORMAL));
 
     /** 神秘合成的输出占位（合成前只显示它） */
     public static final RegistryObject<Item> MYSTERY_RESULT =

@@ -291,5 +291,6 @@
   "item.meow_machine.review_terminal_op": "审核终端·站长",
   "item.meow_machine.meow_icon_assistant": "喵喵喵·助理",
   "item.meow_machine.meow_icon_reviewer": "喵喵喵·审核员",
-  "item.meow_machine.meow_icon_op": "喵喵喵·站长"
+  "item.meow_machine.meow_icon_op": "喵喵喵·站长",
+  "item.meow_machine.meow_icon_normal": "喵喵喵·普通"
 }

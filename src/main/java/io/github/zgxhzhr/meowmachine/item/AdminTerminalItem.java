@@ -46,7 +46,7 @@ public class AdminTerminalItem extends Item {
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             // 物品自带等级：低档物品不能进高档界面（防串权）
             var actual = io.github.zgxhzhr.meowmachine.privilege.AccessTier.of(sp);
-            if (!tier.allowedBy(actual)) {
+            if (!tier.usableBy(actual)) {
                 sp.sendSystemMessage(Component.translatable(
                         "chat.meow_machine.tier_denied", tier.label(), actual.label()));
                 return InteractionResultHolder.fail(stack);

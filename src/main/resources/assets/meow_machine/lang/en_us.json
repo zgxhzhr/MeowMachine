@@ -291,5 +291,6 @@
   "item.meow_machine.review_terminal_op": "Review Terminal (Owner)",
   "item.meow_machine.meow_icon_assistant": "Meow Icon (Assistant)",
   "item.meow_machine.meow_icon_reviewer": "Meow Icon (Reviewer)",
-  "item.meow_machine.meow_icon_op": "Meow Icon (Owner)"
+  "item.meow_machine.meow_icon_op": "Meow Icon (Owner)",
+  "item.meow_machine.meow_icon_normal": "Meow Icon (Normal)"
 }
