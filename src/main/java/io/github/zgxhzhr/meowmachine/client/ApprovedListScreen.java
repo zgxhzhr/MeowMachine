@@ -70,9 +70,10 @@ public class ApprovedListScreen extends Screen {
                                     ? "gui.meow_machine.btn.return_now"
                                     : "gui.meow_machine.btn.request_return"),
                             b -> {
-                                Network.CHANNEL.sendToServer(
-                                        new RequestReturnPacket(e.id(), ""));
-                                this.onClose();
+                                if (this.minecraft != null) {
+                                    this.minecraft.setScreen(new ReturnReasonScreen(
+                                            this, e.id(), canFinalize));
+                                }
                             })
                     .bounds(x + VIEW_W + EDIT_W + 8, y, RETURN_W, BTN_H).build());
         }

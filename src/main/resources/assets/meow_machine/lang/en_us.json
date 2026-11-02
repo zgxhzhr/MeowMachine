@@ -292,5 +292,8 @@
   "item.meow_machine.meow_icon_assistant": "Meow Icon (Assistant)",
   "item.meow_machine.meow_icon_reviewer": "Meow Icon (Reviewer)",
   "item.meow_machine.meow_icon_op": "Meow Icon (Owner)",
-  "item.meow_machine.meow_icon_normal": "Meow Icon (Normal)"
+  "item.meow_machine.meow_icon_normal": "Meow Icon (Normal)",
+  "gui.meow_machine.return_reason_title": "Return reason",
+  "gui.meow_machine.request_reason_title": "Reason for the request",
+  "gui.meow_machine.return_reason_hint": "Why should it be returned? (optional)"
 }

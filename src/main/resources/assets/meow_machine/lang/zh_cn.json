@@ -292,5 +292,8 @@
   "item.meow_machine.meow_icon_assistant": "喵喵喵·助理",
   "item.meow_machine.meow_icon_reviewer": "喵喵喵·审核员",
   "item.meow_machine.meow_icon_op": "喵喵喵·站长",
-  "item.meow_machine.meow_icon_normal": "喵喵喵·普通"
+  "item.meow_machine.meow_icon_normal": "喵喵喵·普通",
+  "gui.meow_machine.return_reason_title": "退回理由",
+  "gui.meow_machine.request_reason_title": "申请退回的理由",
+  "gui.meow_machine.return_reason_hint": "写清为什么该退回（可留空）"
 }
