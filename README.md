@@ -465,3 +465,24 @@ src/main/java/io/github/zgxhzhr/meowmachine/
 - 远端：https://github.com/zgxhzhr/MeowMachine
 
 历史改动（审计修复、每次的 bug 原因与修法）都在 `git log` 里，提交信息写的是「为什么」而不是「改了哪些行」。
+
+## 许可证
+
+本项目以 **MIT** 协议开源，详见 [LICENSE](LICENSE)。
+
+简单说：可以自由使用、修改、分发（包括商用与整合包内置），保留版权声明与许可声明即可；
+软件按「现状」提供，不附带任何担保。
+
+本项目是同人作品，与 MCMOD 及站长本人无隶属关系；MIT 协议只覆盖本仓库的代码与文案，
+不构成对相关名称、角色形象的授权。
+
+## License
+
+Released under the **MIT** license — see [LICENSE](LICENSE).
+
+You may use, modify and redistribute it freely (including commercially and inside modpacks)
+as long as the copyright and permission notice are kept. Provided "as is", without warranty.
+
+This is a fan project and is not affiliated with MCMOD or the person Meow Machine. The MIT
+license covers this repository's code and text only; it grants no rights to the referenced
+names or character likeness.
